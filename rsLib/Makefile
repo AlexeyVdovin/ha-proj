@@ -9,7 +9,7 @@ CFLAGS = -g -O0 -I ./include -I ./
 
 LDFLAGS = -g
 
-TARGET = lib/$(LIB).a
+TARGET = lib/lib$(LIB).a
 
 all: $(TARGET)
 

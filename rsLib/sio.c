@@ -55,6 +55,7 @@ uchar sio_rxcount()
 {
     int bytes_avail = 0;
     ioctl(port, FIONREAD, &bytes_avail);
+    if(bytes_avail > 255) bytes_avail = 255;
     return (uchar)bytes_avail;
 }
 #else

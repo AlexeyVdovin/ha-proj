@@ -24,6 +24,6 @@ void packet_init();
 
 packet_t* rx_packet();
 void tx_packet(packet_t* pkt);
-
+ushort packet_crc(packet_t* pkt);
 
 #endif /* _PACKET_H_ */

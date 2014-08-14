@@ -42,7 +42,7 @@ static unsigned short crc16(char *addr, int num, unsigned int crc)
 }
 
 /* Calc packet CRC */
-static ushort packet_crc(packet_t* pkt)
+ushort packet_crc(packet_t* pkt)
 {
     uchar* p = (uchar*)pkt;
     ushort crc = crc16(p, sizeof(packet_t) + pkt->len, 0);
@@ -138,10 +138,10 @@ void tx_packet(packet_t* pkt)
 
 #include <util/crc16.h>
 
-static unsigned short packet_crc(packet_t* pkt)
+ushort packet_crc(packet_t* pkt)
 {
-    unsigned short crc = 0;
-    unsigned char* p = (unsigned char*)pkt;
+    ushort crc = 0;
+    uchar* p = (uchar*)pkt;
     uchar i;
     
     for(i = 0; i < pkt->len + sizeof(packet_t); ++i) crc = _crc_xmodem_update(crc, p[i]);
