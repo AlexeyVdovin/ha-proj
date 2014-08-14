@@ -1,9 +1,9 @@
 #include <stdio.h>
+#include <unistd.h>
 
 #include "timer.h"
+#include "rs485.h"
 #include "packet.h"
-
-#include <unistd.h>
 
 static void pkt_dump(packet_t* pkt)
 {
@@ -18,26 +18,25 @@ int main(int argc, char** argv)
     int n = 0;
     timer_init();
     packet_init();
-    adc_init();
-    
-    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x0C, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
-    pid_t pid = getpid();
-    data[3] = (uchar)(pid&0xFF);
+    rs485_init();
     
     do
     {
-        packet_t* pkt = rx_packet();
+        packet_t* pkt = rs485_rx_packet();
         if(pkt)
         {
+            printf("rs485 -> tcp ");
             pkt_dump(pkt);
+            tx_packet(pkt);
         }
-        delay_t(1);
-        if(++n > 200)
+        pkt = rx_packet();
+        if(pkt)
         {
-            n = 0;
-            tx_packet((packet_t*)data);
+            printf("tcp -> rs485 ");
+            pkt_dump(pkt);
+            rs485_tx_packet(pkt);
         }
-            
+        usleep(1000); // delay 1ms
     } while(1);
     
 	return 0;
