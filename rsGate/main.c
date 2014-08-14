@@ -20,6 +20,7 @@ int main(int argc, char** argv)
     packet_init();
     rs485_init();
     
+    // TODO: Add request/response guard mechanism  (enqueue subsequent requests)
     do
     {
         packet_t* pkt = rs485_rx_packet();
@@ -36,7 +37,7 @@ int main(int argc, char** argv)
             pkt_dump(pkt);
             rs485_tx_packet(pkt);
         }
-        usleep(1000); // delay 1ms
+        usleep(1000); // 1ms - at 9600 baud it gives delay about 1 char
     } while(1);
     
 	return 0;

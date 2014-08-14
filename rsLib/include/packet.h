@@ -16,9 +16,12 @@ typedef struct
     uchar  from;
     uchar  flags;
     uchar  len;
+    uchar  seq; // req/resp must match this field
     uchar  data[0];
 } packet_t;
 #pragma pack(pop)
+
+// TODO: Define flags field
 
 void packet_init();
 

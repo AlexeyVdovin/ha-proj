@@ -23,12 +23,13 @@ packet_t* rs485_rx_packet()
         if(c < 0) break;
         uchar u = (uchar)(c & 0x00FF);
         if(rx_pos == 0 && u != DATA_ID1) continue;
-        if(rx_pos == 1 && u != DATA_ID2) continue;
-        if(rx_pos > 5 && rx_pos < sizeof(packet_t) + pkt->len + 2)
+        if(rx_pos == 1 && u != DATA_ID2) { rx_pos = 0; continue; }
+        if(rx_pos == 5 && u > MAX_DATA_LEN) { rx_pos = 0; continue; }
+        if(rx_pos <= 5 || (rx_pos > 5 && rx_pos < sizeof(packet_t) + pkt->len + 2))
         { 
-            rx_pkt[rx_pos] = u;
+            rx_pkt[rx_pos++] = u;
         }
-        if(rx_pos == sizeof(packet_t) + pkt->len + 2)
+        if(rx_pos >= sizeof(packet_t) + pkt->len + 2)
         {
             rx_pos = 0;
             ushort* crc = (ushort*)(pkt->data + pkt->len);
