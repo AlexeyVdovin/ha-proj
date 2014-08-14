@@ -9,7 +9,6 @@
 #include <errno.h>
 
 #include "packet.h"
-#include "sio.h"
 
 #ifdef _PACKET_TRANSPORT_UDP_
 static int s = -1;

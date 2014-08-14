@@ -1,20 +1,20 @@
 
 PRG = SensorNode
 
-OBJ = main.o sio.o timer.o packet.o adc.o
+OBJ = main.o 
 
-LIBS =
+LIBS = -lrsLib
 
-CFLAGS = -g -O0
+CFLAGS = -g -O0 -I ../rsLib/include -I ./
 
-LDFLAGS = -g
+LDFLAGS = -g -L ../rsLib/lib -static
 
 TARGET = $(PRG).elf
 
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .o: .c
 
