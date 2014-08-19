@@ -1,4 +1,4 @@
-#ifndef __AVR_XMEGA__
+#ifndef __AVR__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,9 +134,11 @@ void tx_packet(packet_t* pkt)
 #endif /* _PACKET_TRANSPORT_UDP_ */
 }
 
-#else /* __AVR_XMEGA__ */
+#else /* __AVR__ */
 
 #include <util/crc16.h>
+
+#include "packet.h"
 
 ushort packet_crc(packet_t* pkt)
 {
@@ -149,4 +151,4 @@ ushort packet_crc(packet_t* pkt)
     return crc;
 }
 
-#endif /* __AVR_XMEGA__ */
+#endif /* __AVR__ */

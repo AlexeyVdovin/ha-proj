@@ -6,17 +6,17 @@ MCU_TARGET = atmega8
 OBJ = main.o 
 
 AVR_OBJ = $(patsubst %.o,%.obj,$(OBJ))
-#AVR_SRC = $(patsubst target/%.o,%.c,AVR_OBJ)
 
 TARGET = $(PRG).elf
 
+INCLUDE = -I ../rsLib/include -I ./
 LIBS = -lrsLib
-CFLAGS = -g -O0 -I ../rsLib/include -I ./
+
+CFLAGS = -g -O0 $(INCLUDE)
 LDFLAGS = -g -L ../rsLib/lib -static
 
-AVR_LIBS = 
-AVR_CFLAGS = -g -Wall -O2 -mmcu=$(MCU_TARGET)
-AVR_LDFLAGS = -Wl,-Map,target/$(PRG).map
+AVR_CFLAGS = -g -Wall -O2 -mmcu=$(MCU_TARGET) $(INCLUDE)
+AVR_LDFLAGS = -Wl,-Map,target/$(PRG).map -L ../rsLib/target -static
 
 AVR_CC      = avr-gcc
 AVR_OBJCOPY = avr-objcopy
@@ -29,13 +29,11 @@ mcu: target/$(TARGET) lst text eeprom
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-# .o: .c
-
 %.obj: %.c
 	$(AVR_CC) $(AVR_CFLAGS) -c -o $@ $^
 
 target/$(TARGET): $(AVR_OBJ)
-	$(AVR_CC) $(AVR_CFLAGS) -o $@ $^ $(AVR_LDFLAGS) $(AVR_LIBS)
+	$(AVR_CC) $(AVR_CFLAGS) -o $@ $^ $(AVR_LDFLAGS) $(LIBS)
 
 lst:  target/$(PRG).lst
 

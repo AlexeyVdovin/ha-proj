@@ -1,4 +1,4 @@
-#ifndef __AVR_XMEGA__
+#ifndef __AVR__
 
 #include <stdio.h>
 #include <termios.h>
@@ -67,7 +67,9 @@ uchar sio_rxcount()
     if(bytes_avail > 255) bytes_avail = 255;
     return (uchar)bytes_avail;
 }
-#else
+
+#else /* __AVR__ */
+
 #include "defines.h"
 
 #include <avr/io.h>
@@ -235,4 +237,4 @@ uchar sio_rxcount(void)
     return rx_counter;
 }
 
-#endif
+#endif /* __AVR__ */

@@ -1,4 +1,4 @@
-#ifndef __AVR_XMEGA__
+#ifndef __AVR__
 
 #include <unistd.h>
 #include <sys/time.h>
@@ -34,6 +34,8 @@ void delay_s(uchar s)
 #include <avr/wdt.h>
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
+
+#include "timer.h"
 
 volatile ulong time = 0;
 
