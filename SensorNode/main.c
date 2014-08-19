@@ -1,3 +1,5 @@
+#ifndef __AVR__
+
 #include <stdio.h>
 
 #include "timer.h"
@@ -43,3 +45,29 @@ int main(int argc, char** argv)
     
 	return 0;
 }
+#else /* __AVR__ */
+
+#include <inttypes.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/sleep.h>
+
+void ioinit()
+{
+
+}
+
+
+int main()
+{
+    ioinit ();
+
+
+    for (;;)
+        sleep_mode();
+
+    return (0);
+}
+
+#endif /* __AVR__ */
+

@@ -1,4 +1,9 @@
 *.o
+*.obj
+*.bin
+*.lst
+*.map
+*.hex
 *.elf
 *.a
 *~
