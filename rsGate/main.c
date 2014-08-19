@@ -37,7 +37,7 @@ int main(int argc, char** argv)
             pkt_dump(pkt);
             rs485_tx_packet(pkt);
         }
-        usleep(1000); // 1ms - at 9600 baud it gives delay about 1 char
+        usleep(1000000/(BAUD/10)*2); // Delay for ~2 chars 
     } while(1);
     
 	return 0;

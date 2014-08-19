@@ -15,6 +15,10 @@
 static int port = -1;
 static const char* devname = "/dev/ttyUSB0";
 
+#define AFTERX(x) B ## x
+#define XTTY_BAUD(x) AFTERX(x)
+#define TTY_BAUD XTTY_BAUD(BAUD)
+
 void sio_init()
 {
     struct termios tty;
@@ -31,7 +35,12 @@ void sio_init()
         exit(1);
     }
 
+    // Reset terminal to RAW mode
     cfmakeraw(&tty);
+
+    // Set baud rate
+    cfsetspeed(&tty, TTY_BAUD);
+
     if(tcsetattr(port, TCSAFLUSH, &tty) < 0)
     {
         printf("tcsetattr() failed. Error: %d\n", errno);
