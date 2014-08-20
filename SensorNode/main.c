@@ -52,18 +52,35 @@ int main(int argc, char** argv)
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 
+#include "timer.h"
+#include "sio.h"
+#include "packet.h"
+#include "adc.h"
+
 void ioinit()
 {
-
+    timer_init();
+    adc_init();
+    sio_init();
+    packet_init();
 }
 
 
 int main()
 {
+    packet_t* pkt;
+
     ioinit ();
 
-
     for (;;)
+        pkt = rx_packet();
+        if(pkt)
+        {
+            uchar from = pkt->from;
+            pkt->from = pkt->to;
+            pkt->to = from;
+            tx_packet(pkt);
+        }
         sleep_mode();
 
     return (0);

@@ -24,7 +24,7 @@ AVR_CC      = avr-gcc
 AVR_OBJCOPY = avr-objcopy
 AVR_OBJDUMP = avr-objdump
 
-all: $(TARGET) target/$(TARGET)
+all: $(TARGET) mcu
 
 mcu: target/$(TARGET) lst text eeprom
 

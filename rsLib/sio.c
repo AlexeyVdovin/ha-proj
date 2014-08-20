@@ -164,7 +164,7 @@ ISR(USART_UDRE_vect)
  *
  */
 void
-uart_init(void)
+sio_init(void)
 {
   uart_flags.rx_buffer_overflow = 0;
   rx_wr_index = rx_rd_index = rx_counter = 0;
