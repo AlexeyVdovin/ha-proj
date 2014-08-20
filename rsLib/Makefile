@@ -34,4 +34,5 @@ target/lib$(LIB).a: $(AVR_OBJ)
 	$(AVR_CC) $(AVR_CFLAGS) -c -o $@ $^
 
 clean:
-	rm -rf *.o $(TARGET) *.bak 
+	rm -f *.o *.obj $(TARGET) target/lib$(LIB).a
+

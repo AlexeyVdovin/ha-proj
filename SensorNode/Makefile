@@ -12,8 +12,10 @@ TARGET = $(PRG).elf
 INCLUDE = -I ../rsLib/include -I ./
 LIBS = -lrsLib
 
+CC = gcc
+
 CFLAGS = -g -O0 $(INCLUDE)
-LDFLAGS = -g -L ../rsLib/lib -static
+LDFLAGS = -g -L ../rsLib/lib
 
 AVR_CFLAGS = -g -Wall -O2 -mmcu=$(MCU_TARGET) $(INCLUDE)
 AVR_LDFLAGS = -Wl,-Map,target/$(PRG).map -L ../rsLib/target -static
@@ -67,4 +69,5 @@ ebin:  target/$(PRG)_eeprom.bin
 	$(AVR_OBJCOPY) -j .eeprom --change-section-lma .eeprom=0 -O binary $< $@ || { echo empty $@ not generated; exit 0; }
 
 clean:
-	rm -rf *.o $(TARGET) *.bak 
+	rm -f *.o *.obj $(TARGET) target/*.*
+
