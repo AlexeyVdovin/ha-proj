@@ -6,6 +6,8 @@
 #include "packet.h"
 #include "queue.h"
 
+#define RESPONSE_TIMEOUT 10 /* 100ms */
+
 static void pkt_dump(packet_t* pkt)
 {
     int i;
@@ -24,7 +26,8 @@ static void init()
 int main(int argc, char** argv)
 {
     int n = 0;
-    int busy = 0;    
+    int busy = 0;
+    ulong t;    
     uchar seq;
     
     init();
@@ -39,6 +42,11 @@ int main(int argc, char** argv)
             tx_packet(pkt);
             if(busy && seq == pkt->seq) busy = 0;
         }
+        if(busy && (get_time() - t) > RESPONSE_TIMEOUT)
+        {
+            busy = 0;
+            // TODO: Notify sender ??
+        }
         pkt = rx_packet();
         if(pkt && busy)
         {
@@ -49,6 +57,7 @@ int main(int argc, char** argv)
         {
             busy = 1;
             seq = pkt->seq;
+            t = get_time();
             printf("udp -> rs485 ");
             pkt_dump(pkt);
             rs485_tx_packet(pkt);
