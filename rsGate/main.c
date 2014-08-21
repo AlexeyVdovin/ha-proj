@@ -4,6 +4,7 @@
 #include "timer.h"
 #include "rs485.h"
 #include "packet.h"
+#include "queue.h"
 
 static void pkt_dump(packet_t* pkt)
 {
@@ -13,27 +14,42 @@ static void pkt_dump(packet_t* pkt)
     printf(" %02X%02X\n", pkt->data[pkt->len], pkt->data[pkt->len+1]);
 }
 
-int main(int argc, char** argv)
+static void init()
 {
-    int n = 0;
     timer_init();
     packet_init();
     rs485_init();
+}
+
+int main(int argc, char** argv)
+{
+    int n = 0;
+    int busy = 0;    
+    uchar seq;
     
-    // TODO: Add request/response guard mechanism  (enqueue subsequent requests)
+    init();
+    
     do
     {
         packet_t* pkt = rs485_rx_packet();
         if(pkt)
         {
-            printf("rs485 -> tcp ");
+            printf("rs485 -> udp ");
             pkt_dump(pkt);
             tx_packet(pkt);
+            if(busy && seq == pkt->seq) busy = 0;
         }
         pkt = rx_packet();
-        if(pkt)
+        if(pkt && busy)
         {
-            printf("tcp -> rs485 ");
+            queue_put(pkt);
+            pkt = NULL;
+        }
+        if(!busy && (pkt || (pkt = queue_get())))
+        {
+            busy = 1;
+            seq = pkt->seq;
+            printf("udp -> rs485 ");
             pkt_dump(pkt);
             rs485_tx_packet(pkt);
         }

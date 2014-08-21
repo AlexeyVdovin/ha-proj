@@ -1,7 +1,7 @@
 
 PRG = rsGate
 
-OBJ = main.o rs485.o
+OBJ = main.o rs485.o queue.o
 
 LIBS = -lrsLib
 
@@ -13,9 +13,7 @@ TARGET = $(PRG).elf
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-.o: .c
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 clean:
 	rm -rf *.o $(TARGET) *.bak 

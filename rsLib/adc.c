@@ -9,7 +9,7 @@ void adc_init()
 
 ushort adc_read(uchar ch)
 {
-    
+    return 0;
 }
 
 #else /* __AVR__ */
@@ -23,7 +23,7 @@ void adc_init()
 
 ushort adc_read(uchar ch)
 {
-    
+    return 0;
 }
 
 
