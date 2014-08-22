@@ -5,6 +5,8 @@ OBJ = main.o rs485.o queue.o
 
 LIBS = -lrsLib
 
+CC = gcc
+
 CFLAGS = -g -O0 -I../rsLib/include -I./
 LDFLAGS = -g -L../rsLib/lib
 

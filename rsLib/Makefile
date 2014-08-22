@@ -1,4 +1,3 @@
-
 LIB = rsLib
 
 MCU_TARGET = atmega8
@@ -17,6 +16,8 @@ AVR_CFLAGS = -g -Wall -O2 -mmcu=$(MCU_TARGET) $(INCLUDE)
 
 AVR_CC      = avr-gcc
 AVR_AR      = avr-ar
+
+CC = gcc
 
 TARGET = lib/lib$(LIB).a
 
