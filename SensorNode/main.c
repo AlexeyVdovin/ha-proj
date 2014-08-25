@@ -57,12 +57,119 @@ int main(int argc, char** argv)
 #include "packet.h"
 #include "adc.h"
 
-void ioinit()
+uchar mcucsr;
+
+void io_init()
 {
+    mcucsr = MCUCSR;
+
+#if 0    
+    // Reset Source checking
+    if (MCUCSR & 1)
+       {
+       // Power-on Reset
+       MCUCSR=0;
+       // Place your code here
+
+       }
+    else if (MCUCSR & 2)
+       {
+       // External Reset
+       MCUCSR=0;
+       // Place your code here
+
+       }
+    else if (MCUCSR & 4)
+       {
+       // Brown-Out Reset
+       MCUCSR=0;
+       // Place your code here
+
+       }
+    else
+       {
+       // Watchdog Reset
+       MCUCSR=0;
+       // Place your code here
+
+       };
+#endif
+
+    // Input/Output Ports initialization
+    // Port B initialization
+    // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=Out Func1=Out Func0=In 
+    // State7=T State6=T State5=T State4=T State3=T State2=0 State1=0 State0=T 
+    PORTB=0x00;
+    DDRB=0x06;
+
+    // Port C initialization
+    // Func6=In Func5=In Func4=In Func3=In Func2=In Func1=Out Func0=In 
+    // State6=T State5=T State4=T State3=T State2=T State1=0 State0=T 
+    PORTC=0x00;
+    DDRC=0x02;
+
+    // Port D initialization
+    // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=In Func1=Out Func0=In 
+    // State7=T State6=T State5=T State4=T State3=T State2=T State1=1 State0=P 
+    PORTD=0x03;
+    DDRD=0x02;
+
+    // Timer/Counter 0 initialization
+    // Clock source: System Clock
+    // Clock value: Timer 0 Stopped
+    TCCR0=0x00;
+    TCNT0=0x00;
+
+    // Timer/Counter 1 initialization
+    // Clock source: System Clock
+    // Clock value: Timer 1 Stopped
+    // Mode: Normal top=FFFFh
+    // OC1A output: Discon.
+    // OC1B output: Discon.
+    // Noise Canceler: Off
+    // Input Capture on Falling Edge
+    // Timer 1 Overflow Interrupt: Off
+    // Input Capture Interrupt: Off
+    // Compare A Match Interrupt: Off
+    // Compare B Match Interrupt: Off
+    TCCR1A=0x00;
+    TCCR1B=0x00;
+    TCNT1H=0x00;
+    TCNT1L=0x00;
+    ICR1H=0x00;
+    ICR1L=0x00;
+    OCR1AH=0x00;
+    OCR1AL=0x00;
+    OCR1BH=0x00;
+    OCR1BL=0x00;
+
     timer_init();
     adc_init();
     sio_init();
     packet_init();
+
+    // External Interrupt(s) initialization
+    // INT0: Off
+    // INT1: Off
+    MCUCR=0x00;
+
+    // Timer(s)/Counter(s) Interrupt(s) initialization
+    TIMSK=0x40;
+
+    // Analog Comparator initialization
+    // Analog Comparator: Off
+    // Analog Comparator Input Capture by Timer/Counter 1: Off
+    ACSR=0x80;
+    SFIOR=0x00;
+
+    // Watchdog Timer initialization
+    // Watchdog Timer Prescaler: OSC/1024k
+    WDTCR=0x1E;
+    asm (" NOP" ); 
+    WDTCR=0x0E;
+
+    // Global enable interrupts
+    sei();
 }
 
 
@@ -70,7 +177,7 @@ int main()
 {
     packet_t* pkt;
 
-    ioinit ();
+    io_init ();
 
     for (;;)
         pkt = rx_packet();
