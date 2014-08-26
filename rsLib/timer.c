@@ -81,7 +81,7 @@ void delay_s(uchar s)
     do
     {
         wdt_reset(); 
-//        sleep_mode();
+        sleep_mode();
     } while(t > get_time());
 }
 
