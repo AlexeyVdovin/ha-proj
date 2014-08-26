@@ -15,8 +15,8 @@ typedef struct
     uchar  to;
     uchar  from;
     uchar  flags;
-    uchar  len;
     uchar  seq; // req/resp must match this field
+    uchar  len;
     uchar  data[0];
 } packet_t;
 #pragma pack(pop)

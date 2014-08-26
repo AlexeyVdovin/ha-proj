@@ -136,8 +136,8 @@ packet_t* rx_packet()
             else rx_time = get_time();
         }
         if(rx_pos == 1 && u != DATA_ID2) { rx_pos = 0; continue; }
-        if(rx_pos == 5 && u > MAX_DATA_LEN) { rx_pos = 0; continue; }
-        if(rx_pos <= 5 || (rx_pos > 5 && rx_pos < sizeof(packet_t) + pkt->len + 2))
+        if(rx_pos == 6 && u > MAX_DATA_LEN) { rx_pos = 0; continue; }
+        if(rx_pos <= 6 || (rx_pos > 6 && rx_pos < sizeof(packet_t) + pkt->len + 2))
         { 
             rx_pkt[rx_pos++] = u;
         }
@@ -223,8 +223,8 @@ packet_t* rx_packet()
             else rx_time = get_time();
         }
         if(rx_pos == 1 && u != DATA_ID2) { rx_pos = 0; continue; }
-        if(rx_pos == 5 && u > MAX_DATA_LEN) { rx_pos = 0; continue; }
-        if(rx_pos <= 5 || (rx_pos > 5 && rx_pos < sizeof(packet_t) + pkt->len + 2))
+        if(rx_pos == 6 && u > MAX_DATA_LEN) { rx_pos = 0; continue; }
+        if(rx_pos <= 6 || (rx_pos > 6 && rx_pos < sizeof(packet_t) + pkt->len + 2))
         { 
             rx_pkt[rx_pos++] = u;
         }
