@@ -1,7 +1,7 @@
 
 PRG = rsGate
 
-OBJ = main.o rs485.o queue.o
+OBJ = main.o queue.o
 
 LIBS = -lrsLib
 

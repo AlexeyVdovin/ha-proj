@@ -2,7 +2,9 @@
 #include <unistd.h>
 
 #include "timer.h"
+#include "sio.h"
 #include "rs485.h"
+#include "udp.h"
 #include "packet.h"
 #include "queue.h"
 
@@ -19,8 +21,9 @@ static void pkt_dump(packet_t* pkt)
 static void init()
 {
     timer_init();
-    packet_init();
+    sio_init();
     rs485_init();
+    udp_init();
 }
 
 int main(int argc, char** argv)
@@ -39,7 +42,7 @@ int main(int argc, char** argv)
         {
             printf("rs485 -> udp ");
             pkt_dump(pkt);
-            tx_packet(pkt);
+            udp_tx_packet(pkt);
             if(busy && seq == pkt->seq) busy = 0;
         }
         if(busy && (get_time() - t) > RESPONSE_TIMEOUT)
@@ -47,7 +50,8 @@ int main(int argc, char** argv)
             busy = 0;
             // TODO: Notify sender ??
         }
-        pkt = rx_packet();
+        pkt = udp_rx_packet();
+        if(pkt && pkt->from != 0x01 /* me */) pkt = NULL;
         if(pkt && busy)
         {
             queue_put(pkt);
@@ -67,3 +71,4 @@ int main(int argc, char** argv)
     
 	return 0;
 }
+

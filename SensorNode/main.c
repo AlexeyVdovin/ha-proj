@@ -4,8 +4,9 @@
 
 #include "timer.h"
 #include "packet.h"
+#include "udp.h"
+#include "adc.h"
 
-// #include <sys/types.h>
 #include <unistd.h>
 
 static void pkt_dump(packet_t* pkt)
@@ -20,16 +21,16 @@ int main(int argc, char** argv)
 {
     int n = 0;
     timer_init();
-    packet_init();
+    udp_init();
     adc_init();
     
-    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x0C, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
+    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x0C, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
     pid_t pid = getpid();
     data[3] = (uchar)(pid&0xFF);
     
     do
     {
-        packet_t* pkt = rx_packet();
+        packet_t* pkt = udp_rx_packet();
         if(pkt)
         {
             pkt_dump(pkt);
@@ -38,7 +39,7 @@ int main(int argc, char** argv)
         if(++n > 200)
         {
             n = 0;
-            tx_packet((packet_t*)data);
+            udp_tx_packet((packet_t*)data);
         }
             
     } while(1);
@@ -56,9 +57,10 @@ int main(int argc, char** argv)
 #include "timer.h"
 #include "sio.h"
 #include "packet.h"
+#include "rs485.h"
 #include "adc.h"
 
-uchar mcucsr;
+static uchar mcucsr;
 
 void io_init()
 {
@@ -147,7 +149,7 @@ void io_init()
     timer_init();
     adc_init();
     sio_init();
-    packet_init();
+    rs485_init();
 
     // External Interrupt(s) initialization
     // INT0: Off
@@ -186,13 +188,13 @@ int main()
     {
     	wdt_reset();
     	
-        pkt = rx_packet();
+        pkt = rs485_rx_packet();
         if(pkt)
         {
             uchar from = pkt->from;
             pkt->from = pkt->to;
             pkt->to = from;
-            tx_packet(pkt);
+            rs485_tx_packet(pkt);
             i = 0;
         } 
         sleep_mode();
@@ -201,7 +203,7 @@ int main()
         {
             i = 0;
             pkt = (packet_t*) data;
-            tx_packet(pkt);
+            rs485_tx_packet(pkt);
         }
 
     }
