@@ -2,7 +2,7 @@ LIB = rsLib
 
 MCU_TARGET = atmega8
 
-OBJ = timer.o packet.o sio.o adc.o
+OBJ = timer.o packet.o sio.o adc.o udp.o rs485.o
 
 AVR_OBJ = $(patsubst %.o,%.obj,$(OBJ))
 
