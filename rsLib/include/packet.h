@@ -22,7 +22,13 @@ typedef struct
 #pragma pack(pop)
 
 // TODO: Define flags field
+// 0x80 - Encrypted packet
 
+/* 
+   Registration procedure:
+    - Send broadcast registration request 0x00 -> 0x00 [MAC as Data] CRC
+    - Registration response will come as broadcast with [0x00, ID, MAC as Data] CRC
+*/
 ushort packet_crc(packet_t* pkt);
 
 #endif /* _PACKET_H_ */
