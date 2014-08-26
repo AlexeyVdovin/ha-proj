@@ -51,6 +51,7 @@ int main(int argc, char** argv)
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
 
 #include "timer.h"
 #include "sio.h"
@@ -109,10 +110,10 @@ void io_init()
     DDRC=0x02;
 
     // Port D initialization
-    // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=In Func1=Out Func0=In 
-    // State7=T State6=T State5=T State4=T State3=T State2=T State1=1 State0=P 
-    PORTD=0x03;
-    DDRD=0x02;
+    // Func7=In Func6=In Func5=In Func4=In Func3=Out Func2=Out Func1=Out Func0=In 
+    // State7=T State6=T State5=T State4=T State3=1 State2=0 State1=1 State0=P 
+    PORTD=0x0B;
+    DDRD=0x0E;
 
     // Timer/Counter 0 initialization
     // Clock source: System Clock
@@ -142,7 +143,7 @@ void io_init()
     OCR1AL=0x00;
     OCR1BH=0x00;
     OCR1BL=0x00;
-
+    
     timer_init();
     adc_init();
     sio_init();
@@ -154,7 +155,7 @@ void io_init()
     MCUCR=0x00;
 
     // Timer(s)/Counter(s) Interrupt(s) initialization
-    TIMSK=0x40;
+    TIMSK=0x80;
 
     // Analog Comparator initialization
     // Analog Comparator: Off
@@ -172,14 +173,19 @@ void io_init()
     sei();
 }
 
+uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 };
 
 int main()
 {
+    uint i = 0;
     packet_t* pkt;
 
     io_init ();
 
     for (;;)
+    {
+    	wdt_reset();
+    	
         pkt = rx_packet();
         if(pkt)
         {
@@ -187,9 +193,18 @@ int main()
             pkt->from = pkt->to;
             pkt->to = from;
             tx_packet(pkt);
-        }
+            i = 0;
+        } 
         sleep_mode();
+       
+        if(++i > 20000)
+        {
+            i = 0;
+            pkt = (packet_t*) data;
+            tx_packet(pkt);
+        }
 
+    }
     return (0);
 }
 
