@@ -10,10 +10,12 @@
 
 #define RESPONSE_TIMEOUT 10 /* 100ms */
 
+#define MyID 0x01
+
 static void pkt_dump(packet_t* pkt)
 {
     int i;
-    printf("Pkt: %02X%02X %02X -> %02X  (%02X) [%d]:", pkt->id[0], pkt->id[1], pkt->from, pkt->to, pkt->flags, pkt->len);
+    printf("Pkt: %02X%02X %02X -> %02X -> %02X  (%02X) %02X [%d]:", pkt->id[0], pkt->id[1], pkt->from, pkt->via, pkt->to, pkt->flags, pkt->seq, pkt->len);
     for(i = 0; i < pkt->len; ++i) { printf(" %02X", pkt->data[i]); }
     printf(" %02X%02X\n", pkt->data[pkt->len], pkt->data[pkt->len+1]);
 }
@@ -38,10 +40,12 @@ int main(int argc, char** argv)
     do
     {
         packet_t* pkt = rs485_rx_packet();
+        if(pkt && pkt->via == MyID) pkt = NULL;
         if(pkt)
         {
             printf("rs485 -> udp ");
             pkt_dump(pkt);
+            pkt->via = MyID;
             udp_tx_packet(pkt);
             if(busy && seq == pkt->seq) busy = 0;
         }
@@ -51,7 +55,7 @@ int main(int argc, char** argv)
             // TODO: Notify sender ??
         }
         pkt = udp_rx_packet();
-        if(pkt && pkt->from != 0x01 /* me */) pkt = NULL;
+        if(pkt && pkt->via == MyID) pkt = NULL;
         if(pkt && busy)
         {
             queue_put(pkt);
@@ -64,6 +68,7 @@ int main(int argc, char** argv)
             t = get_time();
             printf("udp -> rs485 ");
             pkt_dump(pkt);
+            pkt->via = MyID;
             rs485_tx_packet(pkt);
         }
         usleep(1000000/(BAUD/10)*2); // Delay for ~2 chars 

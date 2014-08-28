@@ -14,6 +14,7 @@ typedef struct
     uchar  id[2];
     uchar  to;
     uchar  from;
+    uchar  via;
     uchar  flags;
     uchar  seq; // req/resp must match this field
     uchar  len;
@@ -26,7 +27,7 @@ typedef struct
 
 /* 
    Registration procedure:
-    - Master Send broadcast registration request -> 00 [00 as Data]
+    - Master Send broadcast registration request -> 00 [00, 00 as Data]
     - Registration response from 00 -> Master with [MAC as Data]
     - Master Send assigned ID as broadcast [00, ID, MAC as Data]
     - Registered node respond to Master [01 OK]

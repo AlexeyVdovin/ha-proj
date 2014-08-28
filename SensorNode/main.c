@@ -9,10 +9,11 @@
 
 #include <unistd.h>
 
+
 static void pkt_dump(packet_t* pkt)
 {
     int i;
-    printf("Pkt: %02X%02X %02X -> %02X  (%02X) [%d]:", pkt->id[0], pkt->id[1], pkt->from, pkt->to, pkt->flags, pkt->len);
+    printf("Pkt: %02X%02X %02X -> %02X -> %02X  (%02X) %02X [%d]:", pkt->id[0], pkt->id[1], pkt->from, pkt->via, pkt->to, pkt->flags, pkt->seq, pkt->len);
     for(i = 0; i < pkt->len; ++i) { printf(" %02X", pkt->data[i]); }
     printf(" %02X%02X\n", pkt->data[pkt->len], pkt->data[pkt->len+1]);
 }
@@ -24,7 +25,7 @@ int main(int argc, char** argv)
     udp_init();
     adc_init();
     
-    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x0C, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
+    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
     pid_t pid = getpid();
     data[3] = (uchar)(pid&0xFF);
     
@@ -175,7 +176,7 @@ void io_init()
     sei();
 }
 
-uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 };
+uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 };
 
 int main()
 {
@@ -194,6 +195,7 @@ int main()
             uchar from = pkt->from;
             pkt->from = pkt->to;
             pkt->to = from;
+            pkt->via = 0;
             rs485_tx_packet(pkt);
             i = 0;
         } 
