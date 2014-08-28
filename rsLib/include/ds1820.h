@@ -50,7 +50,7 @@ void ds1820init(void);
 void ds1820killbus(void);
 
 /* Scan the bus to find all probes. Populates the ds1820probes array. */
-void ds1820scan(void);
+uint8_t ds1820scan(void);
 
 /* Tells one probe to do temperature conversion. Since that takes
  * about 1 second, you will need to wait that long before

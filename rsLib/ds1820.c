@@ -1,3 +1,7 @@
+#ifndef __AVR__
+
+#else /* __AVR__ */
+
 // #define KISS
 #define F_CPU  12000000UL 
 
@@ -114,7 +118,7 @@ uint8_t ds1820updateprobe(uint8_t probenum)
 /* This is going to be a tough one:
  * Scan the bus to find all probes.
  */
-void ds1820scan(void) {
+uint8_t ds1820scan(void) {
 #ifdef KISS
   ds1wire_reset(C, 0);
   ds1820probes[0].flags |= DS1820FLAG_SLOTINUSE;
@@ -125,6 +129,7 @@ void ds1820scan(void) {
   } else {
     ds1820probes[0].flags &= ~DS1820FLAG_PARASITE;
   }
+  return 1;
 #else /* KISS */
   uint8_t lastserialfound[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
   int8_t lastcolwith0 = -1;
@@ -205,9 +210,13 @@ void ds1820scan(void) {
       }
       curprobe++;
       if (curprobe >= DS1820_MAXPROBES) { /* No space left to learn more probes */
-        return;
+        break;
       }
     }
   } while (lastcolwith0 >= 0);
+  return curprobe;
 #endif /* KISS */
 }
+
+#endif /* __AVR__ */
+
