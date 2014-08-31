@@ -32,17 +32,19 @@ void adc_init()
 {
     // ADC Clock frequency: 93.750 kHz
     // ADC Voltage Reference: Int., cap. on AREF
-    ADMUX=ADC_IN1 | (ADC_VREF_TYPE & 0xff);
+    ADMUX=(ADC_VREF_TYPE & 0xC0)|(ADC_IN1&0x0F);
     ADCSRA=0xCF;
 }
 
 ushort adc_read(uchar ch)
 {
+    uchar admux = ADMUX;
+
     // Select ADC input
-    ADMUX = (ch | (ADC_VREF_TYPE & 0xff));
+    ADMUX = ((ch & 0x0F)|(ADC_VREF_TYPE & 0xC0));
 
     // Delay needed for the stabilization of the ADC input voltage
-    delay_us(10);
+    if(admux != ADMUX) delay_us(10);
 
     // Start the AD conversion
     ADCSRA |= 0x40;
