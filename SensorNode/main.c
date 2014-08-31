@@ -59,7 +59,9 @@ int main(int argc, char** argv)
 #include "sio.h"
 #include "packet.h"
 #include "rs485.h"
+#include "ds1820.h"
 #include "adc.h"
+#include "command.h"
 
 static uchar mcucsr;
 
@@ -171,6 +173,9 @@ void io_init()
     WDTCR=0x1E;
     asm (" NOP" ); 
     WDTCR=0x0E;
+    
+    set_sleep_mode(SLEEP_MODE_IDLE);
+    wdt_enable(WDTO_2S);
 
     // Global enable interrupts
     sei();
@@ -181,21 +186,38 @@ uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0
 int main()
 {
     uint i = 0;
+    uchar d = 0, n = 0;
     packet_t* pkt;
 
     io_init ();
+	ulong ds1820_req = 0;
+    n = ds1820scan();
 
     for (;;)
     {
     	wdt_reset();
+
+        if(ds1820_req == 0)
+        {
+		    ds1820queryprobe(d);
+		    ds1820_req = get_time() + 80; // 800ms
+		}
+		else if(ds1820_req < get_time())
+		{
+		    uchar r = 5;
+		    while(ds1820updateprobe(d) == 0)
+		    {
+        		if(--r == 0) break;
+        		delay_t(1); // 10ms
+		    }
+		    ds1820_req = 0;
+		    if(++d >= n) d = 0;
+        }    	
     	
         pkt = rs485_rx_packet();
+        if(pkt) pkt = cmd_proc(pkt);
         if(pkt)
         {
-            uchar from = pkt->from;
-            pkt->from = pkt->to;
-            pkt->to = from;
-            pkt->via = 0;
             rs485_tx_packet(pkt);
             i = 0;
         } 
@@ -207,7 +229,6 @@ int main()
             pkt = (packet_t*) data;
             rs485_tx_packet(pkt);
         }
-
     }
     return (0);
 }
