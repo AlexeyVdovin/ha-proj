@@ -3,7 +3,7 @@ PRG = SensorNode
 
 MCU_TARGET = atmega8
 
-OBJ = main.o command.o
+OBJ = main.o command.o config.o
 
 AVR_OBJ = $(patsubst %.o,%.obj,$(OBJ))
 

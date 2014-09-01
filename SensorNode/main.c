@@ -62,6 +62,7 @@ int main(int argc, char** argv)
 #include "ds1820.h"
 #include "adc.h"
 #include "command.h"
+#include "config.h"
 
 static uchar mcucsr;
 
@@ -149,6 +150,7 @@ void io_init()
     OCR1BH=0x00;
     OCR1BL=0x00;
     
+    cfg_init();
     timer_init();
     adc_init();
     sio_init();
