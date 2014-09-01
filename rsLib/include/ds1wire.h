@@ -11,6 +11,7 @@
 //#define _delay_us(a) delay_us(a)
 //#define _delay_ms(a) delay_ms(a)
 
+#include "defines.h"
 #include <util/delay_basic.h>
 
 static void delay_us(unsigned short time_us) {

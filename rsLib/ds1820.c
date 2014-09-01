@@ -3,11 +3,12 @@
 #else /* __AVR__ */
 
 // #define KISS
-#define F_CPU  12000000UL 
+// #define F_CPU  12000000UL 
 
 #include <avr/io.h>
 #include "ds1wire.h"
 #include "ds1820.h"
+#include "timer.h"
 
 struct probe ds1820probes[DS1820_MAXPROBES];
 
@@ -106,7 +107,7 @@ uint8_t ds1820updateprobe(uint8_t probenum)
   if ((crc == 0)
    && (((ds1820probes[probenum].flags & DS1820FLAG_PARASITE) == 0)
     || (t1 != 0x50) || (t2 != 0x05))) {
-    ds1820probes[probenum].lastts = 0; // TODO: gettime();
+    ds1820probes[probenum].lastts = get_time();
     ds1820probes[probenum].lasttemp[0] = t1;
     ds1820probes[probenum].lasttemp[1] = t2;
     return 1;

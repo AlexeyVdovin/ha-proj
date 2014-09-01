@@ -12,6 +12,7 @@
 #define __DS1820_H__
 
 #include <inttypes.h>
+#include "defines.h"
 
 /* Number of probes supported */
 #define DS1820_MAXPROBES  4

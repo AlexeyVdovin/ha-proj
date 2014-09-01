@@ -9,7 +9,6 @@
 
 #include <unistd.h>
 
-
 static void pkt_dump(packet_t* pkt)
 {
     int i;
@@ -25,7 +24,7 @@ int main(int argc, char** argv)
     udp_init();
     adc_init();
     
-    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
+    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x01, 0x00, 0x00, 0xBE, 0x03, 0x02, 0x03, 0x00, 0x00, 0x00 };
     pid_t pid = getpid();
     data[3] = (uchar)(pid&0xFF);
     
@@ -183,7 +182,7 @@ void io_init()
     sei();
 }
 
-uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00 };
+uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
 
 int main()
 {
@@ -229,6 +228,8 @@ int main()
         {
             i = 0;
             pkt = (packet_t*) data;
+            pkt->from = cfg_node_id();
+            pkt->data[0] = n;
             rs485_tx_packet(pkt);
         }
     }
