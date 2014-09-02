@@ -216,6 +216,7 @@ int main()
         }    	
     	
         pkt = rs485_rx_packet();
+        if(pkt && pkt->to != 0 && pkt->to != cfg_node_id()) pkt = NULL;
         if(pkt) pkt = cmd_proc(pkt);
         if(pkt)
         {
