@@ -5,6 +5,7 @@
 #else /* __AVR__ */
 
 #include <inttypes.h>
+#include <string.h> // for memcpy
 
 #include "command.h"
 #include "config.h"
@@ -42,16 +43,18 @@ static uchar cmd_read_sensor(uchar len, uchar* data)
     case 1:
         // Read ADC In [0-F]
         val = adc_read(data[2] & 0x0F);
-        data[1] = (val >> 8) & 0x00FF;
-        data[2] = val & 0x00FF;
-        n = 3;
+	    data[1] = 0x00; /* OK */
+        data[2] = (val >> 8) & 0x00FF;
+        data[3] = val & 0x00FF;
+        n = 4;
         break;
     case 2:
         // Read PWM [0-1]
         val = pwm_read(data[2] & 0x01);
-        data[1] = (val >> 8) & 0x00FF;
-        data[2] = val & 0x00FF;
-        n = 3;
+	    data[1] = 0x00; /* OK */
+        data[2] = (val >> 8) & 0x00FF;
+        data[3] = val & 0x00FF;
+        n = 4;
         break;
     case 3:
     {
@@ -59,9 +62,12 @@ static uchar cmd_read_sensor(uchar len, uchar* data)
         i = data[2] & 0x07;
    	    uchar ls = ds1820probes[i].lasttemp[0];
 	    uchar ms = ds1820probes[i].lasttemp[1];
-        data[1] = ((ms << 4) & 0xF0) | ((ls >> 4) & 0x0F);
-        data[2] = (ls << 4) & 0xF0;
-        n = 3;
+	    data[1] = 0x00; /* OK */
+        data[2] = ((ms << 4) & 0xF0) | ((ls >> 4) & 0x0F);
+        data[3] = (ls << 4) & 0xF0;
+        data[4] = ds1820probes[i].flags;
+        memcpy(&data[5], ds1820probes[i].serial, 6);
+        n = 11;
         break;
     }
     default:
@@ -74,7 +80,6 @@ static uchar cmd_read_sensor(uchar len, uchar* data)
 
 static uchar cmd_set_actuator(uchar len, uchar* data)
 {
-    uchar i;
     uchar n = 0;
     ushort val;
     

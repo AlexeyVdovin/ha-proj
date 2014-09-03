@@ -23,6 +23,19 @@ ushort adc_read(uchar ch)
 #include "timer.h"
 #include "ds1wire.h" // For delay_us()
 
+/* ADC Channels:
+ 00  ADC0
+ 01  ADC1
+ 02  ADC2
+ 03  ADC3
+ 04  ADC4
+ 05  ADC5
+ 06  ADC6 - In1
+ 07  ADC7 - In2
+ 0E  1.30V (VBG)
+ 0F  0V (GND)
+*/
+
 ISR(ADC_vect)
 {
 
