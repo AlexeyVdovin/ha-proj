@@ -74,9 +74,42 @@ static uchar cmd_read_sensor(uchar len, uchar* data)
 
 static uchar cmd_set_actuator(uchar len, uchar* data)
 {
+    uchar i;
     uchar n = 0;
+    ushort val;
+    
+    switch(data[1])
+    {
+    case 0:
+        data[1] = 0x02; /* Not Implemented yet */
+        n = 2;
+        break;
+    case 1:
+        // Set ADC options
+        data[1] = 0x02; /* Not Implemented yet */
+        n = 2;
+        break;
+    case 2:
+        // Set PWM [0-1]
+        val = ((ushort)(data[2]) << 8) | data[3];
+        pwm_set(data[2], val);
+        data[1] = 0x00; /* OK */
+        n = 3;
+        break;
+    case 3:
+    {
+        // Set Temp sensor options
+        data[1] = 0x02; /* Not Implemented yet */
+        n = 2;
+        break;
+    }
+    default:
+        data[1] = 0x02; /* Not Implemented */
+        n = 2;
+        break;
+    }
 
-    return n;
+    return n;        
 }
 
 packet_t* cmd_proc(packet_t* pkt)
