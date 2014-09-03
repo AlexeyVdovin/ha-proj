@@ -43,6 +43,8 @@ struct probe {
 
 extern struct probe ds1820probes[DS1820_MAXPROBES];
 
+extern uint8_t ds1820count;
+
 /* Inits ds1820 code and bus */
 void ds1820init(void);
 

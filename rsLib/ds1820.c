@@ -11,6 +11,7 @@
 #include "timer.h"
 
 struct probe ds1820probes[DS1820_MAXPROBES];
+uint8_t ds1820count = 0;
 
 void ds1820init(void) {
   ds1wire_init(C, 0);
@@ -130,6 +131,7 @@ uint8_t ds1820scan(void) {
   } else {
     ds1820probes[0].flags &= ~DS1820FLAG_PARASITE;
   }
+  ds1820count = 1;
   return 1;
 #else /* KISS */
   uint8_t lastserialfound[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -215,6 +217,7 @@ uint8_t ds1820scan(void) {
       }
     }
   } while (lastcolwith0 >= 0);
+  ds1820count = curprobe;
   return curprobe;
 #endif /* KISS */
 }
