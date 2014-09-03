@@ -94,12 +94,20 @@ static uchar cmd_set_actuator(uchar len, uchar* data)
         val = ((ushort)(data[2]) << 8) | data[3];
         pwm_set(data[2], val);
         data[1] = 0x00; /* OK */
-        n = 3;
+        n = 2;
         break;
     case 3:
     {
         // Set Temp sensor options
-        data[1] = 0x02; /* Not Implemented yet */
+        if(data[2] == 0) // Rescan sensors
+        {
+            ds1820count = 0;
+            data[1] = 0x00; /* OK */
+        }
+        else
+        {
+            data[1] = 0x02; /* Not Implemented yet */
+        }
         n = 2;
         break;
     }

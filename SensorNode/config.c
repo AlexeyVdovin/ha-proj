@@ -14,25 +14,24 @@
 #define EE_WRITE(var) eeprom_update_block((void*)&SRAM_##var, (void*)&EEPROM_##var, sizeof(SRAM_##var))
 #define EE_VAL(var) SRAM_##var
 
+#define EE_FN_GET(type, var) type cfg_##var() { return EE_VAL(var); }
+#define EE_FN_SET(type, var) void cfg_set__##var(type val) { EE_VAL(var) = val; eeprom_busy_wait(); EE_WRITE(var); }
+
 EE_VAR(uchar, node_id) = 0x0A;
+EE_VAR(ulong, ds1820_period) = 1000; /* 10 sec */
 
 void cfg_init()
 {
     eeprom_busy_wait();
     
     EE_READ(node_id);
+    EE_READ(ds1820_period);
 }
 
-uchar cfg_node_id()
-{
-    return EE_VAL(node_id);
-}
+EE_FN_GET(uchar, node_id)
+EE_FN_SET(uchar, node_id)
 
-void cfg_set_node_id(uchar val)
-{
-    EE_VAL(node_id) = val;
-    eeprom_busy_wait();
-    EE_WRITE(node_id);
-}
+EE_FN_GET(ulong, ds1820_period)
+EE_FN_SET(ulong, ds1820_period)
 
 #endif /* __AVR__ */
