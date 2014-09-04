@@ -66,13 +66,12 @@ static uchar cmd_read_sensor(uchar len, uchar* data)
         data[2] = ((ms << 4) & 0xF0) | ((ls >> 4) & 0x0F);
         data[3] = (ls << 4) & 0xF0;
         data[4] = ds1820probes[i].flags;
-        memcpy(&data[5], ds1820probes[i].serial, 6);
-        n = 11;
+        data[5] = ds1820probes[i].family;
+        memcpy(data+6, ds1820probes[i].serial, sizeof(ds1820probes[i].serial));
+        n = 6 + sizeof(ds1820probes[i].serial);
         break;
     }
     default:
-        data[1] = 0x02; /* Not Implemented */
-        n = 2;
         break;
     }
     return n;        
@@ -117,8 +116,6 @@ static uchar cmd_set_actuator(uchar len, uchar* data)
         break;
     }
     default:
-        data[1] = 0x02; /* Not Implemented */
-        n = 2;
         break;
     }
 
@@ -139,9 +136,15 @@ packet_t* cmd_proc(packet_t* pkt)
     if(len)
     {
         pkt->data[0] = 0x01;
-        return pkt;
     }
-    return NULL;
+    else
+    {
+        pkt->data[0] = 0x01;
+        pkt->data[1] = 0x02; /* Not Implemented */
+        len = 2;
+    }
+    pkt->len = len;
+    return pkt;
 }
 
 

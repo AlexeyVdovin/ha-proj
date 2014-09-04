@@ -1,19 +1,15 @@
 #ifndef _DEFINES_H_
 #define _DEFINES_H_
 
-#ifndef __AVR_XMEGA__
+#ifndef __AVR__
     #define _DEV_SIM_
 #endif
 
 #ifdef _DEV_SIM_
-
     #define _PACKET_TRANSPORT_UDP_
     #define UDP_PORT            15432
-
 #else
-
     #define _PACKET_TRANSPORT_SIO_
-
 #endif
 
 #ifndef uchar

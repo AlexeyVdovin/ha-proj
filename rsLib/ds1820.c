@@ -2,10 +2,8 @@
 
 #else /* __AVR__ */
 
-// #define KISS
-// #define F_CPU  12000000UL 
-
 #include <avr/io.h>
+#include <string.h>
 #include "ds1wire.h"
 #include "ds1820.h"
 #include "timer.h"
@@ -54,7 +52,7 @@ void ds1820queryprobe(uint8_t probenum)
   /* Send 64 bit serial */
   ds1820write(ds1820probes[probenum].family);
   crc = ds1wire_calccrc8(crc, ds1820probes[probenum].family);
-  for (i = 0; i < 6; i++) {
+  for (i = 0; i < 6 /* sizeof(ds1820probes[probenum].serial) */; i++) {
     ds1820write(ds1820probes[probenum].serial[i]);
     crc = ds1wire_calccrc8(crc, ds1820probes[probenum].serial[i]);
   }
@@ -108,6 +106,7 @@ uint8_t ds1820updateprobe(uint8_t probenum)
   if ((crc == 0)
    && (((ds1820probes[probenum].flags & DS1820FLAG_PARASITE) == 0)
     || (t1 != 0x50) || (t2 != 0x05))) {
+    ds1820probes[probenum].flags |= DS1820FLAG_SLOTINUSE;
     ds1820probes[probenum].lastts = get_time();
     ds1820probes[probenum].lasttemp[0] = t1;
     ds1820probes[probenum].lasttemp[1] = t2;
@@ -142,6 +141,7 @@ uint8_t ds1820scan(void) {
   uint8_t curprobe = 0;
   for (i = 0; i < DS1820_MAXPROBES; i++) { /* Clear list of probes */
     ds1820probes[i].flags = 0;
+    memset(ds1820probes[i].serial, 0, sizeof(ds1820probes[i].serial));
   }
   do {
     ds1wire_reset(C, 0);
@@ -192,13 +192,13 @@ uint8_t ds1820scan(void) {
      * AND that probe is selected. */
     /* Check CRC of serial number. */
     j = 0; /* Used as CRC here */
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < sizeof(lastserialfound); i++) {
       j = ds1wire_calccrc8(j, lastserialfound[i]);
     }
-    if (j == 0) { /* CRC of serial number OK! */
+    if (lastserialfound[0] != 0 && j == 0) { /* CRC of serial number OK! */
       ds1820probes[curprobe].flags |= DS1820FLAG_SLOTINUSE;
       ds1820probes[curprobe].family = lastserialfound[0];
-      for (j = 0; j < 6; j++) {
+      for (j = 0; j < sizeof(ds1820probes[curprobe].serial); j++) {
         ds1820probes[curprobe].serial[j] = lastserialfound[j+1];
       }
       ds1820probes[curprobe].lastts = 0;

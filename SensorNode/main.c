@@ -216,6 +216,7 @@ int main()
 		            }
 		            else
 		            {
+		                if(r == 0) { ds1820probes[d].flags &= ~DS1820FLAG_SLOTINUSE; } 
         		        ds1820_req = get_time() + (cfg_ds1820_period()/ds1820count - 80);
         		        ds1820_ack = 0;
         		        if(++d >= ds1820count) d = 0;
