@@ -84,23 +84,35 @@ static uchar cmd_set_actuator(uchar len, uchar* data)
     
     switch(data[1])
     {
-    case 0:
+    case 0x80:
         data[1] = 0x02; /* Not Implemented yet */
         n = 2;
         break;
-    case 1:
+    case 0x81:
         // Set ADC options
         data[1] = 0x02; /* Not Implemented yet */
         n = 2;
         break;
-    case 2:
-        // Set PWM [0-1]
-        val = ((ushort)(data[2]) << 8) | data[3];
-        pwm_set(data[2], val);
-        data[1] = 0x00; /* OK */
-        n = 2;
+    case 0x82:
+        if(data[2] == 0 && len == 4)
+        {
+            pwm_freq(data[3]);
+            data[1] = 0x00; /* OK */
+            n = 2;
+        }
+        else
+        {
+            // Set PWM [1-2]
+            if(len == 5)
+            {
+                val = ((ushort)(data[3]) << 8) | data[4];
+                pwm_set(data[2], val);
+                data[1] = 0x00; /* OK */
+                n = 2;
+            }
+        }
         break;
-    case 3:
+    case 0x83:
     {
         // Set Temp sensor options
         if(data[2] == 0) // Rescan sensors

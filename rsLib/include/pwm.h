@@ -9,4 +9,6 @@ ushort pwm_read(uchar ch);
 
 void pwm_set(uchar ch, ushort pwm);
 
+void pwm_freq(uchar d);
+
 #endif /* _PWM_H_ */

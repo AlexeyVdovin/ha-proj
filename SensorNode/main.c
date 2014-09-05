@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     udp_init();
     adc_init();
     
-    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x01, 0x00, 0x00, 0xBE, 0x03, 0x02, 0x03, 0x00, 0x00, 0x00 };
+    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x01, 0x00, 0x00, 0xBE, 0x05, 0x04, 0x82, 0x00,   0x00, 0x00,   0x00, 0x00 };
     pid_t pid = getpid();
     data[3] = (uchar)(pid&0xFF);
     
@@ -151,6 +151,7 @@ void io_init()
     
     cfg_init();
     timer_init();
+    pwm_init();
     adc_init();
     sio_init();
     rs485_init();

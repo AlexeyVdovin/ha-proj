@@ -52,28 +52,41 @@ ushort pwm_read(uchar ch)
 {
     ushort pwm = 0;
 
-    if(ch == 0)
+    if(ch == 1)
     {
         pwm = OCR1A;
     }
-    else if(ch == 1)
+    else if(ch == 2)
     {
         pwm = OCR1B;
     }
     return pwm;
 }
 
+// TODO: Check if clock turned OFF, then use PORTB directly
 void pwm_set(uchar ch, ushort pwm)
 {
-    if(ch == 0)
+    if(ch == 1)
     {
         OCR1A = pwm;
     }
-    else if(ch == 1)
+    else if(ch == 2)
     {
         OCR1B = pwm;
     }
 }
 
+/* Clock Select Description
+    0 - Off
+    1 - 1/1
+    2 - 1/8
+    3 - 1/64
+    4 - 1/256
+    5 - 1/1024
+*/
+void pwm_freq(uchar d)
+{
+    TCCR1B = (TCCR1B & 0xF8) | (d & 0x07);
+}
 
 #endif /* __AVR__ */
