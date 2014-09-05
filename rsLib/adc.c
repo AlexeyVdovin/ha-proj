@@ -46,7 +46,7 @@ void adc_init()
     // ADC Clock frequency: 93.750 kHz
     // ADC Voltage Reference: Int., cap. on AREF
     ADMUX=(ADC_VREF_TYPE & 0xC0)|(ADC_IN1&0x0F);
-    ADCSRA=0xCF;
+    ADCSRA=0x87; // ADEN . F_CPU/128
 }
 
 ushort adc_read(uchar ch)
