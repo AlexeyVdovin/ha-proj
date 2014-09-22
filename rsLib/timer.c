@@ -39,7 +39,7 @@ void delay_s(uchar s)
 
 volatile ulong time = 0;
 
-ISR(TIMER2_COMP_vect)
+ISR(TIMER_ISR)
 {
     ++time;
 }
@@ -51,10 +51,10 @@ void timer_init()
     // Clock value: 11.719 kHz
     // Mode: CTC top=OCR2
     // OC2 output: Disconnected
-    ASSR  = 0x00;
-    TCCR2 = 0x0F;
-    TCNT2 = 0x00;
-    OCR2  = 0x75;
+    TIMER_ASSR = 0x00;
+    TIMER_TCCR = 0x0F;
+    TIMER_TCNT = 0x00;
+    TIMER_OCR  = 0x75;
 }
 
 ulong get_time()

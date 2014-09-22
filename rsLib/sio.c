@@ -76,14 +76,6 @@ uchar sio_rxcount()
 #include <avr/interrupt.h>
 #include <stdio.h>
 
-#define Tx_On()  (PORTD |=  0x04)
-#define Tx_Off() (PORTD &= ~0x04)
-#define Rx_On()  (PORTD &= ~0x08)
-#define Rx_Off() (PORTD |=  0x08)
-
-#define Led_On()    (PORTC |=  0x02)
-#define Led_Off()   (PORTC &= ~0x02)
-
 #define TXB8 0
 #define RXB8 1
 #define UPE  2
@@ -101,9 +93,6 @@ uchar sio_rxcount()
 /*
  * Size of internal buffer UART
  */
-#define RX_BUFFER_SIZE 32
-#define TX_BUFFER_SIZE 32
-
 #define RX_BUFFER_MASK (RX_BUFFER_SIZE-1)
 #define TX_BUFFER_MASK (TX_BUFFER_SIZE-1)
 
@@ -119,11 +108,11 @@ volatile union {
 } uart_flags;
 
 // USART Receiver interrupt service routine
-ISR(USART_RXC_vect)
+ISR(SIO_RXC_ISR)
 {
   char status, data;
-  status = UCSRA;
-  data = UDR;
+  status = SIO_UCSRA;
+  data = SIO_UDR;
   
   if((status & (FRAMING_ERROR|PARITY_ERROR|DATA_OVERRUN)) == 0)
   {
@@ -138,24 +127,24 @@ ISR(USART_RXC_vect)
 }
 
 // USART Transmitter interrupt service routine
-ISR(USART_TXC_vect)
+ISR(SIO_TXC_ISR)
 {
     Led_Off();
     Tx_Off();
     Rx_On();
 }
 
-ISR(USART_UDRE_vect)
+ISR(SIO_UDRE_ISR)
 {
     if(tx_counter)
     {
         --tx_counter;
-        UDR = tx_buffer[tx_rd_index++];
+        SIO_UDR = tx_buffer[tx_rd_index++];
         if(tx_rd_index == TX_BUFFER_SIZE) tx_rd_index = 0;
     }
     else
     {
-        UCSRB &= ~_BV(UDRIE);
+        SIO_UCSRB &= ~_BV(SIO_UDRIE);
     }
 }
 
@@ -169,19 +158,19 @@ sio_init(void)
   uart_flags.rx_buffer_overflow = 0;
   rx_wr_index = rx_rd_index = rx_counter = 0;
   tx_wr_index = tx_rd_index = tx_counter = 0;
-  UCSRC = 0x06;
-  UBRRH = 0x00;
+  SIO_UCSRC = 0x06;
+  SIO_UBRRH = 0x00;
 
 #include <util/setbaud.h>
-   UBRRH = UBRRH_VALUE;
-   UBRRL = UBRRL_VALUE;
+   SIO_UBRRH = UBRRH_VALUE;
+   SIO_UBRRL = UBRRL_VALUE;
 #if USE_2X
-   UCSRA |= _BV(U2X);
+   SIO_UCSRA |= _BV(SIO_U2X);
 #else
-   UCSRA &= ~_BV(U2X);
+   SIO_UCSRA &= ~_BV(SIO_U2X);
 #endif
 
-  UCSRB = _BV(TXEN) | _BV(RXEN) | _BV(RXCIE) | _BV(TXCIE) | _BV(UDRIE); /* tx/rx enable */
+  SIO_UCSRB = _BV(SIO_TXEN) | _BV(SIO_RXEN) | _BV(SIO_RXCIE) | _BV(SIO_TXCIE) | _BV(SIO_UDRIE); /* tx/rx enable */
   
   Led_Off();
   Tx_Off();
@@ -203,7 +192,7 @@ char sio_putchar(char c)
   Rx_Off();
   Tx_On();
   Led_On();
-  UCSRB |= _BV(UDRIE);
+  SIO_UCSRB |= _BV(SIO_UDRIE);
   sei();
 
   return 0;

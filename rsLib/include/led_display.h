@@ -1,8 +1,10 @@
 #ifndef _LED_DISPLAY_H_
 #define _LED_DISPLAY_H_
 
-extern volatile unsigned char disp[4];
-extern volatile unsigned char buttons;
+#include "defines.h"
+
+extern volatile uchar disp[4];
+extern volatile uchar buttons;
 
 #define RELEASE_DELAY       0x10
 #define PRESS_DELAY         0x15
@@ -30,5 +32,6 @@ extern volatile unsigned char buttons;
 #define BTN_4_REPEAT() (bn[3] = (bn[3] >= LONG_PRESS_DELAY)?(LONG_PRESS_DELAY-REPEAT_DELAY):bn[3])
 
 void disp_init();
+void disp_digit(uchar p, uchar n);
 
 #endif /* _LED_DISPLAY_H_ */

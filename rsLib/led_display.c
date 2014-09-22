@@ -2,8 +2,8 @@
 
 #include "led_display.h"
 
-volatile unsigned char disp[4];
-volatile unsigned char buttons;
+volatile uchar disp[4];
+volatile uchar buttons;
 
 void disp_init()
 {
@@ -17,12 +17,12 @@ void disp_init()
 
 #include "led_display.h"
 
-static const char digits[] = { 0x6f, 0x60, 0xa7, 0xe6, 0xe8, 0xce, 0xcf, 0x62, 0xef, 0xee, 0x80 /* - */, 0x00, 0xaa};
+static const uchar digits[] = { 0x6f, 0x60, 0xa7, 0xe6, 0xe8, 0xce, 0xcf, 0x62, 0xef, 0xee, 0x80 /* - */, 0x00, 0xaa};
 
 // Char position on display
-volatile unsigned char pos;  
-volatile unsigned char disp[4];
-volatile unsigned char bn[4], buttons;
+volatile uchar pos;  
+volatile uchar disp[4];
+volatile uchar bn[4], buttons;
 
 
 // Timer 0 overflow interrupt service routine
@@ -86,6 +86,11 @@ void disp_init()
     disp[1] = 0x00;
     disp[2] = 0x00;
     disp[3] = 0x00;
+}
+
+void disp_digit(uchar p, uchar n)
+{
+    disp[p] = digits[n];
 }
 
 #endif /* __AVR__ */
