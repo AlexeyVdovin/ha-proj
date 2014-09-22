@@ -3,22 +3,23 @@ PRG = SensorNode
 
 MCU_TARGET = atmega8
 
-OBJ = main.o command.o config.o
+LIB = ../rsLib
+
+OBJ = main.o command.o config.o $(LIB)/timer.o $(LIB)/udp.o $(LIB)/adc.o $(LIB)/packet.o $(LIB)/pwm.o $(LIB)/sio.o $(LIB)/rs485.o $(LIB)/ds1820.o
 
 AVR_OBJ = $(patsubst %.o,%.obj,$(OBJ))
 
 TARGET = $(PRG).elf
 
 INCLUDE = -I ../rsLib/include -I ./
-LIBS = -lrsLib
 
 CC = gcc
 
 CFLAGS = -g -O0 $(INCLUDE)
-LDFLAGS = -g -L ../rsLib/lib
+LDFLAGS = -g
 
 AVR_CFLAGS = -g -Wall -O2 -mmcu=$(MCU_TARGET) $(INCLUDE)
-AVR_LDFLAGS = -Wl,-Map,target/$(PRG).map -L ../rsLib/target -static
+AVR_LDFLAGS = -Wl,-Map,target/$(PRG).map
 
 AVR_CC      = avr-gcc
 AVR_OBJCOPY = avr-objcopy
@@ -29,13 +30,13 @@ all: $(TARGET) mcu
 mcu: target/$(TARGET) lst text eeprom
 
 $(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.obj: %.c
 	$(AVR_CC) $(AVR_CFLAGS) -c -o $@ $^
 
 target/$(TARGET): $(AVR_OBJ)
-	$(AVR_CC) $(AVR_CFLAGS) -o $@ $^ $(AVR_LDFLAGS) $(LIBS)
+	$(AVR_CC) $(AVR_CFLAGS) -o $@ $^ $(AVR_LDFLAGS)
 
 lst:  target/$(PRG).lst
 
@@ -69,5 +70,5 @@ ebin:  target/$(PRG)_eeprom.bin
 	$(AVR_OBJCOPY) -j .eeprom --change-section-lma .eeprom=0 -O binary $< $@ || { echo empty $@ not generated; exit 0; }
 
 clean:
-	rm -f *.o *.obj $(TARGET) target/*.*
+	rm -f $(OBJ) $(AVP_OBJ) $(TARGET) target/*.*
 

@@ -38,5 +38,44 @@
 #define F_CPU                     SYSTEM_CLOCK
 #define BAUD                      57600
 
+/* Timer */
+#define TIMER_ISR   TIMER2_COMP_vect
+#define TIMER_TCCR  TCCR2
+#define TIMER_OCR   OCR2
+#define TIMER_TCNT  TCNT2
+#define TIMER_ASSR  ASSR
+
+/* SIO */
+#define Tx_On()  (PORTD |=  0x04)
+#define Tx_Off() (PORTD &= ~0x04)
+#define Rx_On()  (PORTD &= ~0x08)
+#define Rx_Off() (PORTD |=  0x08)
+
+#define Led_On()    (PORTC |=  0x02)
+#define Led_Off()   (PORTC &= ~0x02)
+
+#define RX_BUFFER_SIZE 32
+#define TX_BUFFER_SIZE 32
+
+#define SIO_RXC_ISR  USART_RXC_vect
+#define SIO_TXC_ISR  USART_TXC_vect
+#define SIO_UDRE_ISR USART_UDRE_vect
+
+#define SIO_UCSRA   UCSRA
+#define SIO_UDR     UDR
+#define SIO_UCSRB   UCSRB
+#define SIO_UDRIE   UDRIE
+#define SIO_UCSRC   UCSRC
+#define SIO_UBRRH   UBRRH
+#define SIO_UBRRL   UBRRL
+#define SIO_U2X     U2X
+#define SIO_TXEN    TXEN
+#define SIO_RXEN    RXEN
+#define SIO_TXCIE   TXCIE
+#define SIO_RXCIE   RXCIE
+#define SIO_UDRIE   UDRIE
+
+/* ADC */
+
 
 #endif
