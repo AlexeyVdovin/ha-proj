@@ -48,11 +48,11 @@
 /* SIO */
 #define Tx_On()  (PORTD |=  0x04)
 #define Tx_Off() (PORTD &= ~0x04)
-#define Rx_On()  (PORTD &= ~0x08)
-#define Rx_Off() (PORTD |=  0x08)
+#define Rx_On()  (PORTD &= ~0x04)
+#define Rx_Off() (PORTD |=  0x04)
 
-#define Led_On()    (PORTC |=  0x02)
-#define Led_Off()   (PORTC &= ~0x02)
+#define Led_On() 
+#define Led_Off()
 
 #define RX_BUFFER_SIZE 32
 #define TX_BUFFER_SIZE 32
@@ -77,4 +77,9 @@
 
 /* ADC */
 
-#endif
+/* SW_PWM */
+#define SW_PWM_CHS      2
+#define SW_PWM_CH_ON(c)     (PORTB |= (0x01 << c))
+#define SW_PWM_CH_OFF(c)    (PORTB &= ~(0x01 << c))
+
+#endif /* _DEFINES_H_ */

@@ -20,9 +20,11 @@ void disp_init()
 static const uchar digits[] = { 0x6f, 0x60, 0xa7, 0xe6, 0xe8, 0xce, 0xcf, 0x62, 0xef, 0xee, 0x80 /* - */, 0x00, 0xaa};
 
 // Char position on display
-volatile uchar pos;  
+static volatile uchar pos;  
+static volatile uchar bn[4];
+
 volatile uchar disp[4];
-volatile uchar bn[4], buttons;
+volatile uchar buttons;
 
 
 // Timer 0 overflow interrupt service routine
