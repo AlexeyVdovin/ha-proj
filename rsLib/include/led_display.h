@@ -33,5 +33,6 @@ extern volatile uchar buttons;
 
 void disp_init();
 void disp_digit(uchar p, uchar n);
+void disp_set_brightness(uchar c);
 
 #endif /* _LED_DISPLAY_H_ */

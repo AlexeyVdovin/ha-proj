@@ -10,7 +10,7 @@ void timer_init()
     
 }
 
-ulong get_time()
+long get_time()
 {
     struct timeval  tv;
     gettimeofday(&tv, NULL);
@@ -28,7 +28,7 @@ void delay_s(uchar s)
     usleep(s*1000*1000);
 }
 
-#else
+#else /* __AVR__ */
 
 #include <avr/io.h>
 #include <avr/wdt.h>
@@ -37,7 +37,7 @@ void delay_s(uchar s)
 
 #include "timer.h"
 
-volatile ulong time = 0;
+volatile long time = 0;
 
 ISR(TIMER_ISR)
 {
@@ -57,17 +57,17 @@ void timer_init()
     TIMER_OCR  = 0x75;
 }
 
-ulong get_time()
+long get_time()
 {
     cli();
-    ulong t = time;
+    long t = time;
     sei();
     return t;
 }
 
 void delay_t(uchar t)
 {
-    ulong s = get_time() + t;
+    long s = get_time() + t;
     do
     {
         wdt_reset(); 
@@ -77,7 +77,7 @@ void delay_t(uchar t)
 
 void delay_s(uchar s)
 {
-    ulong t = get_time() + s*100;
+    long t = get_time() + s*100;
     do
     {
         wdt_reset(); 
@@ -85,4 +85,5 @@ void delay_s(uchar s)
     } while(t > get_time());
 }
 
-#endif
+#endif /* __AVR__ */
+

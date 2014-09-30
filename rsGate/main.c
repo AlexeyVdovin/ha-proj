@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 {
     int n = 0;
     int busy = 0;
-    ulong t;    
+    long t;    
     uchar seq;
     
     init();
@@ -49,8 +49,9 @@ int main(int argc, char** argv)
             udp_tx_packet(pkt);
             if(busy && seq == pkt->seq) busy = 0;
         }
-        if(busy && (get_time() - t) > RESPONSE_TIMEOUT)
+        if(busy && (get_time() > t))
         {
+            // Response timeout
             busy = 0;
             // TODO: Notify sender ??
         }
@@ -65,7 +66,7 @@ int main(int argc, char** argv)
         {
             busy = 1;
             seq = pkt->seq;
-            t = get_time();
+            t = get_time() + RESPONSE_TIMEOUT;
             printf("udp -> rs485 ");
             pkt_dump(pkt);
             pkt->via = MyID;

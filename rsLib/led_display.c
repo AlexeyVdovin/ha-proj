@@ -75,11 +75,11 @@ void disp_init()
     // Mode: Normal top=FFh
     // OC0A output: Disconnected
     // OC0B output: Disconnected
-    TCCR0A=0x00;
-    TCCR0B=0x03;
-    TCNT0=0x00;
-    OCR0A=0x40;
-    OCR0B=0x00;
+    TCCR0A = 0x00;
+    TCCR0B = 0x03;
+    TCNT0  = 0x00;
+    OCR0A  = 0x40; // LED Brightness
+    OCR0B  = 0x00;
 
     // Timer/Counter 0 Interrupt(s) initialization
     TIMSK0=0x03;
@@ -93,6 +93,11 @@ void disp_init()
 void disp_digit(uchar p, uchar n)
 {
     disp[p] = digits[n];
+}
+
+void disp_set_brightness(uchar c)
+{
+    OCR0A = c; // LED Brightness
 }
 
 #endif /* __AVR__ */

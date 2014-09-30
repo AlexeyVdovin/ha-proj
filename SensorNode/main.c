@@ -150,13 +150,6 @@ void io_init()
     OCR1BH=0x00;
     OCR1BL=0x00;
     
-    cfg_init();
-    timer_init();
-    pwm_init();
-    adc_init();
-    sio_init();
-    rs485_init();
-
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
@@ -170,6 +163,13 @@ void io_init()
     // Analog Comparator Input Capture by Timer/Counter 1: Off
     ACSR=0x80;
     SFIOR=0x00;
+
+    cfg_init();
+    timer_init();
+    pwm_init();
+    adc_init();
+    sio_init();
+    rs485_init();
 
     // Watchdog Timer initialization
     // Watchdog Timer Prescaler: OSC/1024k
@@ -194,7 +194,7 @@ int main()
     packet_t* pkt;
 
     io_init ();
-	ulong ds1820_req = 0;
+	long ds1820_req = 0;
 	uchar ds1820_ack = 0;
 
     for (;;)

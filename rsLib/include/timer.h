@@ -6,7 +6,7 @@
 void timer_init();
 
 /* Return count of 10ms ticks */
-ulong get_time();
+long get_time();
 
 /* Delay for n*10ms */
 void delay_t(uchar t);
