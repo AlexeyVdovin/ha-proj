@@ -26,7 +26,7 @@ void pwm_init()
 {
     // Timer/Counter 1 initialization
     // Clock source: System Clock
-    // Clock value: 12000.000 kHz
+    // Clock value: SYSTEM_CLOCK/1
     // Mode: Fast PWM top=03FFh
     // OC1A output: Non-Inv.
     // OC1B output: Non-Inv.

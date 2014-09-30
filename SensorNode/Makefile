@@ -70,5 +70,6 @@ ebin:  target/$(PRG)_eeprom.bin
 	$(AVR_OBJCOPY) -j .eeprom --change-section-lma .eeprom=0 -O binary $< $@ || { echo empty $@ not generated; exit 0; }
 
 clean:
-	rm -f $(OBJ) $(AVP_OBJ) $(TARGET) target/*.*
+	rm -f $(OBJ) $(TARGET)
+	rm -f $(AVR_OBJ) target/*.*
 

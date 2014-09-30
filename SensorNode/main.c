@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "packet.h"
 #include "udp.h"
+#include "pwm.h"
 #include "adc.h"
 
 #include <unistd.h>

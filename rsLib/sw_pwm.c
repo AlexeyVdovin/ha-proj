@@ -58,7 +58,7 @@ void swpwm_init()
 {
     // Timer/Counter 1 initialization
     // Clock source: System Clock
-    // Clock value: 12000.000 kHz
+    // Clock value: SYSTEM_CLOCK/64
     // Mode: Fast PWM top=03FFh
     // OC1A output: Off.
     // OC1B output: Off.
@@ -69,7 +69,7 @@ void swpwm_init()
     // Compare A Match Interrupt: Off
     // Compare B Match Interrupt: Off
     TCCR1A=0x03;
-    TCCR1B=0x09;
+    TCCR1B=0x0B;
     TCNT1H=0x00;
     TCNT1L=0x00;
     ICR1H=0x00;
