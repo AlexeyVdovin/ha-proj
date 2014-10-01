@@ -3,6 +3,10 @@
 
 #include "defines.h"
 
+#ifdef _USE_TIME_H_
+#include <time.h>
+#endif
+
 void timer_init();
 
 /* Return count of 10ms ticks */

@@ -37,11 +37,20 @@ void delay_s(uchar s)
 
 #include "timer.h"
 
-volatile long time = 0;
+static volatile long timer = 0;
 
 ISR(TIMER_ISR)
 {
-    ++time;
+#ifdef _USE_TIME_H_
+    static uchar t = 100;
+    
+    if(--t == 0)
+    {
+        t = 100;
+        system_tick();
+    }
+#endif
+    ++timer;
 }
 
 void timer_init()
@@ -60,7 +69,7 @@ void timer_init()
 long get_time()
 {
     cli();
-    long t = time;
+    long t = timer;
     sei();
     return t;
 }
