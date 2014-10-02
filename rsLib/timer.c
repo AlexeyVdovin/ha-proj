@@ -55,15 +55,7 @@ ISR(TIMER_ISR)
 
 void timer_init()
 {
-    // Timer/Counter 2 initialization
-    // Clock source: System Clock
-    // Clock value: 11.719 kHz
-    // Mode: CTC top=OCR2
-    // OC2 output: Disconnected
-    TIMER_ASSR = 0x00;
-    TIMER_TCCR = 0x0F;
-    TIMER_TCNT = 0x00;
-    TIMER_OCR  = 0x75;
+
 }
 
 long get_time()

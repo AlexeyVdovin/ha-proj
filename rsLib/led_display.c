@@ -69,21 +69,6 @@ ISR(TIMER0_COMPA_vect)
 
 void disp_init()
 {
-    // Timer/Counter 0 initialization
-    // Clock source: System Clock
-    // Clock value: 187.500 kHz
-    // Mode: Normal top=FFh
-    // OC0A output: Disconnected
-    // OC0B output: Disconnected
-    TCCR0A = 0x00;
-    TCCR0B = 0x03;
-    TCNT0  = 0x00;
-    OCR0A  = 0x40; // LED Brightness
-    OCR0B  = 0x00;
-
-    // Timer/Counter 0 Interrupt(s) initialization
-    TIMSK0=0x03;
-    
     disp[0] = 0x00;
     disp[1] = 0x00;
     disp[2] = 0x00;
@@ -97,7 +82,7 @@ void disp_digit(uchar p, uchar n)
 
 void disp_set_brightness(uchar c)
 {
-    OCR0A = c; // LED Brightness
+    DISP_PWM = c; // LED Brightness
 }
 
 #endif /* __AVR__ */

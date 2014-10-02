@@ -78,8 +78,11 @@
 /* ADC */
 
 /* SW_PWM */
-#define SW_PWM_CHS      2
+#define SW_PWM_NCH      2
 #define SW_PWM_CH_ON(c)     (PORTB |= (0x01 << c))
 #define SW_PWM_CH_OFF(c)    (PORTB &= ~(0x01 << c))
+
+/* DISP */
+#define DISP_PWM    OCR0A
 
 #endif /* _DEFINES_H_ */
