@@ -61,6 +61,7 @@ int main(int argc, char** argv)
 #include "rs485.h"
 #include "ds1820.h"
 #include "adc.h"
+#include "pwm.h"
 #include "command.h"
 #include "config.h"
 
@@ -129,18 +130,18 @@ void io_init()
 
     // Timer/Counter 1 initialization
     // Clock source: System Clock
-    // Clock value: Timer 1 Stopped
-    // Mode: Normal top=FFFFh
-    // OC1A output: Discon.
-    // OC1B output: Discon.
+    // Clock value: SYSTEM_CLOCK/1
+    // Mode: Fast PWM top=03FFh
+    // OC1A output: Non-Inv.
+    // OC1B output: Non-Inv.
     // Noise Canceler: Off
     // Input Capture on Falling Edge
     // Timer 1 Overflow Interrupt: Off
     // Input Capture Interrupt: Off
     // Compare A Match Interrupt: Off
     // Compare B Match Interrupt: Off
-    TCCR1A=0x00;
-    TCCR1B=0x00;
+    TCCR1A=0xA3;
+    TCCR1B=0x09;
     TCNT1H=0x00;
     TCNT1L=0x00;
     ICR1H=0x00;
@@ -149,6 +150,16 @@ void io_init()
     OCR1AL=0x00;
     OCR1BH=0x00;
     OCR1BL=0x00;
+    
+    // Timer/Counter 2 initialization
+    // Clock source: System Clock
+    // Clock value: 11.719 kHz
+    // Mode: CTC top=OCR2
+    // OC2 output: Disconnected
+    ASSR  = 0x00;
+    TCCR2 = 0x0F;
+    TCNT2 = 0x00;
+    OCR2  = 0x75;
     
     // External Interrupt(s) initialization
     // INT0: Off

@@ -24,28 +24,7 @@ ushort pwm_read(uchar ch)
 
 void pwm_init()
 {
-    // Timer/Counter 1 initialization
-    // Clock source: System Clock
-    // Clock value: SYSTEM_CLOCK/1
-    // Mode: Fast PWM top=03FFh
-    // OC1A output: Non-Inv.
-    // OC1B output: Non-Inv.
-    // Noise Canceler: Off
-    // Input Capture on Falling Edge
-    // Timer 1 Overflow Interrupt: Off
-    // Input Capture Interrupt: Off
-    // Compare A Match Interrupt: Off
-    // Compare B Match Interrupt: Off
-    TCCR1A=0xA3;
-    TCCR1B=0x09;
-    TCNT1H=0x00;
-    TCNT1L=0x00;
-    ICR1H=0x00;
-    ICR1L=0x00;
-    OCR1AH=0x00;
-    OCR1AL=0x00;
-    OCR1BH=0x00;
-    OCR1BL=0x00;
+
 }
 
 ushort pwm_read(uchar ch)
@@ -54,11 +33,11 @@ ushort pwm_read(uchar ch)
 
     if(ch == 1)
     {
-        pwm = OCR1A;
+        pwm = PWM_CH1;
     }
     else if(ch == 2)
     {
-        pwm = OCR1B;
+        pwm = PWM_CH2;
     }
     return pwm;
 }
@@ -68,11 +47,11 @@ void pwm_set(uchar ch, ushort pwm)
 {
     if(ch == 1)
     {
-        OCR1A = pwm;
+        PWM_CH1 = pwm;
     }
     else if(ch == 2)
     {
-        OCR1B = pwm;
+        PWM_CH2 = pwm;
     }
 }
 
@@ -86,7 +65,7 @@ void pwm_set(uchar ch, ushort pwm)
 */
 void pwm_freq(uchar d)
 {
-    TCCR1B = (TCCR1B & 0xF8) | (d & 0x07);
+    PWM_FREQ(d);
 }
 
 #endif /* __AVR__ */

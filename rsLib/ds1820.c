@@ -8,6 +8,8 @@
 #include "ds1820.h"
 #include "timer.h"
 
+/* Originally from http://www.poempelfox.de/ds1820tousb/ */
+
 struct probe ds1820probes[DS1820_MAXPROBES];
 uint8_t ds1820count = 0;
 

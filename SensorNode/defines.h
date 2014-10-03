@@ -77,5 +77,18 @@
 
 /* ADC */
 
+/* PWM */
+#define PWM_CH1     OCR1A
+#define PWM_CH2     OCR1B
+/* Clock Select Description
+    0 - Off
+    1 - 1/1
+    2 - 1/8
+    3 - 1/64
+    4 - 1/256
+    5 - 1/1024
+*/
+#define PWM_FREQ(n) (TCCR1B = (TCCR1B & 0xF8) | ((n) & 0x07))
+
 
 #endif
