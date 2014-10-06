@@ -14,21 +14,21 @@ struct probe ds1820probes[DS1820_MAXPROBES];
 uint8_t ds1820count = 0;
 
 void ds1820init(void) {
-  ds1wire_init(C, 0);
-  ds1wire_reset(C, 0);
+  ds1wire_init(DS1W_PORT, DS1W_PIN);
+  ds1wire_reset(DS1W_PORT, DS1W_PIN);
 }
 
 void ds1820killbus(void) {
-  ds1wire_pulldown(C, 0);
+  ds1wire_pulldown(DS1W_PORT, DS1W_PIN);
 }
 
 static void ds1820write(uint8_t val) {
   uint8_t i;
   for (i = 0; i < 8; i++) {
     if (val & 0x01) {
-      ds1wire_send1(C, 0);
+      ds1wire_send1(DS1W_PORT, DS1W_PIN);
     } else {
-      ds1wire_send0(C, 0);
+      ds1wire_send0(DS1W_PORT, DS1W_PIN);
     }
     val >>= 1;
   }
@@ -38,7 +38,7 @@ static uint8_t ds1820read(void) {
   uint8_t i;
   uint8_t res = 0;
   for (i = 0; i < 8; i++) {
-    res |= ((ds1wire_read(C, 0)) << i);
+    res |= ((ds1wire_read(DS1W_PORT, DS1W_PIN)) << i);
   }
   return res;
 }
@@ -46,7 +46,7 @@ static uint8_t ds1820read(void) {
 void ds1820queryprobe(uint8_t probenum)
 {
   uint8_t i; uint8_t crc = 0;
-  ds1wire_reset(C, 0);
+  ds1wire_reset(DS1W_PORT, DS1W_PIN);
 #ifdef KISS
   ds1820write(DS1820_CMD_SKIPROM); /* Skip ROM */
 #else
@@ -64,7 +64,7 @@ void ds1820queryprobe(uint8_t probenum)
   ds1820write(DS1820_CMD_CONVERTT);
   if (ds1820probes[probenum].flags & DS1820FLAG_PARASITE) {
     /* Provide parasite power */
-    ds1wire_parasitepoweron(C, 0);
+    ds1wire_parasitepoweron(DS1W_PORT, DS1W_PIN);
   }
 }
 
@@ -74,9 +74,9 @@ uint8_t ds1820updateprobe(uint8_t probenum)
   uint8_t i; uint8_t crc = 0; uint8_t t1 = 0; uint8_t t2 = 0;
   if (ds1820probes[probenum].flags & DS1820FLAG_PARASITE) {
     /* No longer provide parasite power */
-    ds1wire_parasitepoweroff(C, 0);
+    ds1wire_parasitepoweroff(DS1W_PORT, DS1W_PIN);
   }
-  ds1wire_reset(C, 0);
+  ds1wire_reset(DS1W_PORT, DS1W_PIN);
 #ifdef KISS
   ds1820write(DS1820_CMD_SKIPROM); /* Skip ROM */
 #else
@@ -123,11 +123,11 @@ uint8_t ds1820updateprobe(uint8_t probenum)
  */
 uint8_t ds1820scan(void) {
 #ifdef KISS
-  ds1wire_reset(C, 0);
+  ds1wire_reset(DS1W_PORT, DS1W_PIN);
   ds1820probes[0].flags |= DS1820FLAG_SLOTINUSE;
   ds1820write(DS1820_CMD_SKIPROM); /* Skip ROM */
   ds1820write(DS1820_CMD_READPOWER); /* Read power supply */
-  if (ds1wire_read(C, 0) == 0) { /* Parasite powered probes return 0 */
+  if (ds1wire_read(DS1W_PORT, DS1W_PIN) == 0) { /* Parasite powered probes return 0 */
     ds1820probes[0].flags |= DS1820FLAG_PARASITE;
   } else {
     ds1820probes[0].flags &= ~DS1820FLAG_PARASITE;
@@ -146,46 +146,46 @@ uint8_t ds1820scan(void) {
     memset(ds1820probes[i].serial, 0, sizeof(ds1820probes[i].serial));
   }
   do {
-    ds1wire_reset(C, 0);
+    ds1wire_reset(DS1W_PORT, DS1W_PIN);
     prevcolwith0 = lastcolwith0;
     lastcolwith0 = -1;
     /* Send scan command */
     ds1820write(DS1820_CMD_SEARCHROM);
     for (i = 0; i < 64; i++) {
-      uint8_t val1 = ds1wire_read(C, 0);
-      uint8_t val2 = ds1wire_read(C, 0);
+      uint8_t val1 = ds1wire_read(DS1W_PORT, DS1W_PIN);
+      uint8_t val2 = ds1wire_read(DS1W_PORT, DS1W_PIN);
       if (val1 == val2) { /* Collission */
         if (val1 == 1) { /* and thus val2 is 1 too */
           /* Nothing matched on the bus! This is actually pretty fatal! */
           /* Try to get out alive. Send all 0. */
-          ds1wire_send0(C, 0); lastcolwith0 = -1;
+          ds1wire_send0(DS1W_PORT, DS1W_PIN); lastcolwith0 = -1;
         } else { /* Both 0 */
           /* Was that where we stopped last time? */
           if (prevcolwith0 == i) { /* Send a 1 this time */
-            ds1wire_send1(C, 0);
+            ds1wire_send1(DS1W_PORT, DS1W_PIN);
             lastserialfound[i >> 3] |= _BV(i & 0x07);
           } else {
             if (i < prevcolwith0) { /* We are before the position of the */
               /* previous collission. Select the same as in the last iteration */
               if (lastserialfound[i >> 3] & _BV(i & 0x07)) {
-                ds1wire_send1(C, 0);
+                ds1wire_send1(DS1W_PORT, DS1W_PIN);
               } else {
                 lastcolwith0 = i;
-                ds1wire_send0(C, 0);
+                ds1wire_send0(DS1W_PORT, DS1W_PIN);
               }
             } else { /* New collission */
               lastcolwith0 = i;
-              ds1wire_send0(C, 0);
+              ds1wire_send0(DS1W_PORT, DS1W_PIN);
               lastserialfound[i >> 3] &= (uint8_t)~_BV(i & 0x07);
             }
           }
         }
       } else { /* val1 != val2 */
         if (val1 == 0) { /* Was a 0, so select that */
-          ds1wire_send0(C, 0);
+          ds1wire_send0(DS1W_PORT, DS1W_PIN);
           lastserialfound[i >> 3] &= (uint8_t)~_BV(i & 0x07);
         } else { /* Was a 1 */
-          ds1wire_send1(C, 0);
+          ds1wire_send1(DS1W_PORT, DS1W_PIN);
           lastserialfound[i >> 3] |= _BV(i & 0x07);
         }
       }
@@ -208,7 +208,7 @@ uint8_t ds1820scan(void) {
       ds1820probes[curprobe].lasttemp[1] = 0;
       /* Find out if the probe is parasite powered or not. */
       ds1820write(DS1820_CMD_READPOWER); /* Read power supply */
-      if (ds1wire_read(C, 0) == 0) { /* Parasite powered probes return 0 */
+      if (ds1wire_read(DS1W_PORT, DS1W_PIN) == 0) { /* Parasite powered probes return 0 */
         ds1820probes[curprobe].flags |= DS1820FLAG_PARASITE;
       } else {
         ds1820probes[curprobe].flags &= ~DS1820FLAG_PARASITE;

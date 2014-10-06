@@ -17,6 +17,7 @@ int main()
 #include "sio.h"
 #include "packet.h"
 #include "rs485.h"
+#include "ds1820.h"
 
 static uchar mcusr;
 
@@ -163,6 +164,8 @@ void io_init()
 int main()
 {
     io_init();
+    
+    ds1820scan();
 
     PORTB |= 0x04; // Led On
       

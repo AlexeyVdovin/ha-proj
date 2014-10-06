@@ -31,14 +31,14 @@ void swpwm_freq(uchar d)
 #include "sw_pwm.h"
 
 static volatile ushort pwm_count;
-static volatile ushort pwm_ch[SW_PWM_CHS];
+static volatile ushort pwm_ch[SW_PWM_NCH];
 
 ISR(TIMER1_OVF_vect)
 {
     uchar i;
     if(--pwm_count)
     {
-        for(i = 0; i < SW_PWM_CHS; ++i)
+        for(i = 0; i < SW_PWM_NCH; ++i)
         {
             if(pwm_ch[i] == pwm_count) SW_PWM_CH_ON(i);
         }
@@ -46,7 +46,7 @@ ISR(TIMER1_OVF_vect)
     else
     {
         pwm_count = 0x400;
-        for(i = 0; i < SW_PWM_CHS; ++i)
+        for(i = 0; i < SW_PWM_NCH; ++i)
         {
             if(pwm_ch[i] == 0x3FF) SW_PWM_CH_ON(i);
             else SW_PWM_CH_OFF(i);
@@ -85,12 +85,12 @@ void swpwm_init()
 
 ushort swpwm_read(uchar ch)
 {
-    return (ch < SW_PWM_CHS) ? pwm_ch[ch] : 0;
+    return (ch < SW_PWM_NCH) ? pwm_ch[ch] : 0;
 }
 
 void swpwm_set(uchar ch, ushort pwm)
 {
-    if(ch < SW_PWM_CHS) pwm_ch[ch] = pwm;
+    if(ch < SW_PWM_NCH) pwm_ch[ch] = pwm;
 }
 
 void swpwm_freq(uchar d)

@@ -14,9 +14,6 @@
 #include <inttypes.h>
 #include "defines.h"
 
-/* Number of probes supported */
-#define DS1820_MAXPROBES  4
-
 #ifdef KISS  /* We can only ever handle one probe in this mode, so override define */
 #undef DS1820_MAXPROBES
 #define DS1820_MAXPROBES 1

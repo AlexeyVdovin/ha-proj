@@ -14,6 +14,10 @@
 #include "defines.h"
 #include <util/delay_basic.h>
 
+#define DDR(p)  DDR ## p
+#define PIN(p)  PIN ## p
+#define PORT(p) PORT ## p
+
 static void delay_us(unsigned short time_us) {
 	_delay_loop_2((unsigned short)(F_CPU/4000000UL)*time_us);
 } 
@@ -22,8 +26,8 @@ static void delay_us(unsigned short time_us) {
 /* This macro is redundant after powerup, as all bits zero is the default
  * state after powerup. */
 #define ds1wire_init(port, bit) {\
-  DDR##port &= (uint8_t)~(_BV(bit));  /* Do not actively drive the bus */ \
-  PORT##port &= (uint8_t)~(_BV(bit)); /* Always output a 0, so we just need to change */ \
+  DDR(port) &= (uint8_t)~(_BV(bit));  /* Do not actively drive the bus */ \
+  PORT(port) &= (uint8_t)~(_BV(bit)); /* Always output a 0, so we just need to change */ \
                                       /* the DDR register to pull the bus low. */ \
 }
 
@@ -35,7 +39,7 @@ static void delay_us(unsigned short time_us) {
  * takes about 981 usec to execute.
  */
 #define ds1wire_reset(port, bit) \
-  __ds1wire_reset(&DDR##port, &PIN##port, _BV(bit))
+  __ds1wire_reset(&DDR(port), &PIN(port), _BV(bit))
 
 static inline uint8_t __ds1wire_reset(volatile uint8_t * ddr, volatile uint8_t * pin, uint8_t bv) {
   uint8_t ret;
@@ -51,13 +55,13 @@ static inline uint8_t __ds1wire_reset(volatile uint8_t * ddr, volatile uint8_t *
 /* Actively pull down the 1 wire bus. For hard resetting parasite powered
  * probes that have gone bonkers. */
 #define ds1wire_pulldown(port, bit) {\
-  PORT##port &= (uint8_t)~(_BV(bit)); /* Output 0 (sucking away the current from the pullup) */ \
-  DDR##port |= _BV(bit);  /* Actively drive the bus */ \
+  PORT(port) &= (uint8_t)~(_BV(bit)); /* Output 0 (sucking away the current from the pullup) */ \
+  DDR(port) |= _BV(bit);  /* Actively drive the bus */ \
 }
 
 /* Read a bit from the 1 wire bus. takes 61 usec to execute. */
 #define ds1wire_read(port, bit) \
-  __ds1wire_read(&DDR##port, &PIN##port, _BV(bit))
+  __ds1wire_read(&DDR(port), &PIN(port), _BV(bit))
 
 static inline uint8_t __ds1wire_read(volatile uint8_t * ddr, volatile uint8_t * pin, uint8_t bv) {
   uint8_t ret;
@@ -72,25 +76,25 @@ static inline uint8_t __ds1wire_read(volatile uint8_t * ddr, volatile uint8_t * 
 
 /* Sends a 0 bit to the 1 wire bus. takes 61 usec to execute. */
 #define ds1wire_send0(port, bit) {\
-  DDR##port |= _BV(bit); /* pull low */ \
+  DDR(port) |= _BV(bit); /* pull low */ \
   delay_us(60); /* worst case timing */ \
-  DDR##port &= (uint8_t)~_BV(bit); /* release */ \
+  DDR(port) &= (uint8_t)~_BV(bit); /* release */ \
   delay_us(1); /* bus is free again after that */ \
   }
 
 /* Sends a 1 bit to the 1 wire bus. takes 61 usec to execute. */
 #define ds1wire_send1(port, bit) {\
-  DDR##port |= _BV(bit); /* pull low */ \
+  DDR(port) |= _BV(bit); /* pull low */ \
   delay_us(10); /* everything > 1 us should suffice, try to be close to 15 us. */ \
-  DDR##port &= (uint8_t)~_BV(bit); /* release */ \
+  DDR(port) &= (uint8_t)~_BV(bit); /* release */ \
   delay_us(51); /* bus is free again after that */ \
 }
 
 /* Enable power for parasite powered probes. Warning: You must
  * not forget to call parasitepoweroff after some time! */
 #define ds1wire_parasitepoweron(port, bit) { \
-  PORT##port |= _BV(bit); \
-  DDR##port |= _BV(bit); \
+  PORT(port) |= _BV(bit); \
+  DDR(port) |= _BV(bit); \
 }
 
 /* Disable power for parasite powered probes. */

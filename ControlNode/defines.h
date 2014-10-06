@@ -85,4 +85,9 @@
 /* DISP */
 #define DISP_PWM    OCR0A
 
+/* 1-WIRE */
+#define DS1W_PORT           B // Port B
+#define DS1W_PIN            2 // Bit #2
+#define DS1820_MAXPROBES    4
+
 #endif /* _DEFINES_H_ */

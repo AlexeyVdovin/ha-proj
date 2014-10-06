@@ -90,5 +90,9 @@
 */
 #define PWM_FREQ(n) (TCCR1B = (TCCR1B & 0xF8) | ((n) & 0x07))
 
+/* 1-WIRE */
+#define DS1W_PORT           C // Port C
+#define DS1W_PIN            0 // Bit #0
+#define DS1820_MAXPROBES    4
 
 #endif
