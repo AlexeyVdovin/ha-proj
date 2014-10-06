@@ -5,7 +5,7 @@ MCU_TARGET = atmega644
 
 LIB = ../rsLib
 
-OBJ = main.o $(LIB)/led_display.o $(LIB)/rs485.o $(LIB)/timer.o $(LIB)/sio.o $(LIB)/packet.o $(LIB)/adc.o $(LIB)/sw_pwm.o $(LIB)/ds1820.o
+OBJ = main.o config.o command.o $(LIB)/led_display.o $(LIB)/rs485.o $(LIB)/timer.o $(LIB)/sio.o $(LIB)/packet.o $(LIB)/adc.o $(LIB)/sw_pwm.o $(LIB)/ds1820.o
 
 AVR_OBJ = $(patsubst %.o,%.obj,$(OBJ))
 

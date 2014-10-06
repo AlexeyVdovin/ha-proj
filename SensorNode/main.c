@@ -208,7 +208,9 @@ int main()
 	long ds1820_req = 0;
 	uchar ds1820_ack = 0;
 
-    for (;;)
+ 	data[3] = cfg_node_id();
+
+ 	for (;;)
     {
     	wdt_reset();
         if(ds1820count > 0)

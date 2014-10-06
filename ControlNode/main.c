@@ -18,6 +18,8 @@ int main()
 #include "packet.h"
 #include "rs485.h"
 #include "ds1820.h"
+#include "command.h"
+#include "config.h"
 
 static uchar mcusr;
 
@@ -141,7 +143,8 @@ void io_init()
 
     // Timer/Counter 0 Interrupt(s) initialization
     TIMSK0=0x03;
-    
+
+    cfg_init();    
     timer_init();
     disp_init();
     sio_init();
@@ -160,25 +163,75 @@ void io_init()
     sei();
 }
 
+uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
 
 int main()
 {
-    io_init();
-    
-    ds1820scan();
+    uint i = 0;
+    uchar d = 0;
+    uchar r = 5;
+    packet_t* pkt;
 
-    PORTB |= 0x04; // Led On
-      
-    disp[0] = 0x10;
-    disp_digit(1, 4);
-    
-    while(1)
+    io_init ();
+	long ds1820_req = 0;
+	uchar ds1820_ack = 0;
+	
+	data[3] = cfg_node_id();
+
+    for (;;)
     {
-        wdt_reset();
-        delay_s(1);
-        PORTB ^= 0x04;
+    	wdt_reset();
+        if(ds1820count > 0)
+        {
+            if(ds1820_req < get_time())
+            {
+                if(ds1820_ack == 0)
+                {
+		            ds1820queryprobe(d);
+		            ds1820_req = get_time() + 80; // 800ms
+		            ds1820_ack = 1;
+		        }
+		        else
+		        {
+		            if(ds1820updateprobe(d) == 0 && --r > 0)
+		            {
+		                ds1820_req = get_time() + 1; // Retry in 10ms
+		            }
+		            else
+		            {
+		                if(r == 0) { ds1820probes[d].flags &= ~DS1820FLAG_SLOTINUSE; } 
+        		        ds1820_req = get_time() + (cfg_ds1820_period()/ds1820count - 80);
+        		        ds1820_ack = 0;
+        		        if(++d >= ds1820count) d = 0;
+		                r = 5;
+        		    }
+                }    	
+            }
+    	} 
+    	else if(ds1820_req < get_time() && ds1820scan() == 0)
+    	{
+    	    ds1820_req = get_time() + cfg_ds1820_period();
+    	}
+        pkt = rs485_rx_packet();
+        if(pkt && pkt->to != 0 && pkt->to != cfg_node_id()) pkt = NULL;
+        if(pkt) pkt = cmd_proc(pkt);
+        if(pkt)
+        {
+            rs485_tx_packet(pkt);
+            i = 0;
+        } 
+        sleep_mode();
+       
+        if(++i > 20000)
+        {
+            i = 0;
+            pkt = (packet_t*) data;
+            pkt->from = cfg_node_id();
+            pkt->data[0] = ds1820count;
+            rs485_tx_packet(pkt);
+        }
     }
-    return 0;
+    return (0);
 }
 
 #endif /* __AVR__ */
