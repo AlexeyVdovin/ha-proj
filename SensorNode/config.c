@@ -18,7 +18,7 @@
 #define EE_FN_SET(type, var) void cfg_set__##var(type val) { EE_VAL(var) = val; eeprom_busy_wait(); EE_WRITE(var); }
 
 EE_VAR(uchar, node_id) = 0x0A;
-EE_VAR(ulong, ds1820_period) = 1000; /* 10 sec */
+EE_VAR(ushort, ds1820_period) = 1000; /* 10 sec */
 
 void cfg_init()
 {
@@ -31,7 +31,7 @@ void cfg_init()
 EE_FN_GET(uchar, node_id)
 EE_FN_SET(uchar, node_id)
 
-EE_FN_GET(ulong, ds1820_period)
-EE_FN_SET(ulong, ds1820_period)
+EE_FN_GET(ushort, ds1820_period)
+EE_FN_SET(ushort, ds1820_period)
 
 #endif /* __AVR__ */

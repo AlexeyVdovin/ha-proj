@@ -96,13 +96,13 @@ uchar sio_rxcount()
 #define RX_BUFFER_MASK (RX_BUFFER_SIZE-1)
 #define TX_BUFFER_MASK (TX_BUFFER_SIZE-1)
 
-volatile char rx_buffer[RX_BUFFER_SIZE];
-volatile char tx_buffer[TX_BUFFER_SIZE];
+static volatile char rx_buffer[RX_BUFFER_SIZE];
+static volatile char tx_buffer[TX_BUFFER_SIZE];
 
-volatile uchar rx_wr_index,rx_rd_index,rx_counter;
-volatile uchar tx_wr_index,tx_rd_index,tx_counter;
+static volatile uchar rx_wr_index, rx_rd_index, rx_counter;
+static volatile uchar tx_wr_index, tx_rd_index, tx_counter;
 
-volatile union {
+static volatile union {
 // This flag is set on USART Receiver buffer overflow
  char rx_buffer_overflow:1;
 } uart_flags;
@@ -156,8 +156,12 @@ void
 sio_init(void)
 {
   uart_flags.rx_buffer_overflow = 0;
-  rx_wr_index = rx_rd_index = rx_counter = 0;
-  tx_wr_index = tx_rd_index = tx_counter = 0;
+  rx_wr_index = 0;
+  rx_rd_index = 0;
+  rx_counter = 0;
+  tx_wr_index = 0;
+  tx_rd_index = 0;
+  tx_counter = 0;
   SIO_UCSRC = 0x06;
   SIO_UBRRH = 0x00;
 

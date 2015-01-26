@@ -10,7 +10,7 @@ void timer_init()
     
 }
 
-long get_time()
+short get_time()
 {
     struct timeval  tv;
     gettimeofday(&tv, NULL);
@@ -37,7 +37,7 @@ void delay_s(uchar s)
 
 #include "timer.h"
 
-static volatile long timer = 0;
+static volatile short timer = 0;
 
 ISR(TIMER_ISR)
 {
@@ -58,33 +58,34 @@ void timer_init()
 
 }
 
-long get_time()
+short get_time()
 {
     cli();
-    long t = timer;
+    short t = timer;
     sei();
     return t;
 }
 
 void delay_t(uchar t)
 {
-    long s = get_time() + t;
+    short s = get_time() + t;
     do
     {
         wdt_reset(); 
-//        sleep_mode();
+        sleep_mode();
     } while(s > get_time());
 }
 
+/*
 void delay_s(uchar s)
 {
-    long t = get_time() + s*100;
+    short t = get_time() + s*100;
     do
     {
         wdt_reset(); 
         sleep_mode();
     } while(t > get_time());
 }
-
+*/
 #endif /* __AVR__ */
 

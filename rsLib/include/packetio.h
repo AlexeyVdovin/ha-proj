@@ -1,13 +1,14 @@
 #ifndef _PACKET_IO_H_
 #define _PACKET_IO_H_
 
-static uchar rx_pkt[sizeof(packet_t)+MAX_DATA_LEN+2] = { 0 };
-static uchar rx_pos = 0;
-static long rx_time = 0;
+static uchar rx_pkt[sizeof(packet_t)+MAX_DATA_LEN+2];
+static uchar _rx_pos = 0;
+static short rx_time = 0;
 
 static packet_t* rx_packet()
 {
     packet_t *pkt = (packet_t*)rx_pkt;
+    register uchar rx_pos = _rx_pos;
 
     // Check for timeout    
     if(rx_pos && rx_time && get_time() > rx_time) rx_pos = 0;
@@ -34,9 +35,10 @@ static packet_t* rx_packet()
         {
             rx_pos = 0;
             ushort* crc = (ushort*)(pkt->data + pkt->len);
-            if(pkt->len > 0 && *crc == packet_crc(pkt)) return pkt;
+            if(pkt->len > 0 && *crc == packet_crc(pkt)) { _rx_pos = rx_pos; return pkt; }
         }
     }
+    _rx_pos = rx_pos;
     return NULL;
 }
 

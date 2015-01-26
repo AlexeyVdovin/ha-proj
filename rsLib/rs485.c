@@ -20,7 +20,7 @@
 
 void rs485_init()
 {
-    rx_pos = 0;
+
 }
 
 packet_t* rs485_rx_packet()
