@@ -18,11 +18,6 @@
 
 #include "packetio.h"
 
-void rs485_init()
-{
-
-}
-
 packet_t* rs485_rx_packet()
 {
     return rx_packet();

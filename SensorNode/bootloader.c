@@ -3,6 +3,10 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
+#include <avr/boot.h>
+#include <avr/pgmspace.h>
+#include <util/crc16.h>
+
 #include <string.h> // for memcpy
 
 #include "timer.h"
@@ -29,8 +33,8 @@ enum
 
 static uchar status = 0;
 static uchar buff[WR_BUFF_SIZE];
-static volatile ushort wr_page = 0;
-static volatile ushort wr_pos = 0;
+static ushort wr_page;
+static ushort wr_pos;
 
 uchar cmd_read(uchar len, uchar* data)
 {
@@ -39,9 +43,10 @@ uchar cmd_read(uchar len, uchar* data)
     case 00:
         data[1] = 00;
         data[2] = DEV_ID; // Defined in config.h
-        data[3] = status;
-        data[4] = wr_page; // Progress
-        len = 5;
+        data[3] = SPM_PAGESIZE;
+        data[4] = status;
+        data[5] = wr_page; // Progress
+        len = 6;
         break;
     default:
         return 0;
@@ -51,6 +56,7 @@ uchar cmd_read(uchar len, uchar* data)
 
 uchar cmd_write(uchar len, uchar* data)
 {
+    uchar res = 01;
     switch(data[1])
     {
     case 80:
@@ -58,11 +64,9 @@ uchar cmd_write(uchar len, uchar* data)
             if(data[2] == 02 && status == S_IDLE)
             {
                 status = S_FLASH_EN;
-                data[1] = 00;
-            }
-            else
-            {
-                data[1] = 01;
+                wr_page = 0;
+                wr_pos = 0;
+                res = 00;
             }
             len = 2;
         }
@@ -72,11 +76,7 @@ uchar cmd_write(uchar len, uchar* data)
             if(status == S_FLASH_EN)
             {
                 status = S_FLASH_WR;
-                data[1] = 00;
-            }
-            else
-            {
-                data[1] = 01;
+                res = 00;
             }
             len = 2;
         }
@@ -88,16 +88,13 @@ uchar cmd_write(uchar len, uchar* data)
                 if(wr_pos + len - 2 < WR_BUFF_SIZE)
                 {
                     memcpy(buff + wr_pos, data+2, len-2);
-                    data[1] = 00;
+                    wr_pos += len-2;
+                    res = 00;
                 }
                 else
                 {
-                    data[1] = 03; // Overflow, retry latter
+                    res = 03; // Overflow, retry latter
                 }
-            }
-            else
-            {
-                data[1] = 01;
             }
             len = 2;
         }
@@ -106,13 +103,13 @@ uchar cmd_write(uchar len, uchar* data)
         {
             if(status == S_FLASH_WR)
             {
-                // Start addr
-                // End addr
-                // CRC
-            }
-            else
-            {
-                data[1] = 01;
+                ushort i, calc = 0;
+                ushort start = data[2] + (data[3] << 8);
+                ushort end = data[4] + (data[5] << 8);
+                ushort crc = data[6] + (data[7] << 8);
+                for(i = start; i <= end; ++i) calc = _crc_xmodem_update(calc, pgm_read_byte(i));
+                if(crc == calc) res = 00; // CRC OK
+                else            res = 04; // CRC missmatch
             }
             len = 2;
         }
@@ -120,6 +117,7 @@ uchar cmd_write(uchar len, uchar* data)
     default:
         return 0;
     }
+    data[1] = res;
     return len;
 }
 
@@ -147,11 +145,12 @@ packet_t* cmd_proc(packet_t* pkt)
 
 int main()
 {
-    uint i = 0;
+    static uchar fs = S_IDLE;
+    uint i;
     packet_t* pkt;
-    mcucsr = MCUCSR;
 
 #if 0    
+    mcucsr = MCUCSR;
     // Reset Source checking
     if (MCUCSR & 1)
        {
@@ -256,9 +255,7 @@ int main()
     SFIOR=0x00;
 
     cfg_init();
-    timer_init();
     sio_init();
-    rs485_init();
 
     // Watchdog Timer initialization
     // Watchdog Timer Prescaler: OSC/1024k
@@ -281,13 +278,33 @@ int main()
         pkt = rs485_rx_packet();
         if(pkt && pkt->to != 0 && pkt->to != cfg_node_id()) pkt = NULL;
         if(pkt) pkt = cmd_proc(pkt);
-        if(pkt)
+        if(pkt) rs485_tx_packet(pkt);
+        
+        if(fs == S_IDLE && wr_pos >= SPM_PAGESIZE)
         {
-            rs485_tx_packet(pkt);
-            i = 0;
+            boot_page_erase(wr_page);
+            fs = S_FLASH_EN;
         }
         
-        if(wr_pos > SPM_PAGESIZE)
+        if(fs == S_FLASH_EN && !boot_spm_busy())
+        {
+            for(i = 0; i < SPM_PAGESIZE; i += 2)
+            {
+                // Set up little-endian word.
+                ushort w = buff[i] + (buff[i+1] << 8);
+                boot_page_fill(wr_page + i, w);
+            }
+            wr_pos -= SPM_PAGESIZE;
+            memmove(buff, buff+i, wr_pos);
+            boot_page_write (wr_page); // Store buffer in flash page.
+            fs = S_FLASH_WR;
+        }
+        
+        if(fs == S_FLASH_WR && !boot_spm_busy())
+        {
+            ++wr_page;
+            fs = S_IDLE;
+        }
     	
         sleep_mode();
     }

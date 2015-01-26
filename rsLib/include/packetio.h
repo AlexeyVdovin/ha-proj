@@ -17,7 +17,7 @@ static packet_t* rx_packet()
     {
         int c = rx_byte();
         if(c < 0) break;
-        uchar u = (uchar)(c & 0x00FF);
+        register uchar u = (uchar)(c & 0x00FF);
         
         if(rx_pos == 0 || (rx_pos == 1 && u == DATA_ID1))
         {

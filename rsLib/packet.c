@@ -43,7 +43,7 @@ ushort packet_crc(packet_t* pkt)
 
 ushort packet_crc(packet_t* pkt)
 {
-    ushort crc = 0;
+    register ushort crc = 0;
     uchar* p = (uchar*)pkt;
     uchar i;
     

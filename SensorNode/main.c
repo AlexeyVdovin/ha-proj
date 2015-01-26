@@ -176,11 +176,11 @@ void io_init()
     SFIOR=0x00;
 
     cfg_init();
-    timer_init();
+//    timer_init();
     pwm_init();
     adc_init();
     sio_init();
-    rs485_init();
+//    rs485_init();
 
     // Watchdog Timer initialization
     // Watchdog Timer Prescaler: OSC/1024k
@@ -232,7 +232,7 @@ int main()
 		            else
 		            {
 		                if(r == 0) { ds1820probes[d].flags &= ~DS1820FLAG_SLOTINUSE; } 
-        		        ds1820_req = get_time() + (cfg_ds1820_period()/ds1820count - 80);
+//        		        ds1820_req = get_time() + (cfg_ds1820_period()/ds1820count - 80);
         		        ds1820_ack = 0;
         		        if(++d >= ds1820count) d = 0;
 		                r = 5;
@@ -242,7 +242,7 @@ int main()
     	} 
     	else if(ds1820_req < get_time() && ds1820scan() == 0)
     	{
-    	    ds1820_req = get_time() + cfg_ds1820_period();
+//    	    ds1820_req = get_time() + cfg_ds1820_period();
     	}
         pkt = rs485_rx_packet();
         if(pkt && pkt->to != 0 && pkt->to != cfg_node_id()) pkt = NULL;

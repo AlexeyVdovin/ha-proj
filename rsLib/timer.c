@@ -41,21 +41,7 @@ static volatile short timer = 0;
 
 ISR(TIMER_ISR)
 {
-#ifdef _USE_TIME_H_
-    static uchar t = 100;
-    
-    if(--t == 0)
-    {
-        t = 100;
-        system_tick();
-    }
-#endif
     ++timer;
-}
-
-void timer_init()
-{
-
 }
 
 short get_time()
@@ -66,26 +52,5 @@ short get_time()
     return t;
 }
 
-void delay_t(uchar t)
-{
-    short s = get_time() + t;
-    do
-    {
-        wdt_reset(); 
-        sleep_mode();
-    } while(s > get_time());
-}
-
-/*
-void delay_s(uchar s)
-{
-    short t = get_time() + s*100;
-    do
-    {
-        wdt_reset(); 
-        sleep_mode();
-    } while(t > get_time());
-}
-*/
 #endif /* __AVR__ */
 
