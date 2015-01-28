@@ -9,6 +9,11 @@
 #include "adc.h"
 
 #include <unistd.h>
+#include <string.h>
+
+static uchar node_id = 0x01;
+static uchar* src = NULL;
+static ushort data_len = 0;
 
 static void pkt_dump(packet_t* pkt)
 {
@@ -18,31 +23,264 @@ static void pkt_dump(packet_t* pkt)
     printf(" %02X%02X\n", pkt->data[pkt->len], pkt->data[pkt->len+1]);
 }
 
+/* Calculating XMODEM CRC-16 in 'C'
+   ================================
+   Reference model for the translated code */
+
+#define poly 0x1021
+
+/* On entry, addr=>start of data
+             num = length of data
+             crc = incoming CRC     */
+static unsigned short crc16(char *addr, int num, unsigned int crc)
+{
+    int i;
+
+    for(; num>0; num--)                      /* Step through bytes in memory */
+    {
+        crc = crc ^ (*addr++ << 8);          /* Fetch byte from memory, XOR into CRC top byte*/
+        for (i=0; i<8; i++)                  /* Prepare to rotate 8 bits */
+        {
+            crc = crc << 1;                  /* rotate */
+            if (crc & 0x10000)               /* bit 15 was set (now bit 16)... */
+                crc = (crc ^ poly) & 0xFFFF; /* XOR with XMODEM polynomic */
+                                             /* and ensure CRC remains 16-bit value */
+        }                                    /* Loop for 8 bits */
+    }                                        /* Loop until num=0 */
+    return (unsigned short)crc;              /* Return updated CRC */
+}
+
+enum
+{
+    ST_IDLE = 0,
+    ST_FF_EN,
+    ST_FF_WR,
+    ST_FF_CHK,
+    ST_FF_OK
+};
+
+packet_t* process_pkt(packet_t* pkt)
+{
+    static uchar seq = 0x01;
+    static uchar state = ST_IDLE;
+    static uchar to = 0;
+    static uchar req = 0;
+    static ushort pos = 0;
+    static uchar dev_status = 0;
+    
+    uchar data[] = { DATA_ID1, DATA_ID2, to, node_id, 0x00, 0x00, seq, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    
+    do
+    {
+        if(pkt == NULL && state == ST_IDLE)
+        {
+            pkt = (packet_t*)data;
+            pkt->data[0] = 0x02; // READ
+            pkt->data[1] = 0x00; // STATUS
+            pkt->len = 2;
+            req = pkt->data[1];      
+            break;
+        }
+        
+        if(pkt == NULL || pkt->seq != seq) break;
+        
+        if(req == 00 && pkt->data[0] == 0x01 && pkt->data[1] == 0x00)
+        {
+            char* status[] = { "IDLE", "INIT", "FALSH", "OK" };
+            dev_status = pkt->data[4]&3;
+            printf("Status: Dev: %02x, Pg.size: %d, %s, page: %d\n", pkt->data[2], pkt->data[3], status[dev_status], pkt->data[5]);
+        }
+        
+        if(state == ST_IDLE && req == 00)
+        {
+            if(dev_status != 0)
+            {
+                printf("Error: Invalid device status!\n");
+                pkt = NULL;
+                break;
+            }
+            // Init flash
+            pkt = (packet_t*)data;
+            pkt->data[0] = 0x04;  // WRITE
+            pkt->data[1] = 0x80;  // FF_INIT
+            pkt->data[2] = 0x02;  // magic
+            pkt->len = 3;
+            req = pkt->data[1];      
+            break;
+        }
+
+        if(state == ST_IDLE && req == 0x80)
+        {
+            if(pkt->data[1] == 0x00)
+            {
+                pkt = (packet_t*)data;
+                pkt->data[0] = 0x02; // READ
+                pkt->data[1] = 0x00; // STATUS
+                pkt->len = 2;
+                req = pkt->data[1];      
+                state = ST_FF_EN;
+                break;
+            }
+            else
+            {
+                printf("Error: Invalid device response!\n");
+                pkt = NULL;
+                break;
+            }
+        }
+        
+        if(state == ST_FF_EN && req == 00)
+        {
+            if(dev_status != 1)
+            {
+                printf("Error: Invalid device status!\n");
+                pkt = NULL;
+                break;
+            }
+            // Write flash
+            pkt = (packet_t*)data;
+            pkt->data[0] = 0x04;  // WRITE
+            pkt->data[1] = 0xC0;  // FF_WRITE
+            pkt->len = 2;
+            req = pkt->data[1];      
+            break;
+        }
+        
+        if(state == ST_FF_EN && req == 0xC0)
+        {
+            if(pkt->data[1] == 0x00)
+            {
+                pkt = (packet_t*)data;
+                pkt->data[0] = 0x02; // READ
+                pkt->data[1] = 0x00; // STATUS
+                pkt->len = 2;
+                req = pkt->data[1];      
+                state = ST_FF_WR;
+                break;
+            }
+            else
+            {
+                printf("Error: Invalid device response!\n");
+                pkt = NULL;
+                break;
+            }
+        }
+
+        if(state == ST_FF_WR && req == 00)
+        {
+            if(dev_status != 2)
+            {
+                printf("Error: Invalid device status!\n");
+                pkt = NULL;
+                break;
+            }
+            // Write page
+            pkt = (packet_t*)data;
+            pkt->data[0] = 0x04;  // WRITE
+            pkt->data[1] = 0xC3;  // FF_PAGE
+            memcpy(pkt->data+2, src+pos, MAX_DATA_LEN-2);
+            pkt->len = MAX_DATA_LEN;
+            req = pkt->data[1];
+            break;
+        }
+
+        if(state == ST_FF_WR && req == 0xC3)
+        {
+            if(pkt->data[1] == 0x00)
+            {
+                pos += MAX_DATA_LEN-2;
+                pkt = (packet_t*)data;
+                pkt->data[0] = 0x02; // READ
+                pkt->data[1] = 0x00; // STATUS
+                pkt->len = 2;
+                req = pkt->data[1];
+                if(pos >= data_len) state = ST_FF_CHK;
+                break;
+            }
+            else if(pkt->data[1] == 0x03) // Busy
+            {
+                pkt = (packet_t*)data;
+                pkt->data[0] = 0x02; // READ
+                pkt->data[1] = 0x00; // STATUS
+                pkt->len = 2;
+                req = pkt->data[1];
+                break;
+            }
+            else
+            {
+                printf("Error: Invalid device response!\n");
+                pkt = NULL;
+                break;
+            }
+        }
+        
+        if(state == ST_FF_CHK && req == 00)
+        {
+            // Calc CRC
+            ushort crc = crc16(src, data_len, 0);
+            pkt = (packet_t*)data;
+            pkt->data[0] = 0x04;  // WRITE
+            pkt->data[1] = 0xC4;  // FF_CRC
+            pkt->data[2] = 0;
+            pkt->data[3] = 0;
+            pkt->data[4] = (uchar)(data_len & 0x00FF);
+            pkt->data[5] = (uchar)((data_len >> 8) & 0x00FF);
+            pkt->data[6] = (uchar)(crc & 0x00FF);
+            pkt->data[7] = (uchar)((crc >> 8) & 0x00FF);
+            pkt->len = 2;
+            req = pkt->data[1];
+            break;
+        }
+
+        if(state == ST_FF_CHK && req == 0xC4)
+        {
+            if(pkt->data[1] == 0x00)
+            {
+                printf("CRC - OK.\n");
+                pkt = (packet_t*)data;
+                pkt->data[0] = 0x02; // READ
+                pkt->data[1] = 0x00; // STATUS
+                pkt->len = 2;
+                req = pkt->data[1];      
+                state = ST_FF_OK;
+                break;
+            }
+            else
+            {
+                printf("Error: Invalid device response!\n");
+                pkt = NULL;
+                break;
+            }
+        }
+        
+    }  while(0);
+
+    return pkt;
+}
+
 int main(int argc, char** argv)
 {
     int n = 0;
     timer_init();
     udp_init();
-    adc_init();
     
-    uchar data[] = { DATA_ID1, DATA_ID2, 0x00, 0x01, 0x00, 0x00, 0xBE, 0x05, 0x04, 0x82, 0x00,   0x00, 0x00,   0x00, 0x00 };
-    pid_t pid = getpid();
-    data[3] = (uchar)(pid&0xFF);
+    packet_t* pkt = NULL;
     
     do
     {
+        pkt = process_pkt(pkt);
+        if(pkt)
+        {
+            pkt_dump(pkt);
+            udp_tx_packet(pkt);
+        }
         packet_t* pkt = udp_rx_packet();
         if(pkt)
         {
             pkt_dump(pkt);
+            continue;
         }
-        delay_t(1);
-        if(++n > 200)
-        {
-            n = 0;
-            udp_tx_packet((packet_t*)data);
-        }
-            
+        usleep(1000); // 1 ms
     } while(1);
     
 	return 0;

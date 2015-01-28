@@ -78,6 +78,10 @@ uchar cmd_write(uchar len, uchar* data)
                 status = S_FLASH_WR;
                 res = 00;
             }
+            else
+            {
+                status = S_IDLE;
+            }
             len = 2;
         }
         break;
@@ -96,12 +100,16 @@ uchar cmd_write(uchar len, uchar* data)
                     res = 03; // Overflow, retry latter
                 }
             }
+            else
+            {
+                status = S_IDLE;
+            }
             len = 2;
         }
         break;
     case 0xC4: // Calc CRC
         {
-            if(status == S_FLASH_WR)
+            if(status == S_FLASH_WR || status == S_IDLE)
             {
                 ushort i, calc = 0;
                 ushort start = data[2] + (data[3] << 8);
