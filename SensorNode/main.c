@@ -15,10 +15,10 @@ static uchar node_id = 0x01;
 static uchar* src = NULL;
 static ushort data_len = 0;
 
-static void pkt_dump(packet_t* pkt)
+static void pkt_dump(char* str, packet_t* pkt)
 {
     int i;
-    printf("Pkt: %02X%02X %02X -> %02X -> %02X  (%02X) %02X [%d]:", pkt->id[0], pkt->id[1], pkt->from, pkt->via, pkt->to, pkt->flags, pkt->seq, pkt->len);
+    printf("%s Pkt: %02X%02X %02X -> %02X -> %02X  (%02X) %02X [%d]:", str, pkt->id[0], pkt->id[1], pkt->from, pkt->via, pkt->to, pkt->flags, pkt->seq, pkt->len);
     for(i = 0; i < pkt->len; ++i) { printf(" %02X", pkt->data[i]); }
     printf(" %02X%02X\n", pkt->data[pkt->len], pkt->data[pkt->len+1]);
 }
@@ -59,6 +59,8 @@ enum
     ST_FF_OK
 };
 
+uchar pkt_buff[32];
+
 packet_t* process_pkt(packet_t* pkt)
 {
     static uchar seq = 0x01;
@@ -69,12 +71,13 @@ packet_t* process_pkt(packet_t* pkt)
     static uchar dev_status = 0;
     
     uchar data[] = { DATA_ID1, DATA_ID2, to, node_id, 0x00, 0x00, seq, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+    memcpy(pkt_buff, data, sizeof(data));
     
     do
     {
         if(pkt == NULL && state == ST_IDLE)
         {
-            pkt = (packet_t*)data;
+            pkt = (packet_t*)pkt_buff;
             pkt->data[0] = 0x02; // READ
             pkt->data[1] = 0x00; // STATUS
             pkt->len = 2;
@@ -82,12 +85,13 @@ packet_t* process_pkt(packet_t* pkt)
             break;
         }
         
-        if(pkt == NULL || pkt->seq != seq) break;
+        if(pkt == NULL || pkt->seq != seq) { pkt->len = 0; break; }
         
         if(req == 00 && pkt->data[0] == 0x01 && pkt->data[1] == 0x00)
         {
             char* status[] = { "IDLE", "INIT", "FALSH", "OK" };
             dev_status = pkt->data[4]&3;
+            to = pkt->from;
             printf("Status: Dev: %02x, Pg.size: %d, %s, page: %d\n", pkt->data[2], pkt->data[3], status[dev_status], pkt->data[5]);
         }
         
@@ -100,7 +104,7 @@ packet_t* process_pkt(packet_t* pkt)
                 break;
             }
             // Init flash
-            pkt = (packet_t*)data;
+            pkt = (packet_t*)pkt_buff;
             pkt->data[0] = 0x04;  // WRITE
             pkt->data[1] = 0x80;  // FF_INIT
             pkt->data[2] = 0x02;  // magic
@@ -113,7 +117,7 @@ packet_t* process_pkt(packet_t* pkt)
         {
             if(pkt->data[1] == 0x00)
             {
-                pkt = (packet_t*)data;
+                pkt = (packet_t*)pkt_buff;
                 pkt->data[0] = 0x02; // READ
                 pkt->data[1] = 0x00; // STATUS
                 pkt->len = 2;
@@ -138,7 +142,7 @@ packet_t* process_pkt(packet_t* pkt)
                 break;
             }
             // Write flash
-            pkt = (packet_t*)data;
+            pkt = (packet_t*)pkt_buff;
             pkt->data[0] = 0x04;  // WRITE
             pkt->data[1] = 0xC0;  // FF_WRITE
             pkt->len = 2;
@@ -150,7 +154,7 @@ packet_t* process_pkt(packet_t* pkt)
         {
             if(pkt->data[1] == 0x00)
             {
-                pkt = (packet_t*)data;
+                pkt = (packet_t*)pkt_buff;
                 pkt->data[0] = 0x02; // READ
                 pkt->data[1] = 0x00; // STATUS
                 pkt->len = 2;
@@ -175,7 +179,7 @@ packet_t* process_pkt(packet_t* pkt)
                 break;
             }
             // Write page
-            pkt = (packet_t*)data;
+            pkt = (packet_t*)pkt_buff;
             pkt->data[0] = 0x04;  // WRITE
             pkt->data[1] = 0xC3;  // FF_PAGE
             memcpy(pkt->data+2, src+pos, MAX_DATA_LEN-2);
@@ -189,7 +193,7 @@ packet_t* process_pkt(packet_t* pkt)
             if(pkt->data[1] == 0x00)
             {
                 pos += MAX_DATA_LEN-2;
-                pkt = (packet_t*)data;
+                pkt = (packet_t*)pkt_buff;
                 pkt->data[0] = 0x02; // READ
                 pkt->data[1] = 0x00; // STATUS
                 pkt->len = 2;
@@ -199,7 +203,7 @@ packet_t* process_pkt(packet_t* pkt)
             }
             else if(pkt->data[1] == 0x03) // Busy
             {
-                pkt = (packet_t*)data;
+                pkt = (packet_t*)pkt_buff;
                 pkt->data[0] = 0x02; // READ
                 pkt->data[1] = 0x00; // STATUS
                 pkt->len = 2;
@@ -218,7 +222,7 @@ packet_t* process_pkt(packet_t* pkt)
         {
             // Calc CRC
             ushort crc = crc16(src, data_len, 0);
-            pkt = (packet_t*)data;
+            pkt = (packet_t*)pkt_buff;
             pkt->data[0] = 0x04;  // WRITE
             pkt->data[1] = 0xC4;  // FF_CRC
             pkt->data[2] = 0;
@@ -237,7 +241,7 @@ packet_t* process_pkt(packet_t* pkt)
             if(pkt->data[1] == 0x00)
             {
                 printf("CRC - OK.\n");
-                pkt = (packet_t*)data;
+                pkt = (packet_t*)pkt_buff;
                 pkt->data[0] = 0x02; // READ
                 pkt->data[1] = 0x00; // STATUS
                 pkt->len = 2;
@@ -278,22 +282,23 @@ int main(int argc, char** argv)
     src = f_data;
     data_len = sizeof(f_data);
     
-    packet_t* pkt = NULL;
+    packet_t* p = process_pkt(NULL);
     
     do
     {
-        pkt = process_pkt(pkt);
-        if(pkt)
+        if(p != NULL)
         {
-            pkt_dump(pkt);
-            udp_tx_packet(pkt);
+            pkt_dump("to udp ", p);
+            udp_tx_packet(p);
         }
-        packet_t* pkt = udp_rx_packet();
-        if(pkt)
+        p = udp_rx_packet();
+        if(p && p->from != node_id)
         {
-            pkt_dump(pkt);
+            pkt_dump("from udp ", p);
+            p = process_pkt(p);
             continue;
         }
+        p = NULL;
         usleep(1000); // 1 ms
     } while(1);
     

@@ -59,7 +59,7 @@ uchar cmd_write(uchar len, uchar* data)
     uchar res = 01;
     switch(data[1])
     {
-    case 80:
+    case 0x80:
         {   // Switch to flash mode
             if(data[2] == 02 && status == S_IDLE)
             {
@@ -274,6 +274,9 @@ int main()
     set_sleep_mode(SLEEP_MODE_IDLE);
     wdt_enable(WDTO_2S);
 
+    GICR = (1<<IVCE);
+    GICR = (1<<IVSEL);
+    
     // Global enable interrupts
     sei();
 
