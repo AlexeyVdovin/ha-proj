@@ -20,7 +20,7 @@ CC = gcc
 CFLAGS = -g -O0 $(INCLUDE)
 LDFLAGS = -g
 
-AVR_CFLAGS = -g -Wall -Os -mmcu=$(MCU_TARGET) $(INCLUDE)
+AVR_CFLAGS = -g -Wall -Os -mmcu=$(MCU_TARGET) $(INCLUDE) -D_CFG_NODE_MAC=0x12345678
 AVR_TARGET_LDFLAGS = -Wl,-Map,target/$(PRG).map
 AVR_BTLDR_LDFLAGS = -Wl,-section-start=.text=0x1800,-Map,target/bootloader.map 
 

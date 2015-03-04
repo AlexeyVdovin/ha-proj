@@ -41,13 +41,21 @@ static packet_t* rx_packet()
     _rx_pos = rx_pos;
     return NULL;
 }
-
+/*
 static void tx_packet(packet_t* pkt)
 {
     uchar i, *c = (uchar*)pkt;
     ushort* crc = (ushort*)(pkt->data + pkt->len);
     *crc = packet_crc(pkt);
     for(i = 0; i < pkt->len + sizeof(packet_t)+2; ++i) tx_byte(c[i]);
+}
+*/
+static void tx_packet(packet_t* pkt)
+{
+    uchar i = pkt->len + sizeof(packet_t)+2, *c = (uchar*)pkt;
+    ushort* crc = (ushort*)(pkt->data + pkt->len);
+    *crc = packet_crc(pkt);
+    while(--i) tx_byte(*c++);
 }
 
 #endif /* _PACKET_IO_H_ */

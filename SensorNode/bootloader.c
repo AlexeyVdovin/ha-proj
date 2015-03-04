@@ -18,8 +18,6 @@
 
 static uchar mcucsr;
 
-uchar data[] = { DATA_ID1, DATA_ID2, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00 };
-
 enum
 {
     S_IDLE = 0,
@@ -36,7 +34,14 @@ static uchar buff[WR_BUFF_SIZE];
 static ushort wr_page;
 static ushort wr_pos;
 
-uchar cmd_read(uchar len, uchar* data)
+static ushort calc_crc(ushort addr, ushort end)
+{
+    ushort crc = 0;
+    while(addr <= end) { ++addr; crc = _crc_xmodem_update(crc, pgm_read_byte(addr)); }
+    return crc;
+}
+
+static uchar cmd_read(uchar len, uchar* data)
 {
     switch(data[1])
     {
@@ -54,7 +59,7 @@ uchar cmd_read(uchar len, uchar* data)
     return len;
 }
 
-uchar cmd_write(uchar len, uchar* data)
+static uchar cmd_write(uchar len, uchar* data)
 {
     uchar res = 01;
     switch(data[1])
@@ -91,7 +96,7 @@ uchar cmd_write(uchar len, uchar* data)
             {
                 if(wr_pos + len - 2 < WR_BUFF_SIZE)
                 {
-                    memcpy(buff + wr_pos, data+2, len-2);
+                    memmove(buff + wr_pos, data+2, len-2);
                     wr_pos += len-2;
                     res = 00;
                 }
@@ -111,13 +116,15 @@ uchar cmd_write(uchar len, uchar* data)
         {
             if(status == S_FLASH_WR || status == S_IDLE)
             {
-                ushort i, calc = 0;
-                ushort start = data[2] + (data[3] << 8);
-                ushort end = data[4] + (data[5] << 8);
-                ushort crc = data[6] + (data[7] << 8);
-                for(i = start; i <= end; ++i) calc = _crc_xmodem_update(calc, pgm_read_byte(i));
-                if(crc == calc) res = 00; // CRC OK
-                else            res = 04; // CRC missmatch
+                ushort end   = (ushort)(data[2]) + (data[3] << 8);
+                ushort crc   = (ushort)(data[4]) + (data[5] << 8);
+                if(crc == calc_crc(0, end))
+                {
+                    cfg_set_flash_size(end);
+                    cfg_set_flash_crc(crc);
+                    res = 00; // CRC OK
+                }
+                else res = 04; // CRC missmatch
             }
             len = 2;
         }
@@ -129,7 +136,7 @@ uchar cmd_write(uchar len, uchar* data)
     return len;
 }
 
-packet_t* cmd_proc(packet_t* pkt)
+static packet_t* cmd_proc(packet_t* pkt)
 {
     uchar len = 0;
         
@@ -150,15 +157,16 @@ packet_t* cmd_proc(packet_t* pkt)
     return pkt;
 }
 
+static void (*jump_to_app)(void) = 0x0000;
 
 int main()
 {
     static uchar fs = S_IDLE;
     uint i;
     packet_t* pkt;
+    mcucsr = MCUCSR;
 
 #if 0    
-    mcucsr = MCUCSR;
     // Reset Source checking
     if (MCUCSR & 1)
        {
@@ -209,35 +217,6 @@ int main()
     PORTD=0x0B;
     DDRD=0x0E;
 
-    // Timer/Counter 0 initialization
-    // Clock source: System Clock
-    // Clock value: Timer 0 Stopped
-    TCCR0=0x00;
-    TCNT0=0x00;
-
-    // Timer/Counter 1 initialization
-    // Clock source: System Clock
-    // Clock value: SYSTEM_CLOCK/1
-    // Mode: Fast PWM top=03FFh
-    // OC1A output: Non-Inv.
-    // OC1B output: Non-Inv.
-    // Noise Canceler: Off
-    // Input Capture on Falling Edge
-    // Timer 1 Overflow Interrupt: Off
-    // Input Capture Interrupt: Off
-    // Compare A Match Interrupt: Off
-    // Compare B Match Interrupt: Off
-    TCCR1A=0xA3;
-    TCCR1B=0x09;
-    TCNT1H=0x00;
-    TCNT1L=0x00;
-    ICR1H=0x00;
-    ICR1L=0x00;
-    OCR1AH=0x00;
-    OCR1AL=0x00;
-    OCR1BH=0x00;
-    OCR1BL=0x00;
-    
     // Timer/Counter 2 initialization
     // Clock source: System Clock
     // Clock value: 11.719 kHz
@@ -256,12 +235,6 @@ int main()
     // Timer(s)/Counter(s) Interrupt(s) initialization
     TIMSK=0x80;
 
-    // Analog Comparator initialization
-    // Analog Comparator: Off
-    // Analog Comparator Input Capture by Timer/Counter 1: Off
-    ACSR=0x80;
-    SFIOR=0x00;
-
     cfg_init();
     sio_init();
 
@@ -273,14 +246,19 @@ int main()
     
     set_sleep_mode(SLEEP_MODE_IDLE);
     wdt_enable(WDTO_2S);
+    
+    if(calc_crc(0, cfg_flash_size()) == cfg_flash_crc())
+    {
+        MCUCSR = mcucsr;
+        jump_to_app();
+    }
 
+    // Move interrupt vectors to bootloader section
     GICR = (1<<IVCE);
     GICR = (1<<IVSEL);
     
     // Global enable interrupts
     sei();
-
- 	data[3] = cfg_node_id();
 
  	for (;;)
     {
@@ -291,9 +269,11 @@ int main()
         if(pkt) pkt = cmd_proc(pkt);
         if(pkt) rs485_tx_packet(pkt);
         
+        ushort addr = wr_page*SPM_PAGESIZE;
+        
         if(fs == S_IDLE && wr_pos >= SPM_PAGESIZE)
         {
-            boot_page_erase(wr_page);
+            boot_page_erase(addr);
             fs = S_FLASH_EN;
         }
         
@@ -303,11 +283,11 @@ int main()
             {
                 // Set up little-endian word.
                 ushort w = buff[i] + (buff[i+1] << 8);
-                boot_page_fill(wr_page + i, w);
+                boot_page_fill(addr + i, w);
             }
-            wr_pos -= SPM_PAGESIZE;
+            wr_pos -= i;
             memmove(buff, buff+i, wr_pos);
-            boot_page_write (wr_page); // Store buffer in flash page.
+            boot_page_write (addr);
             fs = S_FLASH_WR;
         }
         
@@ -321,3 +301,4 @@ int main()
     }
     return 0;
 }
+
