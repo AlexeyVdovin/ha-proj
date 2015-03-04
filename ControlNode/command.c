@@ -41,8 +41,15 @@ static uchar cmd_read_sensor(uchar len, uchar* data)
         n = 2;
         break;
     case 1:
-        // Read ADC In [0-F]
-        val = adc_read(data[2] & 0x0F);
+        // Read ADC In [0-1F]
+        // 0 - Vin
+        // 1 - Ch1 current sence
+        // 2 - Ch0 Vout
+        // 3 - Ch0 current sence
+        // 4 - Ch1 Vout
+        // 1E - 1.1V
+        // 1F - 0V
+        val = adc_read(data[2] & 0x1F);
 	    data[1] = 0x00; /* OK */
         data[2] = (val >> 8) & 0x00FF;
         data[3] = val & 0x00FF;

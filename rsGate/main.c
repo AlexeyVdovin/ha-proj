@@ -24,7 +24,6 @@ static void init()
 {
     timer_init();
     sio_init();
-    rs485_init();
     udp_init();
 }
 

@@ -36,7 +36,8 @@
 
 /* for <util/setbaud.h> */
 #define F_CPU                     SYSTEM_CLOCK
-#define BAUD                      57600
+// #define BAUD                      57600
+#define BAUD                      9600
 
 /* Timer */
 #define TIMER_ISR   TIMER2_COMP_vect

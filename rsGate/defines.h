@@ -36,7 +36,7 @@
 
 /* for <util/setbaud.h> */
 #define F_CPU                     SYSTEM_CLOCK
-#define BAUD                      57600
+#define BAUD                      9600
 
 
 #endif
