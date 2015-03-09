@@ -58,23 +58,22 @@
 #define RX_BUFFER_SIZE 32
 #define TX_BUFFER_SIZE 32
 
-#define SIO_RXC_ISR  USART_RXC_vect
-#define SIO_TXC_ISR  USART_TXC_vect
+#define SIO_RXC_ISR  USART_RX_vect
+#define SIO_TXC_ISR  USART_TX_vect
 #define SIO_UDRE_ISR USART_UDRE_vect
 
-#define SIO_UCSRA   UCSRA
-#define SIO_UDR     UDR
-#define SIO_UCSRB   UCSRB
-#define SIO_UDRIE   UDRIE
-#define SIO_UCSRC   UCSRC
-#define SIO_UBRRH   UBRRH
-#define SIO_UBRRL   UBRRL
-#define SIO_U2X     U2X
-#define SIO_TXEN    TXEN
-#define SIO_RXEN    RXEN
-#define SIO_TXCIE   TXCIE
-#define SIO_RXCIE   RXCIE
-#define SIO_UDRIE   UDRIE
+#define SIO_UCSRA   UCSR0A
+#define SIO_UDR     UDR0
+#define SIO_UCSRB   UCSR0B
+#define SIO_UDRIE   UDRIE0
+#define SIO_UCSRC   UCSR0C
+#define SIO_UBRRH   UBRR0H
+#define SIO_UBRRL   UBRR0L
+#define SIO_U2X     U2X0
+#define SIO_TXEN    TXEN0
+#define SIO_RXEN    RXEN0
+#define SIO_TXCIE   TXCIE0
+#define SIO_RXCIE   RXCIE0
 
 /* ADC */
 

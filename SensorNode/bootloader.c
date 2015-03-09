@@ -164,39 +164,7 @@ int main()
     static uchar fs = S_IDLE;
     uint i;
     packet_t* pkt;
-    mcucsr = MCUCSR;
-
-#if 0    
-    // Reset Source checking
-    if (MCUCSR & 1)
-       {
-       // Power-on Reset
-       MCUCSR=0;
-       // Place your code here
-
-       }
-    else if (MCUCSR & 2)
-       {
-       // External Reset
-       MCUCSR=0;
-       // Place your code here
-
-       }
-    else if (MCUCSR & 4)
-       {
-       // Brown-Out Reset
-       MCUCSR=0;
-       // Place your code here
-
-       }
-    else
-       {
-       // Watchdog Reset
-       MCUCSR=0;
-       // Place your code here
-
-       };
-#endif
+    mcucsr = MCUSR;
 
     // Input/Output Ports initialization
     // Port B initialization
@@ -217,45 +185,98 @@ int main()
     PORTD=0x0B;
     DDRD=0x0E;
 
+    // Timer/Counter 0 initialization
+    // Clock source: System Clock
+    // Clock value: Timer 0 Stopped
+    // Mode: Normal top=FFh
+    // OC0A output: Disconnected
+    // OC0B output: Disconnected
+    TCCR0A=0x00;
+    TCCR0B=0x00;
+    TCNT0=0x00;
+    OCR0A=0x00;
+    OCR0B=0x00;    
+    // Timer/Counter 0 Interrupt(s) initialization
+    TIMSK0=0x00;
+
+    // Timer/Counter 1 initialization
+    // Clock source: System Clock
+    // Clock value: 12000.000 kHz
+    // Mode: Fast PWM top=03FFh
+    // OC1A output: Non-Inv.
+    // OC1B output: Non-Inv.
+    // Noise Canceler: Off
+    // Input Capture on Falling Edge
+    // Timer 1 Overflow Interrupt: Off
+    // Input Capture Interrupt: Off
+    // Compare A Match Interrupt: Off
+    // Compare B Match Interrupt: Off
+    TCCR1A=0xA3;
+    TCCR1B=0x09;
+    TCNT1H=0x00;
+    TCNT1L=0x00;
+    ICR1H=0x00;
+    ICR1L=0x00;
+    OCR1AH=0x00;
+    OCR1AL=0x00;
+    OCR1BH=0x00;
+    OCR1BL=0x00;
+    // Timer/Counter 1 Interrupt(s) initialization
+    TIMSK1=0x00;
+    
     // Timer/Counter 2 initialization
     // Clock source: System Clock
     // Clock value: 11.719 kHz
-    // Mode: CTC top=OCR2
-    // OC2 output: Disconnected
-    ASSR  = 0x00;
-    TCCR2 = 0x0F;
-    TCNT2 = 0x00;
-    OCR2  = 0x75;
+    // Mode: CTC top=OCR2A
+    // OC2A output: Disconnected
+    // OC2B output: Disconnected
+    ASSR=0x00;
+    TCCR2A=0x02;
+    TCCR2B=0x07;
+    TCNT2=0x00;
+    OCR2A=0x75;
+    OCR2B=0x00;
+    // Timer/Counter 2 Interrupt(s) initialization
+    TIMSK2=0x02;
     
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
-    MCUCR=0x00;
+    // Interrupt on any change on pins PCINT0-7: Off
+    // Interrupt on any change on pins PCINT8-14: Off
+    // Interrupt on any change on pins PCINT16-23: Off
+    EICRA=0x00;
+    EIMSK=0x00;
+    PCICR=0x00;
 
-    // Timer(s)/Counter(s) Interrupt(s) initialization
-    TIMSK=0x80;
+    // Analog Comparator initialization
+    // Analog Comparator: Off
+    // Analog Comparator Input Capture by Timer/Counter 1: Off
+    ACSR=0x80;
+    ADCSRB=0x00;
 
     cfg_init();
     sio_init();
 
     // Watchdog Timer initialization
     // Watchdog Timer Prescaler: OSC/1024k
-    WDTCR=0x1E;
+  	wdt_reset();
+    WDTCSR=0x39;
     asm (" NOP" ); 
-    WDTCR=0x0E;
+    WDTCSR=0x29;
     
     set_sleep_mode(SLEEP_MODE_IDLE);
     wdt_enable(WDTO_2S);
     
     if(calc_crc(0, cfg_flash_size()) == cfg_flash_crc())
     {
-        MCUCSR = mcucsr;
+        MCUSR = mcucsr;
         jump_to_app();
     }
 
     // Move interrupt vectors to bootloader section
-    GICR = (1<<IVCE);
-    GICR = (1<<IVSEL);
+    MCUCR = (1<<IVCE);
+    MCUCR = (1<<IVSEL);
     
     // Global enable interrupts
     sei();

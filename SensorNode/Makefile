@@ -1,7 +1,7 @@
 
 PRG = SensorNode
 
-MCU_TARGET = atmega8
+MCU_TARGET = atmega328p
 
 LIB = ../rsLib
 
@@ -22,7 +22,7 @@ LDFLAGS = -g
 
 AVR_CFLAGS = -g -Wall -Os -mmcu=$(MCU_TARGET) $(INCLUDE) -D_CFG_NODE_MAC=0x12345678
 AVR_TARGET_LDFLAGS = -Wl,-Map,target/$(PRG).map
-AVR_BTLDR_LDFLAGS = -Wl,-section-start=.text=0x1800,-Map,target/bootloader.map 
+AVR_BTLDR_LDFLAGS = -Wl,-section-start=.text=0x7000,-Map,target/bootloader.map 
 
 AVR_CC      = avr-gcc
 AVR_OBJCOPY = avr-objcopy
