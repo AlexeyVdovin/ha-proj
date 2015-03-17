@@ -28,7 +28,7 @@ typedef struct
 /* 
    Registration procedure:
     - Master Send broadcast registration request -> 00 [00, 00 as Data]
-    - Registration response from 00 -> Master with [MAC as Data]
+    - Registration response from 00 -> Master with 01 00 [MAC as Data]
     - Master Send assigned ID as broadcast [00, ID, MAC as Data]
     - Registered node respond to Master [01 OK]
 */

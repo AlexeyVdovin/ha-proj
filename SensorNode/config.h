@@ -3,6 +3,8 @@
 
 #include "defines.h"
 
+#define MODE_BOOTLOADER     0
+
 void cfg_init();
 
 #ifdef __AVR__
@@ -18,10 +20,17 @@ void cfg_init();
 #define EE_FN_GET(type, var) static type cfg_##var() { return EE_VAL(var); }
 #define EE_FN_SET(type, var) static void cfg_set_##var(type val) { EE_VAL(var) = val; eeprom_busy_wait(); EE_WRITE(var); }
 
+static void cfg_flush() { eeprom_busy_wait(); }
+
+EE_DEF(uchar, boot_mode);
 EE_DEF(uchar, node_id);
 EE_DEF(ulong, node_mac);
 EE_DEF(ushort, flash_size);
 EE_DEF(ushort, flash_crc);
+EE_DEF(long, ds1820_period);
+
+EE_FN_GET(uchar, boot_mode)
+EE_FN_SET(uchar, boot_mode)
 
 EE_FN_GET(uchar, node_id)
 EE_FN_SET(uchar, node_id)
@@ -34,22 +43,9 @@ EE_FN_SET(ushort, flash_size)
 EE_FN_GET(ushort, flash_crc)
 EE_FN_SET(ushort, flash_crc)
 
+EE_FN_GET(long, ds1820_period)
+EE_FN_SET(long, ds1820_period)
+
 #endif
-
-/*
-uchar cfg_node_id();
-void cfg_set_node_id(uchar val);
-
-ulong cfg_node_mac();
-
-ushort cfg_flash_size();
-void cfg_set_flash_size(ushort val);
-
-ushort cfg_flash_crc();
-void cfg_set_flash_crc(ushort val);
-
-ushort cfg_ds1820_period();
-void cfg_set_ds1820_period(ushort val);
-*/
 
 #endif /* _CONFIG_H_ */

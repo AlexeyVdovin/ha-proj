@@ -18,6 +18,13 @@
 
 static uchar mcucsr;
 
+void reboot()
+{
+    cli();
+    wdt_enable(WDTO_250MS);
+    while(1);
+}
+
 enum
 {
     S_IDLE = 0,
@@ -129,6 +136,18 @@ static uchar cmd_write(uchar len, uchar* data)
             len = 2;
         }
         break;
+    case 0xCC: // Reboot
+        {
+            if(status == S_IDLE)
+            {
+                cfg_set_boot_mode(data[2]);
+                cfg_flush();
+                reboot();
+                res = 2; // Not implemented
+                len = 2;
+            }
+        }
+        break;
     default:
         return 0;
     }
@@ -136,17 +155,50 @@ static uchar cmd_write(uchar len, uchar* data)
     return len;
 }
 
+static uchar cmd_reg(uchar len, uchar* data)
+{
+    ulong mac = cfg_node_mac();
+
+    if(len == 3 && data[1] == 0 && data[2] == 0)
+    {
+        // TODO: sleep random amount of time before send response
+        if(len == 3) // No any response yet
+        {
+            data[2] = (uchar)(mac & 0xFF);
+            data[3] = (uchar)((mac >> 8) & 0xFF);
+            data[4] = (uchar)((mac >> 16) & 0xFF);
+            data[5] = (uchar)((mac >> 24) & 0xFF);
+            len = 6;
+        }
+    }
+    else if(len == 6 && 
+        data[2] == (uchar)(mac & 0xFF) && 
+        data[3] == (uchar)((mac >> 8) & 0xFF) && 
+        data[4] == (uchar)((mac >> 16) & 0xFF) && 
+        data[5] == (uchar)((mac >> 24) & 0xFF))
+    {
+        cfg_set_node_id(data[1]);
+        data[1] = 0x00;
+        len = 2;
+    }
+    return len;
+}
+
 static packet_t* cmd_proc(packet_t* pkt)
 {
     uchar len = 0;
         
+    if(pkt->data[0] == 0x00 && pkt->len > 2 && pkt->to == cfg_node_id()) len = cmd_reg(pkt->len, pkt->data);
+    else if(pkt->data[0] == 0x02 && pkt->len > 1) len = cmd_read(pkt->len, pkt->data);
+    else if(pkt->data[0] == 0x04 && pkt->len > 1) len = cmd_write(pkt->len, pkt->data);
+
     pkt->to = pkt->from;
     pkt->from = cfg_node_id();
     pkt->via = 0;
-    
-    if(pkt->data[0] == 0x02 && pkt->len > 1) len = cmd_read(pkt->len, pkt->data);
-    if(pkt->data[0] == 0x04 && pkt->len > 1) len = cmd_write(pkt->len, pkt->data);
 
+    // No negative responses for node registration expected
+    if(len == 0 && pkt->data[0] == 0x00) return NULL;
+    
     pkt->data[0] = 0x01;
     if(!len)
     {
@@ -159,12 +211,21 @@ static packet_t* cmd_proc(packet_t* pkt)
 
 static void (*jump_to_app)(void) = 0x0000;
 
+void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
+
+void wdt_init(void)
+{
+    mcucsr = MCUSR;
+    MCUSR = 0;
+  	wdt_reset();
+    wdt_disable();
+}
+
 int main()
 {
     static uchar fs = S_IDLE;
     uint i;
     packet_t* pkt;
-    mcucsr = MCUSR;
 
     // Input/Output Ports initialization
     // Port B initialization
@@ -268,7 +329,7 @@ int main()
     set_sleep_mode(SLEEP_MODE_IDLE);
     wdt_enable(WDTO_2S);
     
-    if(calc_crc(0, cfg_flash_size()) == cfg_flash_crc())
+    if(calc_crc(0, cfg_flash_size()) == cfg_flash_crc() && cfg_boot_mode() != MODE_BOOTLOADER)
     {
         MCUSR = mcucsr;
         jump_to_app();
