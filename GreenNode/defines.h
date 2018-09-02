@@ -40,7 +40,7 @@
 #define BAUD                      9600
 
 /* Timer */
-#define TIMER_ISR   TIMER2_COMP_vect
+#define TIMER_ISR   TIMER2_COMPA_vect
 #define TIMER_TCCR  TCCR2
 #define TIMER_OCR   OCR2
 #define TIMER_TCNT  TCNT2

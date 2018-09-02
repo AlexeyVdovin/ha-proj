@@ -5,7 +5,7 @@ MCU_TARGET = atmega328p
 
 LIB = ../rsLib
 
-OBJ = main.o config.o $(LIB)/timer.o $(LIB)/adc.o $(LIB)/sio.o
+OBJ = main.o config.o $(LIB)/timer.o $(LIB)/adc.o $(LIB)/sio.o $(LIB)/twi_slave.o
 
 AVR_OBJ = $(patsubst %.o,%.obj,$(OBJ))
 
