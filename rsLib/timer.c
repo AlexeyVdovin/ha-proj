@@ -5,6 +5,7 @@
 
 #include "timer.h"
 
+
 void timer_init()
 {
     
@@ -66,14 +67,20 @@ long get_time()
     return t;
 }
 
+inline bool timer_check(long timeout)
+{
+  long t = get_time(); 
+  return ((t - timeout) <  (1UL << 31)) ? (timeout <= t) : false;
+}
+
 void delay_t(uchar t)
 {
     long s = get_time() + t;
     do
     {
         wdt_reset(); 
-//        sleep_mode();
-    } while(s > get_time());
+        sleep_mode();
+    } while(timer_check(s));
 }
 
 void delay_s(uchar s)
@@ -83,7 +90,7 @@ void delay_s(uchar s)
     {
         wdt_reset(); 
         sleep_mode();
-    } while(t > get_time());
+    } while(timer_check(t));
 }
 
 #endif /* __AVR__ */

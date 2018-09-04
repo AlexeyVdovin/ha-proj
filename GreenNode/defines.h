@@ -36,7 +36,6 @@
 
 /* for <util/setbaud.h> */
 #define F_CPU                     SYSTEM_CLOCK
-// #define BAUD                      57600
 #define BAUD                      9600
 
 /* Timer */
@@ -47,13 +46,13 @@
 #define TIMER_ASSR  ASSR
 
 /* SIO */
-#define Tx_On()  (PORTD |=  0x04)
-#define Tx_Off() (PORTD &= ~0x04)
-#define Rx_On()  (PORTD &= ~0x08)
-#define Rx_Off() (PORTD |=  0x08)
+#define Tx_On()
+#define Tx_Off()
+#define Rx_On()
+#define Rx_Off()
 
-#define Led_On()    (PORTC |=  0x02)
-#define Led_Off()   (PORTC &= ~0x02)
+#define Led_On()    (PORTD |=  0x40)
+#define Led_Off()   (PORTD &= ~0x40)
 
 #define RX_BUFFER_SIZE 32
 #define TX_BUFFER_SIZE 32
@@ -76,23 +75,5 @@
 #define SIO_RXCIE   RXCIE0
 
 /* ADC */
-
-/* PWM */
-#define PWM_CH1     OCR1A
-#define PWM_CH2     OCR1B
-/* Clock Select Description
-    0 - Off
-    1 - 1/1
-    2 - 1/8
-    3 - 1/64
-    4 - 1/256
-    5 - 1/1024
-*/
-#define PWM_FREQ(n) (TCCR1B = (TCCR1B & 0xF8) | ((n) & 0x07))
-
-/* 1-WIRE */
-#define DS1W_PORT           C // Port C
-#define DS1W_PIN            0 // Bit #0
-#define DS1820_MAXPROBES    4
 
 #endif
