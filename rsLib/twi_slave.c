@@ -8,6 +8,12 @@
 
 #include "twi_slave.h"
 
+/* -------------------------------------------------------------------------------------------------------------
+Command:
+S ADDR W A | CMD | ARGS | RS ADR R A | RET | DATA | P
+
+---------------------------------------------------------------------------------------------------------------- */
+
 ISR(TWI_vect)
 {
     uint8_t data;
@@ -17,7 +23,7 @@ ISR(TWI_vect)
         case TW_SR_SLA_ACK:
         { // device has been addressed
             // clear TWI interrupt flag, prepare to receive next byte and acknowledge
-		    TWCR |= (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN); 
+            TWCR |= (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN); 
             break;
         }
         case TW_SR_DATA_ACK:
@@ -35,7 +41,7 @@ ISR(TWI_vect)
         default:
         {
             // if none of the above apply prepare TWI to be addressed again
-		    TWCR |= (1<<TWIE) | (1<<TWEA) | (1<<TWEN);
+            TWCR |= (1<<TWIE) | (1<<TWEA) | (1<<TWEN);
         }
             
     }            
@@ -44,8 +50,8 @@ ISR(TWI_vect)
 void twi_init(uint8_t address)
 {
     TWAR = (address << 1);
-	// set the TWCR to enable address matching and enable TWI, clear TWINT, enable TWI interrupt
-	TWCR = (1<<TWIE) | (1<<TWEA) | (1<<TWINT) | (1<<TWEN);
+    // set the TWCR to enable address matching and enable TWI, clear TWINT, enable TWI interrupt
+    TWCR = (1<<TWIE) | (1<<TWEA) | (1<<TWINT) | (1<<TWEN);
 }
 
 #endif /* __AVR__ */
