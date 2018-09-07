@@ -11,47 +11,114 @@
 /* -------------------------------------------------------------------------------------------------------------
 Command:
 S ADDR W A | CMD | ARGS | RS ADR R A | RET | DATA | P
-
 ---------------------------------------------------------------------------------------------------------------- */
+
+uint8_t regs[64];
 
 ISR(TWI_vect)
 {
-    uint8_t data;
+    static uint8_t adr = 0, n = 0;
+    uint8_t data = 0x77;
+    uint8_t cr = 0;
     
     switch(TWSR & 0xF8)
     {
         case TW_SR_SLA_ACK:
-        { // device has been addressed
-            // clear TWI interrupt flag, prepare to receive next byte and acknowledge
-            TWCR |= (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN); 
-            break;
-        }
-        case TW_SR_DATA_ACK:
-        { // data has been received in slave receiver mode
-            data = TWDR;
+        { // SLA+W received, ACK returned
+            PORTB |= 0x01;
+            n = 0;
+            cr = (1<<TWEA);
 
             break;
         }
+        case TW_ST_SLA_ACK:
+        { // SLA+R received, ACK returned
+            PORTD |= 0x80;
+            if(n == 1)
+            {
+                if(adr < sizeof(regs)/sizeof(regs[0]))
+                {
+                    data = regs[adr];
+                    cr = (1<<TWEA);
+                }
+                else
+                {
+                    data = 0xFF;
+                }
+                TWDR = data;
+                ++adr;
+            }
+            break;
+        }
+        case TW_SR_DATA_ACK:
+        { // data received, ACK returned
+            data = TWDR;
+            if(n == 0) ++n, adr = data;
+            else
+            {
+                if(adr < sizeof(regs)/sizeof(regs[0]))
+                {
+                    regs[adr] = data;
+                    cr = (1<<TWEA);
+                }
+                // Prepare for next register reception
+                n = 1;
+                ++adr;
+            }
+            // PORTB |= 0x04;
+            break;
+        }
         case TW_ST_DATA_ACK:
-        { // device has been addressed to be a transmitter
-            TWDR = data;
-         
+        { // data transmitted, ACK received
+            if(n == 1)
+            {
+                if(adr < sizeof(regs)/sizeof(regs[0]))
+                {
+                    data = regs[adr];
+                    cr = (1<<TWEA);
+                }
+                else
+                {
+                    data = 0xFF;
+                }
+                TWDR = data;
+                ++adr;
+            }
+            PORTB &= ~ 0x04;
+            break;
+        }
+        case TW_ST_LAST_DATA:
+        { // last data byte transmitted, ACK received
+            PORTD &= ~ 0x80;
+            
+            break;
+        }
+        case TW_SR_STOP:
+        { // Stop or Repeated start
+            PORTB &= ~ 0x01;
+            PORTD &= ~ 0x80;
+            PORTB &= ~ 0x04;
+
             break;
         }
         default:
         {
-            // if none of the above apply prepare TWI to be addressed again
-            TWCR |= (1<<TWIE) | (1<<TWEA) | (1<<TWEN);
+            break;
         }
             
-    }            
+    }
+    // clear TWI interrupt flag, prepare to receive next byte and acknowledge
+    TWCR |= (1<<TWIE) | (1<<TWINT) | cr | (1<<TWEN); 
 }
 
 void twi_init(uint8_t address)
 {
+    uint8_t i;
+    
     TWAR = (address << 1);
     // set the TWCR to enable address matching and enable TWI, clear TWINT, enable TWI interrupt
     TWCR = (1<<TWIE) | (1<<TWEA) | (1<<TWINT) | (1<<TWEN);
+    for(i = 0; i < sizeof(regs)/sizeof(regs[0]); ++i) regs[i] = 0;
 }
 
 #endif /* __AVR__ */
