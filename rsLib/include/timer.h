@@ -19,7 +19,7 @@ void delay_t(uchar t);
 /* Delay for n sec */
 void delay_s(uchar s);
 
-/* Check timeout is passed */
-bool timer_check(long timeout);
+/* Check timeout is expired */
+bool timeout_expired(long timeout);
 
 #endif /* _TIMER_H_ */

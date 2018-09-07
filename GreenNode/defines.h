@@ -51,8 +51,8 @@
 #define Rx_On()
 #define Rx_Off()
 
-#define Led_On()    (PORTD |=  0x40)
-#define Led_Off()   (PORTD &= ~0x40)
+#define Led_On()    (PORTD |=  0x80)
+#define Led_Off()   (PORTD &= ~0x80)
 
 #define RX_BUFFER_SIZE 32
 #define TX_BUFFER_SIZE 32

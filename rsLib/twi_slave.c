@@ -20,7 +20,7 @@ ISR(TWI_vect)
     static uint8_t adr = 0, n = 0;
     uint8_t data = 0x77;
     uint8_t cr = 0;
-    
+
     switch(TWSR & 0xF8)
     {
         case TW_SR_SLA_ACK:
@@ -90,7 +90,7 @@ ISR(TWI_vect)
         case TW_ST_LAST_DATA:
         { // last data byte transmitted, ACK received
             PORTD &= ~ 0x80;
-            
+
             break;
         }
         case TW_SR_STOP:
@@ -105,20 +105,25 @@ ISR(TWI_vect)
         {
             break;
         }
-            
+
     }
-    // clear TWI interrupt flag, prepare to receive next byte and acknowledge
-    TWCR |= (1<<TWIE) | (1<<TWINT) | cr | (1<<TWEN); 
+    // clear TWI interrupt flag, prepare to receive next byte
+    TWCR |= (1<<TWIE) | (1<<TWINT) | cr | (1<<TWEN);
 }
 
 void twi_init(uint8_t address)
 {
     uint8_t i;
-    
+
     TWAR = (address << 1);
-    // set the TWCR to enable address matching and enable TWI, clear TWINT, enable TWI interrupt
+    // Enable address matching, clear TWINT, enable TWI interrupt
     TWCR = (1<<TWIE) | (1<<TWEA) | (1<<TWINT) | (1<<TWEN);
     for(i = 0; i < sizeof(regs)/sizeof(regs[0]); ++i) regs[i] = 0;
+}
+
+void* get_reg(uint8_t adr)
+{
+    return (adr < sizeof(regs)/sizeof(regs[0]) ? regs+adr : 0);
 }
 
 #endif /* __AVR__ */

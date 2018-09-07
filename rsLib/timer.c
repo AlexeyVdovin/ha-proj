@@ -67,10 +67,10 @@ long get_time()
     return t;
 }
 
-inline bool timer_check(long timeout)
+inline bool timeout_expired(long timeout)
 {
   long t = get_time(); 
-  return ((t - timeout) <  (1UL << 31)) ? (timeout <= t) : false;
+  return ((t - timeout) <  (1UL << 31) && (timeout <= t)) ? true : false;
 }
 
 void delay_t(uchar t)
@@ -80,7 +80,7 @@ void delay_t(uchar t)
     {
         wdt_reset(); 
         sleep_mode();
-    } while(timer_check(s));
+    } while(!timeout_expired(s));
 }
 
 void delay_s(uchar s)
@@ -90,7 +90,7 @@ void delay_s(uchar s)
     {
         wdt_reset(); 
         sleep_mode();
-    } while(timer_check(t));
+    } while(!timeout_expired(t));
 }
 
 #endif /* __AVR__ */

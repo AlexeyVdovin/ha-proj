@@ -32,8 +32,8 @@ void io_init()
     // Port D initialization
     // Func7=In Func6=In Func5=In Func4=In Func3=Out Func2=Out Func1=Out Func0=In 
     // State7=T State6=T State5=T State4=T State3=1 State2=0 State1=1 State0=P 
-    PORTD = 0x04;
-    DDRD = 0xE4;
+    PORTD = 0x07;
+    DDRD = 0xE6;
 
     // Timer/Counter 0 initialization
     // Clock source: System Clock
@@ -151,21 +151,23 @@ void led_green_off()
 }
 
 
-static FILE my_stdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
-
 int main()
 {
+    static FILE my_stdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
     long s = get_time() + 100;
     io_init();
     twi_init(0x16);
+    
+    stdout = &my_stdout;
     
     PORTD |=  0x04;
 
  	for (;;)
     {
-        if(timer_check(s))
+        if(timeout_expired(s))
         {
-            // printf("Hello !\n");
+            // PORTB ^= 0x02;
+            printf("Hello !\n");
             s = get_time() + 100;
         }
     	wdt_reset();
