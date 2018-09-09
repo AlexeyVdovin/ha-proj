@@ -150,6 +150,19 @@ void led_green_off()
     PORTD &= ~ 0x40;
 }
 
+/* ADC Channels:
+ 00  ADC0 - 3.3V PiZ
+ 01  ADC1 - 5V PiZ
+ 02  ADC2 - 3.3V 1W
+ 03  ADC3 
+ 04  ADC4
+ 05  ADC5
+ 06  ADC6 - 12V In
+ 07  ADC7 - 12V PS
+ 0E  1.30V (VBG)
+ 0F  0V (GND)
+*/
+
 
 int main()
 {
@@ -166,9 +179,48 @@ int main()
     {
         if(timeout_expired(s))
         {
-            // PORTB ^= 0x02;
-            printf("Hello !\n");
+            static uint8_t ch = 0;
+            ushort ad = 0;
+            
+            // printf("Hello !\n");
             s = get_time() + 100;
+            
+            switch(ch)
+            {
+            case 0:
+                ad = adc_read(ch);
+                printf("3.3V Pi Zero = %d mV\n", (int)(4.26913 * ad));
+                ch = 1;
+                break;
+            case 1:
+                ad = adc_read(ch);
+                printf("5V Pi Zero = %d mV\n", (int)(6.46997 * ad));
+                ch = 2;
+                break;
+            case 2:
+                ad = adc_read(ch);
+                printf("3.3V 1Wire = %d mV\n", (int)(4.26295 * ad));
+                ch = 6;
+                break;
+            case 6:
+                ad = adc_read(ch);
+                printf("12V Input = %d mV\n", (int)(17.0763 * ad));
+                ch = 7;
+                break;
+            case 7:
+                ad = adc_read(ch);
+                printf("12V Power = %d mV\n", (int)(17.0763 * ad));
+                ch = 15;
+                break;
+            case 15:
+                ad = adc_read(ch);
+                printf("GND = %d mV\n", ad);
+                ch = 0;
+                break;
+            default:
+                ch = 0;
+                break;
+            }                    
         }
     	wdt_reset();
         sleep_mode();
