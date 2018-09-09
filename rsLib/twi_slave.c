@@ -17,6 +17,7 @@ uint8_t regs[64];
 
 ISR(TWI_vect)
 {
+    static ushort cnt = 0;
     static uint8_t adr = 0, n = 0;
     uint8_t data = 0x77;
     uint8_t cr = 0;
@@ -25,7 +26,7 @@ ISR(TWI_vect)
     {
         case TW_SR_SLA_ACK:
         { // SLA+W received, ACK returned
-            PORTB |= 0x01;
+            *(ushort*)get_reg(8*2) = ++cnt; // Update activity reg
             n = 0;
             cr = (1<<TWEA);
 
@@ -33,7 +34,6 @@ ISR(TWI_vect)
         }
         case TW_ST_SLA_ACK:
         { // SLA+R received, ACK returned
-            PORTD |= 0x80;
             if(n == 1)
             {
                 if(adr < sizeof(regs)/sizeof(regs[0]))
@@ -65,7 +65,6 @@ ISR(TWI_vect)
                 n = 1;
                 ++adr;
             }
-            // PORTB |= 0x04;
             break;
         }
         case TW_ST_DATA_ACK:
@@ -84,20 +83,15 @@ ISR(TWI_vect)
                 TWDR = data;
                 ++adr;
             }
-            PORTB &= ~ 0x04;
             break;
         }
         case TW_ST_LAST_DATA:
         { // last data byte transmitted, ACK received
-            PORTD &= ~ 0x80;
 
             break;
         }
         case TW_SR_STOP:
         { // Stop or Repeated start
-            PORTB &= ~ 0x01;
-            PORTD &= ~ 0x80;
-            PORTB &= ~ 0x04;
 
             break;
         }

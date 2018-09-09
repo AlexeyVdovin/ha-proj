@@ -3,6 +3,7 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
+#include <avr/pgmspace.h>
 
 #include "timer.h"
 #include "sio.h"
@@ -18,21 +19,21 @@ void io_init()
 
     // Input/Output Ports initialization
     // Port B initialization
-    // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=Out Func1=Out Func0=In 
-    // State7=T State6=T State5=T State4=T State3=T State2=0 State1=0 State0=T 
+    // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=Out Func1=Out Func0=In
+    // State7=T State6=T State5=T State4=T State3=T State2=0 State1=0 State0=T
     PORTB = 0x38;
     DDRB = 0x07;
 
     // Port C initialization
-    // Func6=In Func5=In Func4=In Func3=In Func2=In Func1=Out Func0=In 
-    // State6=T State5=T State4=T State3=T State2=T State1=0 State0=T 
+    // Func6=In Func5=In Func4=In Func3=In Func2=In Func1=Out Func0=In
+    // State6=T State5=T State4=T State3=T State2=T State1=0 State0=T
     PORTC = 0x08;
     DDRC = 0x00;
 
     // Port D initialization
-    // Func7=In Func6=In Func5=In Func4=In Func3=Out Func2=Out Func1=Out Func0=In 
-    // State7=T State6=T State5=T State4=T State3=1 State2=0 State1=1 State0=P 
-    PORTD = 0x07;
+    // Func7=In Func6=In Func5=In Func4=In Func3=Out Func2=Out Func1=Out Func0=In
+    // State7=T State6=T State5=T State4=T State3=1 State2=0 State1=1 State0=P
+    PORTD = 0x03;
     DDRD = 0xE6;
 
     // Timer/Counter 0 initialization
@@ -45,7 +46,7 @@ void io_init()
     TCCR0B = 0x00;
     TCNT0 = 0x00;
     OCR0A = 0x00;
-    OCR0B = 0x00;    
+    OCR0B = 0x00;
     // Timer/Counter 0 Interrupt(s) initialization
     TIMSK0 = 0x00;
 
@@ -73,7 +74,7 @@ void io_init()
     OCR1BL = 0x00;
     // Timer/Counter 1 Interrupt(s) initialization
     TIMSK1 = 0x00;
-   
+
     // Timer/Counter 2 initialization
     // Clock source: System Clock
     // Clock value: 11.719 kHz
@@ -88,7 +89,7 @@ void io_init()
     OCR2B = 0x00;
     // Timer/Counter 2 Interrupt(s) initialization
     TIMSK2 = 0x02;
-    
+
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
@@ -113,9 +114,9 @@ void io_init()
     // Watchdog Timer Prescaler: OSC/1024k
   	wdt_reset();
     WDTCSR = 0x39;
-    asm (" NOP" ); 
+    asm (" NOP" );
     WDTCSR = 0x29;
-    
+
     set_sleep_mode(SLEEP_MODE_IDLE);
     wdt_enable(WDTO_2S);
 
@@ -150,11 +151,24 @@ void led_green_off()
     PORTD &= ~ 0x40;
 }
 
+void piz_On()
+{
+    printf_P(PSTR("Pi Zero -> ON\n"));
+    PORTD |= 0x04;
+}
+
+void piz_Off()
+{
+    printf_P(PSTR("Pi Zero -> OFF\n"));
+    // FIXME: Temporary disabled actual Power OFF
+    // PORTD &= ~ 0x04;
+}
+
 /* ADC Channels:
  00  ADC0 - 3.3V PiZ
  01  ADC1 - 5V PiZ
  02  ADC2 - 3.3V 1W
- 03  ADC3 
+ 03  ADC3
  04  ADC4
  05  ADC5
  06  ADC6 - 12V In
@@ -163,6 +177,15 @@ void led_green_off()
  0F  0V (GND)
 */
 
+enum
+{
+    ST_BOOT = 0,
+    ST_POWER_ON,
+    ST_ACTIVE,
+    ST_TIMEOUT,
+    ST_POWER_OFF
+};
+
 
 int main()
 {
@@ -170,57 +193,179 @@ int main()
     long s = get_time() + 100;
     io_init();
     twi_init(0x16);
-    
+
     stdout = &my_stdout;
-    
-    PORTD |=  0x04;
 
  	for (;;)
     {
+        ushort ad = 0, val;
+
         if(timeout_expired(s))
         {
-            static uint8_t ch = 0;
-            ushort ad = 0;
-            
-            // printf("Hello !\n");
+            static long activity = -1, shutdown = -1;
+            static uint8_t ch = 0, status = ST_BOOT;
+
             s = get_time() + 100;
-            
+
             switch(ch)
             {
             case 0:
                 ad = adc_read(ch);
-                printf("3.3V Pi Zero = %d mV\n", (int)(4.26913 * ad));
+                val = (ushort)(4.26913 * ad);
+                *(ushort*)get_reg(ch*2) = val;
+                printf_P(PSTR("3.3V Pi Zero = %d mV\n"), val);
                 ch = 1;
                 break;
             case 1:
                 ad = adc_read(ch);
-                printf("5V Pi Zero = %d mV\n", (int)(6.46997 * ad));
+                val = (ushort)(6.46997 * ad);
+                *(ushort*)get_reg(ch*2) = val;
+                printf_P(PSTR("5V Pi Zero = %d mV\n"), val);
                 ch = 2;
                 break;
             case 2:
                 ad = adc_read(ch);
-                printf("3.3V 1Wire = %d mV\n", (int)(4.26295 * ad));
+                val = (ushort)(4.26295 * ad);
+                *(ushort*)get_reg(ch*2) = val;
+                printf_P(PSTR("3.3V 1Wire = %d mV\n"), val);
                 ch = 6;
                 break;
             case 6:
                 ad = adc_read(ch);
-                printf("12V Input = %d mV\n", (int)(17.0763 * ad));
+                val = (ushort)(17.0763 * ad);
+                *(ushort*)get_reg(ch*2) = val;
+                printf_P(PSTR("12V Input = %d mV\n"), val);
                 ch = 7;
                 break;
             case 7:
                 ad = adc_read(ch);
-                printf("12V Power = %d mV\n", (int)(17.0763 * ad));
+                val = (ushort)(17.0763 * ad);
+                *(ushort*)get_reg(ch*2) = val;
+                printf_P(PSTR("12V Power = %d mV\n"), val);
                 ch = 15;
                 break;
             case 15:
                 ad = adc_read(ch);
-                printf("GND = %d mV\n", ad);
+                printf_P(PSTR("GND = %d mV\n"), ad);
                 ch = 0;
                 break;
             default:
                 ch = 0;
                 break;
-            }                    
+            }
+
+            switch(status)
+            {
+            case ST_BOOT:
+            {
+                if((*(ushort*)get_reg(7*2) > 12000) && (*(ushort*)get_reg(6*2) > 12000))
+                {
+                    activity = -1;
+                    shutdown = get_time() + 15 * 100;
+                    status = ST_POWER_ON;
+                    printf_P(PSTR("Status: ST_BOOT -> ST_POWER_ON\n"));
+                }
+                break;
+            }
+            case ST_POWER_ON:
+            {
+                if((*(ushort*)get_reg(7*2) < 11500) || (*(ushort*)get_reg(6*2) < 11500))
+                {
+                    // Wait to stabilize power
+                    shutdown = get_time() + 15 * 100;
+                }
+                if(shutdown != -1 && timeout_expired(shutdown))
+                {
+                    piz_On();
+                    shutdown = -1;
+                    activity = get_time() + 10 * 100; // 10 sec
+                    delay_t(10);
+                    ad = adc_read(1);
+                    val = (ushort)(6.46997 * ad);
+                    *(ushort*)get_reg(1*2) = val;
+                    ad = adc_read(0);
+                    val = (ushort)(4.26913 * ad);
+                    *(ushort*)get_reg(0*2) = val;
+                }
+                if(activity != -1 && timeout_expired(activity))
+                {
+                    printf_P(PSTR("Overload!\n"));
+                    piz_Off();
+                    activity = -1;
+                    shutdown = get_time() + 600L * 100; // 10 Min
+                    status = ST_POWER_OFF;
+                    printf_P(PSTR("Status: ST_POWER_ON -> ST_POWER_OFF\n"));
+                }
+                else if((*(ushort*)get_reg(0*2) > 3200) && (*(ushort*)get_reg(1*2) > 4900))
+                {
+                    activity = get_time() + 300 * 100; // 5 Min
+                    status = ST_ACTIVE;
+                    printf_P(PSTR("Status: ST_POWER_ON -> ST_ACTIVE\n"));
+                }
+                break;
+            }
+            case ST_ACTIVE:
+            {
+                static ushort prev = 0;
+                if((*(ushort*)get_reg(7*2) < 11500) || (*(ushort*)get_reg(6*2) < 11500))
+                {
+                    printf_P(PSTR("Low power!\n"));
+                    if(shutdown == -1) shutdown = get_time() + 3600L * 100; // 1 Hour
+                }
+                else if((*(ushort*)get_reg(7*2) > 12000) && (*(ushort*)get_reg(6*2) > 12000))
+                {
+                    // Power restored
+                    shutdown = -1;
+                }
+                if((*(ushort*)get_reg(0*2) < 3100) || (*(ushort*)get_reg(1*2) < 4700))
+                {
+                    printf_P(PSTR("Overload!\n"));
+                    piz_Off();
+                    shutdown = get_time() + 600L * 100; // 10 Min
+                    status = ST_POWER_OFF;
+                    printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
+                }
+                if(*(ushort*)get_reg(8*2) != prev) // Activity reg
+                {
+                    activity = get_time() + 300 * 100; // 5 Min
+                    prev = *(ushort*)get_reg(8*2);
+                }
+                if(shutdown != -1 && timeout_expired(shutdown))
+                {
+                    // Power loss
+                    piz_Off();
+                    shutdown = -1;
+                    activity = -1;
+                    status = ST_BOOT;
+                    printf_P(PSTR("Status: ST_ACTIVE -> ST_BOOT\n"));
+                }
+                if(timeout_expired(activity))
+                {
+                    // Pi Zero hang
+                    printf_P(PSTR("Pi Zero hang!\n"));
+                    piz_Off();
+                    shutdown = get_time() + 60 * 100; // 1 Min
+                    status = ST_POWER_OFF;
+                    printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
+                }
+
+                break;
+            }
+            case ST_POWER_OFF:
+            {
+                if(timeout_expired(shutdown))
+                {
+                    activity = -1;
+                    shutdown = get_time() + 15 * 100;
+                    status = ST_POWER_ON;
+                    printf_P(PSTR("Status: ST_POWER_OFF -> ST_POWER_ON\n"));
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            *(ushort*)get_reg(9*2) = status;
         }
     	wdt_reset();
         sleep_mode();
