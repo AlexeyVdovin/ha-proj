@@ -102,7 +102,7 @@ int ds2482_get_data(int dev, uint8_t* value)
         if(res < 0) break;
         res = i2c_io(dev, I2C_SMBUS_READ, 0, I2C_SMBUS_BYTE, &data);
         if(res < 0) break;
-        *value = 0x0FF & data.byte;
+        *value = (0x0FF & data.byte);
     } while(0);
     return res;
 }
@@ -204,6 +204,7 @@ int ds2482_1w_search(int dev, ow_serch_t* search)
             if(res < 0) break;
 
             res = ds2482_1w_triplet(dev, dir);
+            if(res < 0) break;
 
             status = 0;
             res = ds2482_pool(dev, 0x01, &status, 2000);
@@ -315,6 +316,8 @@ int ds2482_ds18b20_read_scratchpad(int dev, uint8_t* data)
 
             res = ds2482_get_data(dev, &data[i]);
             if(res < 0) break;
+
+            printf("scr[%d]: 0x%02x\n", i, data[i]);
         }
         // TODO: Check CRC
     } while(0);
@@ -359,9 +362,10 @@ int ds2482_ds18b20_write_eeprom(int dev)
 #if 1
 int main(int argc, char* argv[])
 {
-    int res;
+    int res, n = 0;
     uint8_t status;
     ow_serch_t search;
+    uint8_t addr[8][8];
     int dev = ds2482_open(0, 0x18);
 
     if(dev < 0)
@@ -433,8 +437,139 @@ int main(int argc, char* argv[])
         res = ds2482_1w_search(dev, &search);
         if(res < 0) break;
 
-        printf("Found 1W device: 0x%02x%02x%02x%02x%02x%02x%02x%02x\n", search.addr[0], search.addr[1], search.addr[2], search.addr[3], search.addr[4], search.addr[5], search.addr[6], search.addr[7]);
+        printf("Found 1W device [%d]: 0x%02x%02x%02x%02x%02x%02x%02x%02x\n", n, search.addr[0], search.addr[1], search.addr[2], search.addr[3], search.addr[4], search.addr[5], search.addr[6], search.addr[7]);
+        memcpy(addr[n], search.addr, sizeof(addr[0]));
+        ++n;
     } while(1);
+
+    if(n == 0)
+    {
+        printf("Error: No 1W devices found!\n");
+        close(dev);
+        exit(1);
+    }
+
+    do
+    {
+        uint8_t data[9];
+
+        res = ds2482_1w_reset(dev);
+        if(res < 0)
+        {
+            printf("Error: ds2482_1w_reset() failed %d!\n", errno);
+            break;
+        }
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 3000);
+        if(res < 0)
+        {
+            printf("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            break;
+        }
+
+        if(status & 0x04)
+        {
+            printf("Error: 1W short to GND detected 0x%02X!\n", status);
+            break;
+        }
+
+        if(status & 0x02 == 0)
+        {
+            printf("Error: 1W presence pulse is not detected 0x%02X!\n", status);
+            break;
+        }
+
+//        res = ds2482_1w_skip(dev);
+        res = ds2482_1w_match(dev, addr[0]);
+        if(res < 0)
+        {
+            printf("Error: ds2482_1w_skip() failed %d!\n", errno);
+            break;
+        }
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 2000);
+        if(res < 0)
+        {
+            printf("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            break;
+        }
+
+        res = ds2482_ds18b20_convert(dev);
+        if(res < 0)
+        {
+            printf("Error: ds2482_ds18b20_convert() failed %d!\n", errno);
+            break;
+        }
+
+        sleep(1);
+    } while(0);
+
+    if(res < 0)
+    {
+        close(dev);
+        exit(1);
+    }
+
+    do
+    {
+        uint8_t data[9];
+
+        res = ds2482_1w_reset(dev);
+        if(res < 0)
+        {
+            printf("Error: ds2482_1w_reset() failed %d!\n", errno);
+            break;
+        }
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 3000);
+        if(res < 0)
+        {
+            printf("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            break;
+        }
+
+        if(status & 0x04)
+        {
+            printf("Error: 1W short to GND detected 0x%02X!\n", status);
+            break;
+        }
+
+        if(status & 0x02 == 0)
+        {
+            printf("Error: 1W presence pulse is not detected 0x%02X!\n", status);
+            break;
+        }
+
+//        res = ds2482_1w_skip(dev);
+        res = ds2482_1w_match(dev, addr[0]);
+        if(res < 0)
+        {
+            printf("Error: ds2482_1w_skip() failed %d!\n", errno);
+            break;
+        }
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 2000);
+        if(res < 0)
+        {
+            printf("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            break;
+        }
+
+        res = ds2482_ds18b20_read_scratchpad(dev, data);
+        if(res < 0)
+        {
+            printf("Error: ds2482_ds18b20_read_scratchpad() failed %d!\n", errno);
+            break;
+        }
+
+        int16_t t = (data[1] << 8) | data[0];
+        printf("Read temperature: 0x%02x 0x%02x, %.4f\n", data[0], data[1], t/16.0);
+
+    } while(0);
 
     close(dev);
 
