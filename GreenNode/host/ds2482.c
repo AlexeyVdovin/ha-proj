@@ -9,16 +9,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#define OW_CMD_SKIP             0xCC
-#define OW_CMD_SELECT           0x55
-#define OW_CMD_SEARCH           0xF0
-
-typedef struct
-{
-    uint8_t addr[8];
-    uint8_t next;
-} ow_serch_t;
-
+#include "ds2482.h"
 
 int ds2482_open(uint8_t bus, uint8_t adr)
 {
@@ -187,6 +178,7 @@ int ds2482_1w_triplet(int dev, char bit)
     return i2c_io(dev, I2C_SMBUS_WRITE, 0x78, I2C_SMBUS_BYTE_DATA, &data);
 }
 
+/* I2C gateway 1W high level operations */
 int ds2482_1w_search(int dev, ow_serch_t* search)
 {
     int res = -1;
@@ -235,6 +227,133 @@ int ds2482_1w_search(int dev, ow_serch_t* search)
     } while(0);
 
     return res;
+}
+
+int ds2482_1w_skip(int dev)
+{
+    return ds2482_1w_wbyte(dev, OW_CMD_SKIP);
+}
+
+int ds2482_1w_match(int dev, uint8_t addr[8])
+{
+    int i, res;
+    uint8_t status;
+
+    do
+    {
+        res = ds2482_1w_wbyte(dev, OW_CMD_MATCH);
+        if(res < 0) break;
+
+        for(i = 0; i < 8; ++i)
+        {
+            status = 0;
+            res = ds2482_pool(dev, 0x01, &status, 2000);
+            if(res < 0) break;
+
+            res = ds2482_1w_wbyte(dev, addr[i]);
+            if(res < 0) break;
+        }
+    } while(0);
+
+    return res;
+}
+
+/* I2C gateway DS18B20 operations */
+int ds2482_ds18b20_convert(int dev)
+{
+    return ds2482_1w_wbyte(dev, DS1820_CMD_CONVERT);
+}
+
+int ds2482_ds18b20_read_power(int dev, uint8_t* value)
+{
+    int res;
+    uint8_t status;
+
+    do
+    {
+        res = ds2482_1w_wbyte(dev, DS1820_CMD_PPD);
+        if(res < 0) break;
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 2000);
+        if(res < 0) break;
+
+        res = ds2482_1w_1b(dev, 0x80);
+        if(res < 0) break;
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 2000);
+        if(res < 0) break;
+
+        *value = status;
+    } while(0);
+
+    return res;
+}
+
+int ds2482_ds18b20_read_scratchpad(int dev, uint8_t* data)
+{
+    int i, res;
+    uint8_t status;
+
+    do
+    {
+        res = ds2482_1w_wbyte(dev, DS1820_CMD_RD_SCRATCHPAD);
+        if(res < 0) break;
+
+        status = 0;
+        res = ds2482_pool(dev, 0x01, &status, 2000);
+        if(res < 0) break;
+
+        for(i = 0; i < 9; ++i)
+        {
+            res = ds2482_1w_rbyte(dev);
+
+            status = 0;
+            res = ds2482_pool(dev, 0x01, &status, 2000);
+            if(res < 0) break;
+
+            res = ds2482_get_data(dev, &data[i]);
+            if(res < 0) break;
+        }
+        // TODO: Check CRC
+    } while(0);
+
+    return res;
+}
+
+int ds2482_ds18b20_read_eeprom(int dev)
+{
+    return ds2482_1w_wbyte(dev, DS1820_CMD_EE_RECALL);
+}
+
+int ds2482_ds18b20_write_configuration(int dev, uint8_t* conf)
+{
+    int i, res;
+    uint8_t status;
+
+    do
+    {
+        res = ds2482_1w_wbyte(dev, DS1820_CMD_WR_SCRATCHPAD);
+        if(res < 0) break;
+
+        for(i = 0; i < 3; ++i)
+        {
+            status = 0;
+            res = ds2482_pool(dev, 0x01, &status, 2000);
+            if(res < 0) break;
+
+            res = ds2482_1w_wbyte(dev, conf[i]);
+            if(res < 0) break;
+        }
+    } while(0);
+
+    return res;
+}
+
+int ds2482_ds18b20_write_eeprom(int dev)
+{
+    return ds2482_1w_wbyte(dev, DS1820_CMD_EE_WRITE);
 }
 
 #if 1
@@ -287,7 +406,7 @@ int main(int argc, char* argv[])
 
     if(status & 0x04)
     {
-        printf("Error: 1W short detected 0x%02X!\n", status);
+        printf("Error: 1W short to GND detected 0x%02X!\n", status);
         close(dev);
         exit(1);
     }
