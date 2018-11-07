@@ -484,7 +484,7 @@ int main(int argc, char* argv[])
         res = ds2482_1w_match(dev, addr[0]);
         if(res < 0)
         {
-            printf("Error: ds2482_1w_skip() failed %d!\n", errno);
+            printf("Error: ds2482_1w_match() failed %d!\n", errno);
             break;
         }
 
@@ -547,7 +547,7 @@ int main(int argc, char* argv[])
         res = ds2482_1w_match(dev, addr[0]);
         if(res < 0)
         {
-            printf("Error: ds2482_1w_skip() failed %d!\n", errno);
+            printf("Error: ds2482_1w_match() failed %d!\n", errno);
             break;
         }
 

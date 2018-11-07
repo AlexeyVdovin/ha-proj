@@ -262,6 +262,7 @@ int main()
                 {
                     activity = -1;
                     shutdown = get_time() + 15 * 100;
+                    *(ushort*)get_reg(5*2) = 0;
                     status = ST_POWER_ON;
                     printf_P(PSTR("Status: ST_BOOT -> ST_POWER_ON\n"));
                 }
@@ -348,7 +349,26 @@ int main()
                     status = ST_POWER_OFF;
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
                 }
+                if(*(ushort*)get_reg(5*2) != 0)
+                {
+                    activity = -1;
+                    shutdown = get_time() + *(ushort*)get_reg(5*2) * 100;
+                    status = ST_TIMEOUT;
+                    printf_P(PSTR("Status: ST_ACTIVE -> ST_TIMEOUT\n"));
+                }
 
+                break;
+            }
+            case ST_TIMEOUT:
+            {
+                if(timeout_expired(shutdown))
+                {
+                    piz_Off();
+                    activity = -1;
+                    shutdown = get_time() + 60 * 100; // 1 Min
+                    status = ST_POWER_OFF;
+                    printf_P(PSTR("Status: ST_TIMEOUT -> ST_POWER_OFF\n"));
+                }
                 break;
             }
             case ST_POWER_OFF:
