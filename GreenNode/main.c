@@ -131,39 +131,6 @@ static int uart_putchar(char c, FILE *stream)
   return sio_putchar(c);
 }
 
-void led_red_on()
-{
-    PORTD |= 0x20;
-}
-
-void led_red_off()
-{
-    PORTD &= ~ 0x20;
-}
-
-void led_green_on()
-{
-    PORTD |= 0x40;
-}
-
-void led_green_off()
-{
-    PORTD &= ~ 0x40;
-}
-
-void piz_On()
-{
-    printf_P(PSTR("Pi Zero -> ON\n"));
-    PORTD |= 0x04;
-}
-
-void piz_Off()
-{
-    printf_P(PSTR("Pi Zero -> OFF\n"));
-    // FIXME: Temporary disabled actual Power OFF
-    // PORTD &= ~ 0x04;
-}
-
 /* ADC Channels:
  00  ADC0 - 3.3V PiZ
  01  ADC1 - 5V PiZ
@@ -186,6 +153,55 @@ enum
     ST_POWER_OFF
 };
 
+enum
+{
+    CTRL_RELAY_1 = 1,
+    CTRL_RELAY_2 = 2,
+    CTRL_RELAY_3 = 4,
+    CTRL_RELAY_4 = 8,
+    CTRL_LED_RED = 0x100,
+    CTRL_LED_GRN = 0x200
+};
+
+
+void led_red_on()
+{
+    PORTD |= 0x20;
+    *(ushort*)get_reg(0x14) |= CTRL_LED_RED;
+}
+
+void led_red_off()
+{
+    PORTD &= ~ 0x20;
+    *(ushort*)get_reg(0x14) &= ~ CTRL_LED_RED;
+}
+
+void led_green_on()
+{
+    PORTD |= 0x40;
+    *(ushort*)get_reg(0x14) |= CTRL_LED_GRN;
+}
+
+void led_green_off()
+{
+    PORTD &= ~ 0x40;
+    *(ushort*)get_reg(0x14) &= ~ CTRL_LED_GRN;
+}
+
+void piz_On()
+{
+    printf_P(PSTR("Pi Zero -> ON\n"));
+    PORTD |= 0x04;
+    led_green_on();
+}
+
+void piz_Off()
+{
+    printf_P(PSTR("Pi Zero -> OFF\n"));
+    // FIXME: Temporary disabled actual Power OFF
+    // PORTD &= ~ 0x04;
+    led_green_off();
+}
 
 int main()
 {
@@ -254,6 +270,7 @@ int main()
                 break;
             }
 
+            printf_P(PSTR("[%ld] LOOP: %d, %ld, %ld\n"), get_time(), status, activity, shutdown);
             switch(status)
             {
             case ST_BOOT:
@@ -288,7 +305,7 @@ int main()
                     val = (ushort)(4.26913 * ad);
                     *(ushort*)get_reg(0*2) = val;
                 }
-                if(activity != -1 && timeout_expired(activity))
+                else if(activity != -1 && timeout_expired(activity))
                 {
                     printf_P(PSTR("Overload!\n"));
                     piz_Off();
@@ -297,7 +314,7 @@ int main()
                     status = ST_POWER_OFF;
                     printf_P(PSTR("Status: ST_POWER_ON -> ST_POWER_OFF\n"));
                 }
-                else if((*(ushort*)get_reg(0*2) > 3200) && (*(ushort*)get_reg(1*2) > 4900))
+                else if((shutdown == -1) && (*(ushort*)get_reg(0*2) > 3200) && (*(ushort*)get_reg(1*2) > 4900))
                 {
                     activity = get_time() + 300 * 100; // 5 Min
                     status = ST_ACTIVE;
@@ -345,6 +362,7 @@ int main()
                     // Pi Zero hang
                     printf_P(PSTR("Pi Zero hang!\n"));
                     piz_Off();
+                    activity = -1;
                     shutdown = get_time() + 60 * 100; // 1 Min
                     status = ST_POWER_OFF;
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
