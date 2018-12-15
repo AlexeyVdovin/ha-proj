@@ -378,6 +378,9 @@ int main(int argc, char* argv[])
     if(res < 0)
     {
         printf("Error: ds2482_reset() failed %d!\n", errno);
+        status = 0;
+        res = ds2482_get_status(dev, &status);
+        printf("Error: ds2482_get_status() = %d, status = %d\n", res, status);
         close(dev);
         exit(1);
     }
