@@ -317,7 +317,7 @@ int ds2482_ds18b20_read_scratchpad(int dev, uint8_t* data)
             res = ds2482_get_data(dev, &data[i]);
             if(res < 0) break;
 
-            printf("scr[%d]: 0x%02x\n", i, data[i]);
+            //printf("scr[%d]: 0x%02x\n", i, data[i]);
         }
         // TODO: Check CRC
     } while(0);
@@ -362,11 +362,18 @@ int ds2482_ds18b20_write_eeprom(int dev)
 #if 1
 int main(int argc, char* argv[])
 {
-    int res, n = 0;
-    uint8_t status;
+    int res, i, n = 0;
+    uint8_t status, sa = 0x18; // 0x1a
     ow_serch_t search;
     uint8_t addr[8][8];
-    int dev = ds2482_open(0, 0x18);
+    int dev;
+    
+    if(argc > 1)
+    {
+        sa = (uint8_t)strtol(argv[1], NULL, 0);
+    }
+    
+    dev = ds2482_open(0, sa);
 
     if(dev < 0)
     {
@@ -440,7 +447,7 @@ int main(int argc, char* argv[])
         res = ds2482_1w_search(dev, &search);
         if(res < 0) break;
 
-        printf("Found 1W device [%d]: 0x%02x%02x%02x%02x%02x%02x%02x%02x\n", n, search.addr[0], search.addr[1], search.addr[2], search.addr[3], search.addr[4], search.addr[5], search.addr[6], search.addr[7]);
+        //printf("Found 1W device [%d]: 0x%02x%02x%02x%02x%02x%02x%02x%02x\n", n, search.addr[0], search.addr[1], search.addr[2], search.addr[3], search.addr[4], search.addr[5], search.addr[6], search.addr[7]);
         memcpy(addr[n], search.addr, sizeof(addr[0]));
         ++n;
     } while(1);
@@ -483,8 +490,8 @@ int main(int argc, char* argv[])
             break;
         }
 
-//        res = ds2482_1w_skip(dev);
-        res = ds2482_1w_match(dev, addr[0]);
+        res = ds2482_1w_skip(dev);
+//        res = ds2482_1w_match(dev, addr[0]);
         if(res < 0)
         {
             printf("Error: ds2482_1w_match() failed %d!\n", errno);
@@ -515,7 +522,7 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    do
+    for(i = 0; i < n; ++i)
     {
         uint8_t data[9];
 
@@ -547,7 +554,7 @@ int main(int argc, char* argv[])
         }
 
 //        res = ds2482_1w_skip(dev);
-        res = ds2482_1w_match(dev, addr[0]);
+        res = ds2482_1w_match(dev, addr[i]);
         if(res < 0)
         {
             printf("Error: ds2482_1w_match() failed %d!\n", errno);
@@ -570,9 +577,12 @@ int main(int argc, char* argv[])
         }
 
         int16_t t = (data[1] << 8) | data[0];
-        printf("Read temperature: 0x%02x 0x%02x, %.4f\n", data[0], data[1], t/16.0);
+        //printf("Read temperature: 0x%02x 0x%02x, %.4f\n", data[0], data[1], t/16.0);
+        
+        printf("0x%02x%02x%02x%02x%02x%02x%02x%02x %d\n", addr[i][0], addr[i][1], addr[i][2], addr[i][3], addr[i][4], addr[i][5], addr[i][6], addr[i][7], (int)(t*125/2));
+        
 
-    } while(0);
+    }
 
     close(dev);
 
