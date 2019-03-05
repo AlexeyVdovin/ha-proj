@@ -198,8 +198,8 @@ void piz_On()
 void piz_Off()
 {
     printf_P(PSTR("Pi Zero -> OFF\n"));
-    // FIXME: Temporary disabled actual Power OFF
-    // PORTD &= ~ 0x04;
+    // FIXME: Temporary disable actual Power OFF
+    PORTD &= ~ 0x04;
     led_green_off();
 }
 
@@ -270,7 +270,7 @@ int main()
                 break;
             }
 
-            printf_P(PSTR("[%ld] LOOP: %d, %ld, %ld\n"), get_time(), status, activity, shutdown);
+            //printf_P(PSTR("[%ld] LOOP: %d, %ld, %ld\n"), get_time(), status, activity, shutdown);
             switch(status)
             {
             case ST_BOOT:
@@ -325,17 +325,17 @@ int main()
             case ST_ACTIVE:
             {
                 static ushort prev = 0;
-                if((*(ushort*)get_reg(7*2) < 11500) || (*(ushort*)get_reg(6*2) < 11500))
+                if((*(ushort*)get_reg(7*2) < 11600) && (*(ushort*)get_reg(6*2) < 11600))
                 {
                     printf_P(PSTR("Low power!\n"));
-                    if(shutdown == -1) shutdown = get_time() + 3600L * 100; // 1 Hour
+                    if(shutdown == -1) shutdown = get_time() + 3600L * 100; // Shutdown in 1 Hour
                 }
                 else if((*(ushort*)get_reg(7*2) > 12000) && (*(ushort*)get_reg(6*2) > 12000))
                 {
                     // Power restored
                     shutdown = -1;
                 }
-                if((*(ushort*)get_reg(0*2) < 3100) || (*(ushort*)get_reg(1*2) < 4700))
+                if((*(ushort*)get_reg(0*2) < 3200) || (*(ushort*)get_reg(1*2) < 4800) || (*(ushort*)get_reg(6*2) < 11300))
                 {
                     printf_P(PSTR("Overload!\n"));
                     piz_Off();
@@ -357,7 +357,7 @@ int main()
                     status = ST_BOOT;
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_BOOT\n"));
                 }
-                if(timeout_expired(activity))
+                if(activity != -1 && timeout_expired(activity))
                 {
                     // Pi Zero hang
                     printf_P(PSTR("Pi Zero hang!\n"));
@@ -369,6 +369,7 @@ int main()
                 }
                 if(*(ushort*)get_reg(5*2) != 0)
                 {
+                    // Shutdown timeout requested
                     activity = -1;
                     shutdown = get_time() + *(ushort*)get_reg(5*2) * 100;
                     status = ST_TIMEOUT;

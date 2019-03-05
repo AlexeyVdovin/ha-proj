@@ -1,6 +1,14 @@
 #ifndef __DS2482_H__
 #define __DS2482_H__
 
+#define DS2482_CMD_TRIPLET          0x78
+#define DS2482_CMD_SINGLEBIT        0x87
+#define DS2482_CMD_READBYTE         0x96
+#define DS2482_CMD_WRITEBYTE        0xA5
+#define DS2482_CMD_RESETWIRE        0xB4
+#define DS2482_CMD_WRITECONFIG      0xD2
+#define DS2482_CMD_RESET            0xF0
+
 #define OW_CMD_SKIP                 0xCC
 #define OW_CMD_MATCH                0x55
 #define OW_CMD_SEARCH               0xF0
