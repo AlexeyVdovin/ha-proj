@@ -97,11 +97,8 @@ int main(int argc, char* argv[])
 
     if(argc > 1)
     {
-        addr = atoi(argv[1]);
+        addr = (int)strtol(argv[1], NULL, 0);
     }
-
-    while(1)
-{
 
     res = i2c_smbus_read_word_data(dev, addr);
 
@@ -112,9 +109,6 @@ int main(int argc, char* argv[])
     }
 
     printf("%d\n", res);
-
-    sleep(1);
-}
 
     return 0;
 }
