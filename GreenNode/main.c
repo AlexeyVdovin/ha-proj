@@ -216,8 +216,8 @@ void apply_reg_0x14()
     if(diff & CTRL_RELAY_2) PORTB = (PORTB & 0x02) | ((old & CTRL_RELAY_2) ? 0x02 : 0);
     if(diff & CTRL_RELAY_3) PORTB = (PORTD & 0x80) | ((old & CTRL_RELAY_3) ? 0x80 : 0);
     if(diff & CTRL_RELAY_4) PORTB = (PORTB & 0x01) | ((old & CTRL_RELAY_4) ? 0x01 : 0);
-    if(diff & CTRL_LED_RED) if(old & CTRL_LED_RED) led_red_on(); else led_red_off();
-    if(diff & CTRL_LED_GRN) if(old & CTRL_LED_GRN) led_green_on(); else led_green_off();
+    if(diff & CTRL_LED_RED) { if(old & CTRL_LED_RED) led_red_on(); else led_red_off(); }
+    if(diff & CTRL_LED_GRN) { if(old & CTRL_LED_GRN) led_green_on(); else led_green_off(); }
   }
 }
 
