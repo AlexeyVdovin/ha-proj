@@ -112,7 +112,7 @@ void io_init()
 
     // Watchdog Timer initialization
     // Watchdog Timer Prescaler: OSC/1024k
-  	wdt_reset();
+    wdt_reset();
     WDTCSR = 0x39;
     asm (" NOP" );
     WDTCSR = 0x29;
@@ -230,7 +230,7 @@ int main()
 
     stdout = &my_stdout;
 
- 	for (;;)
+    for (;;)
     {
         ushort ad = 0, val;
 
@@ -426,7 +426,7 @@ int main()
             }
             *(ushort*)get_reg(9*2) = status;
         }
-    	wdt_reset();
+        wdt_reset();
         sleep_mode();
     }
     return (0);
