@@ -155,10 +155,10 @@ enum
 
 enum
 {
-    CTRL_RELAY_1 = 1,
-    CTRL_RELAY_2 = 2,
-    CTRL_RELAY_3 = 4,
-    CTRL_RELAY_4 = 8,
+    CTRL_RELAY_1 = 0x01,
+    CTRL_RELAY_2 = 0x02,
+    CTRL_RELAY_3 = 0x04,
+    CTRL_RELAY_4 = 0x08,
     CTRL_LED_RED = 0x100,
     CTRL_LED_GRN = 0x200
 };
@@ -198,9 +198,27 @@ void piz_On()
 void piz_Off()
 {
     printf_P(PSTR("Pi Zero -> OFF\n"));
-    // FIXME: Temporary disable actual Power OFF
     PORTD &= ~ 0x04;
     led_green_off();
+}
+
+void apply_reg_0x14()
+{
+  static ushort old = 0;
+  ushort diff;
+
+  if(old != *(ushort*)get_reg(0x14))
+  {
+    diff = old ^ (*(ushort*)get_reg(0x14));
+    old = *(ushort*)get_reg(0x14);
+    
+    if(diff & CTRL_RELAY_1) PORTB = (PORTB & 0x04) | ((old & CTRL_RELAY_1) ? 0x04 : 0);
+    if(diff & CTRL_RELAY_2) PORTB = (PORTB & 0x02) | ((old & CTRL_RELAY_2) ? 0x02 : 0);
+    if(diff & CTRL_RELAY_3) PORTB = (PORTD & 0x80) | ((old & CTRL_RELAY_3) ? 0x80 : 0);
+    if(diff & CTRL_RELAY_4) PORTB = (PORTB & 0x01) | ((old & CTRL_RELAY_4) ? 0x01 : 0);
+    if(diff & CTRL_LED_RED) if(old & CTRL_LED_RED) led_red_on(); else led_red_off();
+    if(diff & CTRL_LED_GRN) if(old & CTRL_LED_GRN) led_green_on(); else led_green_off();
+  }
 }
 
 int main()
@@ -220,6 +238,8 @@ int main()
         {
             static long activity = -1, shutdown = -1;
             static uint8_t ch = 0, status = ST_BOOT;
+            
+            apply_reg_0x14();
 
             s = get_time() + 100;
 
