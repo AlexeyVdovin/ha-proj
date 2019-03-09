@@ -153,17 +153,6 @@ enum
     ST_POWER_OFF
 };
 
-enum
-{
-    CTRL_RELAY_1 = 0x01,
-    CTRL_RELAY_2 = 0x02,
-    CTRL_RELAY_3 = 0x04,
-    CTRL_RELAY_4 = 0x08,
-    CTRL_LED_RED = 0x100,
-    CTRL_LED_GRN = 0x200
-};
-
-
 void led_red_on()
 {
     PORTD |= 0x20;
@@ -202,6 +191,7 @@ void piz_Off()
     led_green_off();
 }
 
+/*
 void apply_reg_0x14()
 {
   static ushort old = 0;
@@ -220,6 +210,7 @@ void apply_reg_0x14()
     if(diff & CTRL_LED_GRN) { if(old & CTRL_LED_GRN) led_green_on(); else led_green_off(); }
   }
 }
+*/
 
 int main()
 {
@@ -239,7 +230,7 @@ int main()
             static long activity = -1, shutdown = -1;
             static uint8_t ch = 0, status = ST_BOOT;
             
-            apply_reg_0x14();
+            // apply_reg_0x14();
 
             s = get_time() + 100;
 

@@ -15,6 +15,11 @@ S ADDR W A | CMD | ARGS | RS ADR R A | RET | DATA | P
 
 uint8_t regs[64];
 
+void led_red_on();
+void led_red_off();
+void led_green_on();
+void led_green_off();
+
 ISR(TWI_vect)
 {
     static ushort cnt = 0;
@@ -60,6 +65,43 @@ ISR(TWI_vect)
                 {
                     regs[adr] = data;
                     cr = (1<<TWEA);
+                }
+                else
+                {
+                    n = adr & 0x0F;
+                    switch(n)
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            PORTB = (PORTB & ~0x04) | (data ? 0x04 : 0);
+                            regs[14] = (regs[14] & ~CTRL_RELAY_1) | (data ? CTRL_RELAY_1 : 0);
+                            break;
+                        case 2:
+                            PORTB = (PORTB & ~0x02) | (data ? 0x02 : 0);
+                            regs[14] = (regs[14] & ~CTRL_RELAY_2) | (data ? CTRL_RELAY_2 : 0);
+                            break;
+                        case 3:
+                            PORTD = (PORTD & ~0x80) | (data ? 0x80 : 0);
+                            regs[14] = (regs[14] & ~CTRL_RELAY_3) | (data ? CTRL_RELAY_3 : 0);
+                            break;
+                        case 4:
+                            PORTB = (PORTB & ~0x01) | (data ? 0x01 : 0);
+                            regs[14] = (regs[14] & ~CTRL_RELAY_4) | (data ? CTRL_RELAY_4 : 0);
+                            break;
+                        case 5:
+                        case 6:
+                        case 7:
+                            break;
+                        case 8:
+                            if(data) led_red_on(); else led_red_off();
+                            break;
+                        case 9:
+                            if(data) led_green_on(); else led_green_off();
+                            break;
+                        default:
+                            break;
+                    }
                 }
                 // Prepare for next register reception
                 n = 1;

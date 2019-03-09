@@ -17,6 +17,17 @@ REGS :
 0x40 - reg count
 */
 
+enum
+{
+    CTRL_RELAY_1 = 0x01,
+    CTRL_RELAY_2 = 0x02,
+    CTRL_RELAY_3 = 0x04,
+    CTRL_RELAY_4 = 0x08,
+    CTRL_LED_RED = 0x100,
+    CTRL_LED_GRN = 0x200
+};
+
+
 void twi_init(uint8_t address);
 void* get_reg(uint8_t adr);
 
