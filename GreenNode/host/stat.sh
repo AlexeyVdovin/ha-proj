@@ -3,6 +3,7 @@
 PHP=/usr/bin/php
 REPO=/home/av/ha-proj/GreenNode/host
 I2C_RD=${REPO}/i2c-rd
+I2C_WR=${REPO}/i2c-wr
 T_RD=${REPO}/ds2482
 MEM_WR=${REPO}/mem_wr.php
 MEM_RD=${REPO}/mem_rd.php
@@ -10,10 +11,18 @@ MEM_SET=${REPO}/mem_set.php
 MEM_PROC=${REPO}/mem_proc.php
 
 . ${REPO}/sensors.conf
-${MEM_SET} G1_GROUND ${G1_GROUND}
-${MEM_SET} G1_AIR ${G1_AIR}
-${MEM_SET} G2_GROUND ${G2_GROUND}
-${MEM_SET} G2_AIR ${G2_AIR}
+${PHP} ${MEM_SET} G1_GROUND ${G1_GROUND}
+${PHP} ${MEM_SET} G1_AIR ${G1_AIR}
+${PHP} ${MEM_SET} G2_GROUND ${G2_GROUND}
+${PHP} ${MEM_SET} G2_AIR ${G2_AIR}
+
+. /var/www/store/settings.conf
+${PHP} ${MEM_SET} G1_FREEZ ${G1_FREEZ}
+${PHP} ${MEM_SET} G1_COOL ${G1_COOL}
+${PHP} ${MEM_SET} G1_HEAT ${G1_HEAT}
+${PHP} ${MEM_SET} G2_FREEZ ${G2_FREEZ}
+${PHP} ${MEM_SET} G2_COOL ${G2_COOL}
+${PHP} ${MEM_SET} G2_HEAT ${G2_HEAT}
 
 ${T_RD} 0x18 | while read n v
   do ${PHP} ${MEM_WR} $n $v
@@ -25,6 +34,29 @@ done
 
 ${MEM_PROC}
 
+G1_HEATER=$(${PHP} ${MEM_RD} G1_HEATER 0)
+G2_HEATER=$(${PHP} ${MEM_RD} G2_HEATER 0)
+G1_VENT=$(${PHP} ${MEM_RD} G1_VENT 0)
+G2_VENT=$(${PHP} ${MEM_RD} G2_VENT 0)
+
+${I2C_WR} 0x51 ${G1_HEATER}
+${I2C_WR} 0x52 ${G1_VENT}
+${I2C_WR} 0x53 ${G2_HEATER}
+${I2C_WR} 0x54 ${G2_VENT}
+
+G1_GROUND_T=$(${PHP} ${MEM_RD} ${G1_GROUND} unknown)
+G1_GROUND_TT=$(${PHP} ${MEM_RD} t_${G1_GROUND} unknown)
+G1_AIR_T=$(${PHP} ${MEM_RD} ${G1_AIR} unknown)
+G1_AIR_TT=$(${PHP} ${MEM_RD} t_${G1_AIR} unknown)
+G2_GROUND_T=$(${PHP} ${MEM_RD} ${G2_GROUND} unknown)
+G2_GROUND_TT=$(${PHP} ${MEM_RD} t_${G2_GROUND} unknown)
+G2_AIR_T=$(${PHP} ${MEM_RD} ${G2_AIR} unknown)
+G2_AIR_TT=$(${PHP} ${MEM_RD} t_${G2_AIR} unknown)
+
+URL="http://10.8.0.1/greenhouse/stat.php?g1gr=${G1_GROUND_T}&g1grt=${G1_GROUND_TT}&g1ar=${G1_AIR_T}&g1art=${G1_AIR_TT}&g2gr=${G2_GROUND_T}&g2grt=${G2_GROUND_TT}&g2ar=${G2_AIR_T}&g2art=${G2_AIR_TT}&g1ht=${G1_HEATER}&g2ht=${G2_HEATER}&g1vt=${G1_VENT}&g2vt=${G2_VENT}" 
+
+curl -f -s -o /dev/null ${URL}
+
 PIZ_3V3=$(${I2C_RD} 0)
 PIZ_5V0=$(${I2C_RD} 2)
 OW_3V3=$(${I2C_RD} 4)
@@ -33,7 +65,7 @@ ACDC_12V=$(${I2C_RD} 14)
 STATUS=$(${I2C_RD} 18)
 RELAY=$(${I2C_RD} 20)
 
-URL="http://10.8.0.1/greenhouse/stat.php?piz3v3=${PIZ_3V3}&piz5v0=${PIZ_5V0}&ow3v3=${OW_3V3}&vcc12v=${VCC_12V}&acdc12v=${ACDC_12V}&status=${STATUS}&relay=${RELAY}" 
+URL="http://10.8.0.1/greenhouse/bmc.php?piz3v3=${PIZ_3V3}&piz5v0=${PIZ_5V0}&ow3v3=${OW_3V3}&vcc12v=${VCC_12V}&acdc12v=${ACDC_12V}&status=${STATUS}&relay=${RELAY}" 
 
 curl -f -s -o /dev/null ${URL}
 
