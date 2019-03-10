@@ -158,9 +158,6 @@ else
 $m->set('G2_HEAT', $G2_heat);
 if($DEBUG) echo "G2 Heater: ".($G2_heat == 1 ? 'ON' : 'OFF')."\n";
 
-_heater == 1 ? 'ON' : 'OFF')."\n";
-
-
 $G1_vent = $m->get('G1_VENT');
 if($G1_VENT_C == 'AUTO')
 {
