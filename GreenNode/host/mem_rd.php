@@ -13,7 +13,7 @@ if(!isset($n))
 
 $val = $m->get($n);
 
-if(!isset($val)) $val = $v;
+if(empty($val)) $val = $v;
 
 echo $val."\n";
 exit(0);
