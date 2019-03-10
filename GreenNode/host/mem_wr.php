@@ -6,7 +6,7 @@ $n = trim($argv[1]);
 $v = trim($argv[2]);
 $t = time();
 
-if(!isset($v) || (substr($n, 0, 2) != '0x'))
+if(empty($v) || (substr($n, 0, 2) != '0x'))
 {
     echo "Error: Invalid arguments\n";
     exit(1);
@@ -16,14 +16,14 @@ $m->set($n, $v);
 $m->set('t_'.$n, $t);
 
 $min = $m->get('min_'.$n);
-if(!isset($min) || ($v < $min))
+if(($min === FALSE) || ($v < $min))
 {
     $m->set('min_'.$n, $v);
     $m->set('mint_'.$n, $t);
 }
 
 $max = $m->get('max_'.$n);
-if(!isset($max) || ($v > $max))
+if(($max === FALSE) || ($v > $max))
 {
     $m->set('max_'.$n, $v);
     $m->set('maxt_'.$n, $t);

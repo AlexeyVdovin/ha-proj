@@ -31,42 +31,42 @@ if(empty($G2_FREEZ)) $G2_FREEZ = 0;
 if(empty($G2_COOL)) $G2_COOL = 'AUTO';
 if(empty($G2_HEAT)) $G2_HEAT = 'AUTO';
 
-$avg = null;
+$avg = 0;
 $v = $m->get('avg_'.$G1_ground['id']);
 if(!empty($v))
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = array_sum($a)/count($a);
+    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
 }
 $G1_ground['avg'] = $avg;
 if($DEBUG) echo "G1 Ground avg: $avg\n";
 
-$avg = null;
+$avg = 0;
 $v = $m->get('avg_'.$G1_air['id']);
 if(!empty($v))
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = array_sum($a)/count($a);
+    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
 }
 $G1_air['avg'] = $avg; 
 if($DEBUG) echo "G1 Air avg: $avg\n";
 
-$avg = null;
+$avg = 0;
 $v = $m->get('avg_'.$G2_ground['id']);
 if(!empty($v))
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = array_sum($a)/count($a);
+    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
 }
 $G2_ground['avg'] = $avg; 
 if($DEBUG) echo "G2 Ground avg: $avg\n";
 
-$avg = null;
+$avg = 0;
 $v = $m->get('avg_'.$G2_air['id']);
 if(!empty($v))
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = array_sum($a)/count($a);
+    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
 }
 $G2_air['avg'] = $avg; 
 if($DEBUG) echo "G2 Air avg: $avg\n";
@@ -124,7 +124,7 @@ if($G1_COOL == 'AUTO')
     }
     else
     {
-        if($G1_air['avg'] < 30000) $G1_vent = 0;
+        if($G1_air['avg'] < 28000) $G1_vent = 0;
     }
 }
 else
@@ -143,7 +143,7 @@ if($G2_COOL == 'AUTO')
     }
     else
     {
-        if($G2_air['avg'] < 30000) $G2_vent = 0;
+        if($G2_air['avg'] < 28000) $G2_vent = 0;
     }
 }
 else
