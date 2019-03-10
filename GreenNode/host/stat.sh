@@ -18,11 +18,13 @@ ${PHP} ${MEM_SET} G2_AIR ${G2_AIR}
 
 . /var/www/store/settings.conf
 ${PHP} ${MEM_SET} G1_FREEZ ${G1_FREEZ}
-${PHP} ${MEM_SET} G1_COOL ${G1_COOL}
-${PHP} ${MEM_SET} G1_HEAT ${G1_HEAT}
+${PHP} ${MEM_SET} G1_VENT_C ${G1_VENT_C}
+${PHP} ${MEM_SET} G1_HEAT_C ${G1_HEAT_C}
+${PHP} ${MEM_SET} G1_CIRC_C ${G1_CIRC_C}
 ${PHP} ${MEM_SET} G2_FREEZ ${G2_FREEZ}
-${PHP} ${MEM_SET} G2_COOL ${G2_COOL}
-${PHP} ${MEM_SET} G2_HEAT ${G2_HEAT}
+${PHP} ${MEM_SET} G2_VENT_C ${G2_VENT_C}
+${PHP} ${MEM_SET} G2_HEAT_C ${G2_HEAT_C}
+${PHP} ${MEM_SET} G2_CIRC_C ${G2_CIRC_C}
 
 ${T_RD} 0x18 | while read n v
   do ${PHP} ${MEM_WR} $n $v
@@ -34,15 +36,21 @@ done
 
 ${MEM_PROC}
 
-G1_HEATER=$(${PHP} ${MEM_RD} G1_HEATER 0)
-G2_HEATER=$(${PHP} ${MEM_RD} G2_HEATER 0)
+G1_HEAT=$(${PHP} ${MEM_RD} G1_HEAT 0)
+G2_HEAT=$(${PHP} ${MEM_RD} G2_HEAT 0)
 G1_VENT=$(${PHP} ${MEM_RD} G1_VENT 0)
 G2_VENT=$(${PHP} ${MEM_RD} G2_VENT 0)
+G1_CIRC=$(${PHP} ${MEM_RD} G1_CIRC 0)
+G2_CIRC=$(${PHP} ${MEM_RD} G2_CIRC 0)
 
-${I2C_WR} 0x51 ${G1_HEATER}
+# FIXME: Set correct channel ID for actuators
+${I2C_WR} 0x51 ${G1_HEAT}
 ${I2C_WR} 0x52 ${G1_VENT}
-${I2C_WR} 0x53 ${G2_HEATER}
+${I2C_WR} 0x52 ${G1_CIRC}
+
+${I2C_WR} 0x53 ${G2_HEAT}
 ${I2C_WR} 0x54 ${G2_VENT}
+${I2C_WR} 0x54 ${G2_CIRC}
 
 G1_GROUND_T=$(${PHP} ${MEM_RD} ${G1_GROUND} unknown)
 G1_GROUND_TT=$(${PHP} ${MEM_RD} t_${G1_GROUND} unknown)
@@ -53,7 +61,7 @@ G2_GROUND_TT=$(${PHP} ${MEM_RD} t_${G2_GROUND} unknown)
 G2_AIR_T=$(${PHP} ${MEM_RD} ${G2_AIR} unknown)
 G2_AIR_TT=$(${PHP} ${MEM_RD} t_${G2_AIR} unknown)
 
-URL="http://10.8.0.1/greenhouse/stat.php?g1gr=${G1_GROUND_T}&g1grt=${G1_GROUND_TT}&g1ar=${G1_AIR_T}&g1art=${G1_AIR_TT}&g2gr=${G2_GROUND_T}&g2grt=${G2_GROUND_TT}&g2ar=${G2_AIR_T}&g2art=${G2_AIR_TT}&g1ht=${G1_HEATER}&g2ht=${G2_HEATER}&g1vt=${G1_VENT}&g2vt=${G2_VENT}" 
+URL="http://10.8.0.1/greenhouse/stat.php?g1gr=${G1_GROUND_T}&g1grt=${G1_GROUND_TT}&g1ar=${G1_AIR_T}&g1art=${G1_AIR_TT}&g2gr=${G2_GROUND_T}&g2grt=${G2_GROUND_TT}&g2ar=${G2_AIR_T}&g2art=${G2_AIR_TT}&g1ht=${G1_HEAT}&g2ht=${G2_HEAT}&g1vt=${G1_VENT}&g2vt=${G2_VENT}&g1cr=${G1_CIRC}&g2cr=${G2_CIRC}" 
 
 curl -f -s -o /dev/null ${URL}
 

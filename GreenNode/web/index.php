@@ -39,23 +39,27 @@ $G2_ground = get_sensor($m, $G2_ground['id']);
 $G1_air = get_sensor($m, $G1_air['id']);
 $G2_air = get_sensor($m, $G2_air['id']);
 
-$G1_FREEZ = $m->get('G1_FREEZ'); // 1, 0
-$G1_COOL = $m->get('G1_COOL');   // ON, OFF, AUTO
-$G1_HEAT = $m->get('G1_HEAT');   // ON, OFF, AUTO
+$G1_FREEZ = $m->get('G1_FREEZ');   // 1, 0
+$G1_VENT_C = $m->get('G1_VENT_C'); // ON, OFF, AUTO
+$G1_HEAT_C = $m->get('G1_HEAT_C'); // ON, OFF, AUTO
+$G1_CIRC_C = $m->get('G1_CIRC_C'); // ON, OFF, AUTO
 
-$G2_FREEZ = $m->get('G2_FREEZ'); // 1, 0
-$G2_COOL = $m->get('G2_COOL');   // ON, OFF, AUTO
-$G2_HEAT = $m->get('G2_HEAT');   // ON, OFF, AUTO
+$G2_FREEZ = $m->get('G2_FREEZ');   // 1, 0
+$G2_VENT_C = $m->get('G2_VENT_C'); // ON, OFF, AUTO
+$G2_HEAT_C = $m->get('G2_HEAT_C'); // ON, OFF, AUTO
+$G2_CIRC_C = $m->get('G2_CIRC_C'); // ON, OFF, AUTO
 
 if(empty($G1_FREEZ)) $G1_FREEZ = 0;
-if(empty($G1_COOL)) $G1_COOL = 'AUTO';
-if(empty($G1_HEAT)) $G1_HEAT = 'AUTO';
+if(empty($G1_VENT_C)) $G1_VENT_C = 'AUTO';
+if(empty($G1_HEAT_C)) $G1_HEAT_C = 'AUTO';
+if(empty($G1_CIRC_C)) $G1_CIRC_C = 'AUTO';
 if(empty($G2_FREEZ)) $G2_FREEZ = 0;
-if(empty($G2_COOL)) $G2_COOL = 'AUTO';
-if(empty($G2_HEAT)) $G2_HEAT = 'AUTO';
+if(empty($G2_VENT_C)) $G2_VENT_C = 'AUTO';
+if(empty($G2_HEAT_C)) $G2_HEAT_C = 'AUTO';
+if(empty($G2_CIRC_C)) $G2_CIRC_C = 'AUTO';
 
-$G1_heater = $m->get('G1_HEATER');
-$G2_heater = $m->get('G2_HEATER');
+$G1_heat = $m->get('G1_HEAT');
+$G2_heat = $m->get('G2_HEAT');
 $G1_circ = $m->get('G1_CIRC');
 $G2_circ = $m->get('G1_CIRC');
 $G1_vent = $m->get('G1_VENT');
@@ -92,15 +96,15 @@ function time_l($t)
     <table>
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G1_circ ? 'ON' : 'OFF').'</b></td>'
     .'<td><button type="button">'.(!$G1_circ ? 'ON' : 'OFF').'</button></td>'
-    .'<td><button type="button">AUTO</button></td>'; ?> </tr>
+    .($G1_CIRC_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>      
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G1_vent ? 'ON' : 'OFF').'</b></td>'
     .'<td><button type="button">'.(!$G1_vent ? 'ON' : 'OFF').'</button></td>'
-    .'<td><button type="button">AUTO</button></td>'; ?> </tr>
+    .($G1_VENT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
-  <tr><th>Подогрев:</th><?php echo '<td><b>'.($G1_heater ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G1_heater ? 'ON' : 'OFF').'</button></td>'
-    .'<td><button type="button">AUTO</button></td>'; ?></tr>
+  <tr><th>Подогрев:</th><?php echo '<td><b>'.($G1_heat ? 'ON' : 'OFF').'</b></td>'
+    .'<td><button type="button">'.(!$G1_heat ? 'ON' : 'OFF').'</button></td>'
+    .($G1_HEAT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
     </table>     
 </form>
 
@@ -122,15 +126,15 @@ function time_l($t)
     <table>
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G2_circ ? 'ON' : 'OFF').'</b></td>'
     .'<td><button type="button">'.(!$G2_circ ? 'ON' : 'OFF').'</button></td>'
-    .'<td><button type="button">AUTO</button></td>'; ?> </tr>
+    .($G2_CIRC_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>      
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G2_vent ? 'ON' : 'OFF').'</b></td>'
     .'<td><button type="button">'.(!$G2_vent ? 'ON' : 'OFF').'</button></td>'
-    .'<td><button type="button">AUTO</button></td>'; ?> </tr>
+    .($G2_VENT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
-  <tr><th>Подогрев:</th><?php echo '<td><b>'.($G2_heater ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G2_heater ? 'ON' : 'OFF').'</button></td>'
-    .'<td><button type="button">AUTO</button></td>'; ?></tr>
+  <tr><th>Подогрев:</th><?php echo '<td><b>'.($G2_heat ? 'ON' : 'OFF').'</b></td>'
+    .'<td><button type="button">'.(!$G2_heat ? 'ON' : 'OFF').'</button></td>'
+    .($G2_HEAT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
     </table>     
 </form>
 
