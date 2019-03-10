@@ -64,27 +64,11 @@ function getMemcachedKeys($host = '127.0.0.1', $port = 11211)
     return $keys;
 }
 
-/*
-$keys = $m->getAllKeys();
-if($keys != FALSE)
-{
-    $m->getDelayed($keys);
-
-    $store = $m->fetchAll();
-
-    foreach($store as $v)
-    {
-        echo $v['key'].' => '.$v['value']."\n";
-    }
-}
-*/
-
 $keys = getMemcachedKeys();
-if($keys != FALSE)
+if($keys != -1)
 {
     foreach($keys as $k)
     {
-        // echo $k."\n";
         $v = $m->get($k);
         echo $k.' => '.$v."\n";
     }

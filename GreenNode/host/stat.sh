@@ -1,15 +1,19 @@
 #!/bin/bash
 
-# 0x28e81d7791170295 21625
-# 0x28a51b779113020d 21062
-# 0x28e00646920402a2 20750
-# 0x2821cc46920302fb 20625
-
 PHP=/usr/bin/php
-I2C_RD=/home/av/ha-proj/GreenNode/host/i2c-rd
-T_RD=/home/av/ha-proj/GreenNode/host/ds2482
-MEM_WR=/home/av/ha-proj/GreenNode/host/mem_wr.php
-MEM_RD=/home/av/ha-proj/GreenNode/host/mem_rd.php
+REPO=/home/av/ha-proj/GreenNode/host
+I2C_RD=${REPO}/i2c-rd
+T_RD=${REPO}/ds2482
+MEM_WR=${REPO}/mem_wr.php
+MEM_RD=${REPO}/mem_rd.php
+MEM_SET=${REPO}/mem_set.php
+MEM_PROC=${REPO}/mem_proc.php
+
+. ${REPO}/sensors.conf
+${MEM_SET} G1_GROUND ${G1_GROUND}
+${MEM_SET} G1_AIR ${G1_AIR}
+${MEM_SET} G2_GROUND ${G2_GROUND}
+${MEM_SET} G2_AIR ${G2_AIR}
 
 ${T_RD} 0x18 | while read n v
   do ${PHP} ${MEM_WR} $n $v
@@ -18,6 +22,8 @@ done
 ${T_RD} 0x1A | while read n v
   do ${PHP} ${MEM_WR} $n $v
 done
+
+${MEM_PROC}
 
 PIZ_3V3=$(${I2C_RD} 0)
 PIZ_5V0=$(${I2C_RD} 2)

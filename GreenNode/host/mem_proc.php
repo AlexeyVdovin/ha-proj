@@ -2,10 +2,16 @@
 $DEBUG = 1;
 
 // 1W seril # for temperature sensors
-$G1_ground['id'] = '0x28e81d7791170295';
-$G1_air['id']    = '0x28a51b779113020d';
-$G2_ground['id'] = '0x28e00646920402a2';
-$G2_air['id']    = '0x2821cc46920302fb';
+$G1_ground['id'] = $m->get('G1_GROUND'); // '0x28e81d7791170295';
+$G1_air['id']    = $m->get('G1_AIR'); // '0x28a51b779113020d';
+$G2_ground['id'] = $m->get('G2_GROUND'); // '0x28e00646920402a2';
+$G2_air['id']    = $m->get('G2_AIR'); // '0x2821cc46920302fb';
+
+if(!isset($G1_ground['id']) || !isset($G1_air['id']) || !isset($G2_ground['id']) || !isset($G2_air['id']))
+{
+    echo "Error: Temperature sensors are not defined."
+    exit(1);
+}
 
 $m = new Memcached();
 $m->addServer('localhost', 11211);
@@ -147,4 +153,5 @@ else
 $m->set('G2_VENT', $G2_vent);
 if($DEBUG) echo "G2 Vent: ".($G2_vent == 1 ? 'ON' : 'OFF')."\n";
 
+exit(0);
 ?>
