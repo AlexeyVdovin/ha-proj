@@ -78,6 +78,7 @@ if($DEBUG) echo "G2 Air avg: $avg\n";
 
 // Business logic
 $G1_circ = $m->get('G1_CIRC');
+if(empty($G1_circ)) $G1_circ = 0;
 if($G1_CIRC_C == 'AUTO')
 {
     if($G1_circ == 0)
@@ -99,6 +100,7 @@ $m->set('G1_CIRC', $G1_circ);
 if($DEBUG) echo "G1 Circulation: ".($G1_circ == 1 ? 'ON' : 'OFF')."\n";
 
 $G1_heat = $m->get('G1_HEAT');
+if(empty($G1_heat)) $G1_heat = 0;
 if($G1_HEAT_C == 'AUTO')
 {
     if($G1_heat == 0)
@@ -119,6 +121,7 @@ if($DEBUG) echo "G1 Heater: ".($G1_heat == 1 ? 'ON' : 'OFF')."\n";
 
 
 $G2_circ = $m->get('G2_CIRC');
+if(empty($G2_circ)) $G2_circ = 0;
 if($G2_CIRC_C == 'AUTO')
 {
     if($G2_circ == 0)
@@ -140,6 +143,7 @@ $m->set('G2_CIRC', $G2_circ);
 if($DEBUG) echo "G2 Circulation: ".($G2_circ == 1 ? 'ON' : 'OFF')."\n";
 
 $G2_heat = $m->get('G2_HEAT');
+if(empty($G2_heat)) $G2_heat = 0;
 if($G2_HEAT_C == 'AUTO')
 {
     if($G2_heat == 0)
@@ -159,6 +163,7 @@ $m->set('G2_HEAT', $G2_heat);
 if($DEBUG) echo "G2 Heater: ".($G2_heat == 1 ? 'ON' : 'OFF')."\n";
 
 $G1_vent = $m->get('G1_VENT');
+if(empty($G1_vent)) $G1_vent = 0;
 if($G1_VENT_C == 'AUTO')
 {
     if($G1_vent == 0)
@@ -178,6 +183,7 @@ $m->set('G1_VENT', $G1_vent);
 if($DEBUG) echo "G1 Vent: ".($G1_vent == 1 ? 'ON' : 'OFF')."\n";
 
 $G2_vent = $m->get('G2_VENT');
+if(empty($G2_vent)) $G2_vent = 0;
 if($G2_VENT_C == 'AUTO')
 {
     if($G2_vent == 0)
