@@ -1,20 +1,20 @@
 <?php
 $DEBUG = 1;
 
+$m = new Memcached();
+$m->addServer('localhost', 11211);
+
 // 1W seril # for temperature sensors
 $G1_ground['id'] = $m->get('G1_GROUND'); // '0x28e81d7791170295';
 $G1_air['id']    = $m->get('G1_AIR'); // '0x28a51b779113020d';
 $G2_ground['id'] = $m->get('G2_GROUND'); // '0x28e00646920402a2';
 $G2_air['id']    = $m->get('G2_AIR'); // '0x2821cc46920302fb';
 
-if(!isset($G1_ground['id']) || !isset($G1_air['id']) || !isset($G2_ground['id']) || !isset($G2_air['id']))
+if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
-    echo "Error: Temperature sensors are not defined."
+    echo "Error: Temperature sensors are not defined.\n";
     exit(1);
 }
-
-$m = new Memcached();
-$m->addServer('localhost', 11211);
 
 $G1_FREEZ = $m->get('G1_FREEZ'); // 1, 0
 $G1_COOL = $m->get('G1_COOL');   // ON, OFF, AUTO
@@ -24,16 +24,16 @@ $G2_FREEZ = $m->get('G2_FREEZ'); // 1, 0
 $G2_COOL = $m->get('G2_COOL');   // ON, OFF, AUTO
 $G2_HEAT = $m->get('G2_HEAT');   // ON, OFF, AUTO
 
-if(!isset($G1_FREEZ)) $G1_FREEZ = 0;
-if(!isset($G1_COOL)) $G1_COOL = 'AUTO';
-if(!isset($G1_HEAT)) $G1_HEAT = 'AUTO';
-if(!isset($G2_FREEZ)) $G2_FREEZ = 0;
-if(!isset($G2_COOL)) $G2_COOL = 'AUTO';
-if(!isset($G2_HEAT)) $G2_HEAT = 'AUTO';
+if(empty($G1_FREEZ)) $G1_FREEZ = 0;
+if(empty($G1_COOL)) $G1_COOL = 'AUTO';
+if(empty($G1_HEAT)) $G1_HEAT = 'AUTO';
+if(empty($G2_FREEZ)) $G2_FREEZ = 0;
+if(empty($G2_COOL)) $G2_COOL = 'AUTO';
+if(empty($G2_HEAT)) $G2_HEAT = 'AUTO';
 
 $avg = null;
-$v = $m->get($G1_ground['id']);
-if(isset($v))
+$v = $m->get('avg_'.$G1_ground['id']);
+if(!empty($v))
 {
     $a = explode(',', $v);
     if(count($a) > 0) $avg = array_sum($a)/count($a);
@@ -42,8 +42,8 @@ $G1_ground['avg'] = $avg;
 if($DEBUG) echo "G1 Ground avg: $avg\n";
 
 $avg = null;
-$v = $m->get($G1_air['id']);
-if(isset($v))
+$v = $m->get('avg_'.$G1_air['id']);
+if(!empty($v))
 {
     $a = explode(',', $v);
     if(count($a) > 0) $avg = array_sum($a)/count($a);
@@ -52,8 +52,8 @@ $G1_air['avg'] = $avg;
 if($DEBUG) echo "G1 Air avg: $avg\n";
 
 $avg = null;
-$v = $m->get($G2_ground['id']);
-if(isset($v))
+$v = $m->get('avg_'.$G2_ground['id']);
+if(!empty($v))
 {
     $a = explode(',', $v);
     if(count($a) > 0) $avg = array_sum($a)/count($a);
@@ -62,8 +62,8 @@ $G2_ground['avg'] = $avg;
 if($DEBUG) echo "G2 Ground avg: $avg\n";
 
 $avg = null;
-$v = $m->get($G2_air['id']);
-if(isset($v))
+$v = $m->get('avg_'.$G2_air['id']);
+if(!empty($v))
 {
     $a = explode(',', $v);
     if(count($a) > 0) $avg = array_sum($a)/count($a);
