@@ -5,10 +5,10 @@ $m = new Memcached();
 $m->addServer('localhost', 11211);
 
 // 1W seril # for temperature sensors
-$G1_ground['id'] = $m->get('G1_GROUND'); // '0x28e81d7791170295';
-$G1_air['id']    = $m->get('G1_AIR'); // '0x28a51b779113020d';
-$G2_ground['id'] = $m->get('G2_GROUND'); // '0x28e00646920402a2';
-$G2_air['id']    = $m->get('G2_AIR'); // '0x2821cc46920302fb';
+$G1_ground['id'] = $m->get('G1_GROUND');
+$G1_air['id']    = $m->get('G1_AIR');
+$G2_ground['id'] = $m->get('G2_GROUND');
+$G2_air['id']    = $m->get('G2_AIR');
 
 if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
