@@ -24,10 +24,10 @@ function set_min($m, $id)
     $m->set('mint_'.$id, $t);
 }
 
-set_min($G1_ground['id']);
-set_min($G1_air['id']);
-set_min($G2_ground['id']);
-set_min($G2_air['id']);
+set_min($m, $G1_ground['id']);
+set_min($m, $G1_air['id']);
+set_min($m, $G2_ground['id']);
+set_min($m, $G2_air['id']);
 
 exit(0);
 ?>

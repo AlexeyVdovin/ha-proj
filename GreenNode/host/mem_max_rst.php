@@ -24,10 +24,10 @@ function set_max($m, $id)
     $m->set('maxt_'.$id, $t);
 }
 
-set_max($G1_ground['id']);
-set_max($G1_air['id']);
-set_max($G2_ground['id']);
-set_max($G2_air['id']);
+set_max($m, $G1_ground['id']);
+set_max($m, $G1_air['id']);
+set_max($m, $G2_ground['id']);
+set_max($m, $G2_air['id']);
 
 exit(0);
 ?>
