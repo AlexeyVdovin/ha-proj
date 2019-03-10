@@ -34,7 +34,7 @@ ${T_RD} 0x1A | while read n v
   do ${PHP} ${MEM_WR} $n $v
 done
 
-${php} ${MEM_PROC}
+${PHP} ${MEM_PROC}
 
 G1_HEAT=$(${PHP} ${MEM_RD} G1_HEAT 0)
 G2_HEAT=$(${PHP} ${MEM_RD} G2_HEAT 0)
