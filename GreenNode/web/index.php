@@ -25,7 +25,7 @@ function get_sensor($m, $id)
     $s['minT'] = $m->get('mint_'.$id);
     $avg = $s['T'];
     $v = $m->get('avg_'.$id);
-    if(!empty($v))
+    if($v != FALSE)
     {
         $a = explode(',', $v);
         if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
@@ -49,19 +49,19 @@ $G2_VENT_C = $m->get('G2_VENT_C'); // ON, OFF, AUTO
 $G2_HEAT_C = $m->get('G2_HEAT_C'); // ON, OFF, AUTO
 $G2_CIRC_C = $m->get('G2_CIRC_C'); // ON, OFF, AUTO
 
-if(empty($G1_FREEZ)) $G1_FREEZ = 0;
-if(empty($G1_VENT_C)) $G1_VENT_C = 'AUTO';
-if(empty($G1_HEAT_C)) $G1_HEAT_C = 'AUTO';
-if(empty($G1_CIRC_C)) $G1_CIRC_C = 'AUTO';
-if(empty($G2_FREEZ)) $G2_FREEZ = 0;
-if(empty($G2_VENT_C)) $G2_VENT_C = 'AUTO';
-if(empty($G2_HEAT_C)) $G2_HEAT_C = 'AUTO';
-if(empty($G2_CIRC_C)) $G2_CIRC_C = 'AUTO';
+if($G1_FREEZ === FALSE) $G1_FREEZ = 0;
+if($G1_VENT_C === FALSE) $G1_VENT_C = 'AUTO';
+if($G1_HEAT_C === FALSE) $G1_HEAT_C = 'AUTO';
+if($G1_CIRC_C === FALSE) $G1_CIRC_C = 'AUTO';
+if($G2_FREEZ === FALSE) $G2_FREEZ = 0;
+if($G2_VENT_C === FALSE) $G2_VENT_C = 'AUTO';
+if($G2_HEAT_C === FALSE) $G2_HEAT_C = 'AUTO';
+if($G2_CIRC_C === FALSE) $G2_CIRC_C = 'AUTO';
 
 $G1_heat = $m->get('G1_HEAT');
 $G2_heat = $m->get('G2_HEAT');
 $G1_circ = $m->get('G1_CIRC');
-$G2_circ = $m->get('G1_CIRC');
+$G2_circ = $m->get('G2_CIRC');
 $G1_vent = $m->get('G1_VENT');
 $G2_vent = $m->get('G2_VENT');
 
@@ -92,19 +92,20 @@ function time_l($t)
     .'<td><b><font color="red"> '.temp_c($G1_ground['max']).' C </font></b><br> '.time_l($G1_ground['maxT']).' </td>'
     .'</tr>'; ?>
 </table>
-<form action="/set.php">
+<form method="get" action="set.php">
+    <input name="g" type="hidden" value="1">
     <table>
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G1_circ ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G1_circ ? 'ON' : 'OFF').'</button></td>'
-    .($G1_CIRC_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .'<td><input type="submit" name="circ" value="'.(!$G1_circ ? 'ON' : 'OFF').'"</td>'
+    .($G1_CIRC_C != 'AUTO' ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>      
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G1_vent ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G1_vent ? 'ON' : 'OFF').'</button></td>'
-    .($G1_VENT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .'<td><input type="submit" name="vent" value="'.(!$G1_vent ? 'ON' : 'OFF').'"</td>'
+    .($G1_VENT_C != 'AUTO' ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
   <tr><th>Подогрев:</th><?php echo '<td><b>'.($G1_heat ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G1_heat ? 'ON' : 'OFF').'</button></td>'
-    .($G1_HEAT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .'<td><input type="submit" name="heat" value="'.(!$G1_heat ? 'ON' : 'OFF').'"</td>'
+    .($G1_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
     </table>     
 </form>
 
@@ -122,19 +123,20 @@ function time_l($t)
     .'<td><b><font color="red"> '.temp_c($G2_ground['max']).' C </font></b><br> '.time_l($G2_ground['maxT']).' </td>'
     .'</tr>'; ?>
 </table>
-<form action="/set.php">
+<form method="get" action="set.php">
+    <input name="g" type="hidden" value="2">
     <table>
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G2_circ ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G2_circ ? 'ON' : 'OFF').'</button></td>'
-    .($G2_CIRC_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .'<td><input type="submit" name="circ" value="'.(!$G2_circ ? 'ON' : 'OFF').'"</td>'
+    .($G2_CIRC_C != 'AUTO' ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>      
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G2_vent ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G2_vent ? 'ON' : 'OFF').'</button></td>'
-    .($G2_VENT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .'<td><input type="submit" name="vent" value="'.(!$G2_vent ? 'ON' : 'OFF').'"</td>'
+    .($G2_VENT_C != 'AUTO' ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
   <tr><th>Подогрев:</th><?php echo '<td><b>'.($G2_heat ? 'ON' : 'OFF').'</b></td>'
-    .'<td><button type="button">'.(!$G2_heat ? 'ON' : 'OFF').'</button></td>'
-    .($G2_HEAT_C != 'AUTO' ? '<td><button type="button">AUTO</button></td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .'<td><input type="submit" name="heat" value="'.(!$G2_heat ? 'ON' : 'OFF').'"</td>'
+    .($G2_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
     </table>     
 </form>
 
