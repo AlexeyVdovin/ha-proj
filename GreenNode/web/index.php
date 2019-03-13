@@ -1,6 +1,9 @@
 <?php
 $m = new Memcached();
 $m->addServer('localhost', 11211);
+header('Cache-Control: no-cache');
+header('Cache-Control: max-age=0');
+header('Cache-Control: no-store');
 
 // 1W seril # for temperature sensors
 $G1_ground['id'] = $m->get('G1_GROUND'); 
