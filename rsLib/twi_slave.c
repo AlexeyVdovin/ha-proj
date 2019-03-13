@@ -75,19 +75,19 @@ ISR(TWI_vect)
                             break;
                         case 1:
                             PORTB = (PORTB & ~0x04) | (data ? 0x04 : 0);
-                            regs[14] = (regs[14] & ~CTRL_RELAY_1) | (data ? CTRL_RELAY_1 : 0);
+                            regs[0x14] = (regs[0x14] & ~CTRL_RELAY_1) | (data ? CTRL_RELAY_1 : 0);
                             break;
                         case 2:
                             PORTB = (PORTB & ~0x02) | (data ? 0x02 : 0);
-                            regs[14] = (regs[14] & ~CTRL_RELAY_2) | (data ? CTRL_RELAY_2 : 0);
+                            regs[0x14] = (regs[0x14] & ~CTRL_RELAY_2) | (data ? CTRL_RELAY_2 : 0);
                             break;
                         case 3:
                             PORTD = (PORTD & ~0x80) | (data ? 0x80 : 0);
-                            regs[14] = (regs[14] & ~CTRL_RELAY_3) | (data ? CTRL_RELAY_3 : 0);
+                            regs[0x14] = (regs[0x14] & ~CTRL_RELAY_3) | (data ? CTRL_RELAY_3 : 0);
                             break;
                         case 4:
                             PORTB = (PORTB & ~0x01) | (data ? 0x01 : 0);
-                            regs[14] = (regs[14] & ~CTRL_RELAY_4) | (data ? CTRL_RELAY_4 : 0);
+                            regs[0x14] = (regs[0x14] & ~CTRL_RELAY_4) | (data ? CTRL_RELAY_4 : 0);
                             break;
                         case 5:
                         case 6:
