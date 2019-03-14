@@ -88,7 +88,7 @@ if($G1_CIRC_C == 'AUTO')
     }
     else
     {
-        if($G1_air['avg'] < $G1_ground['avg'] + 2000 || $G2_ground['avg'] > 21000) $G1_circ = 0;
+        if($G1_air['avg'] < $G1_ground['avg'] + 2000 || $G1_ground['avg'] > 21000) $G1_circ = 0;
         if($G1_FREEZ == 1 && ($G1_air['avg'] > 7000 || $G1_ground['avg'] < 10000)) $G1_circ = 0;
     }    
 }
