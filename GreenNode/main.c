@@ -318,7 +318,8 @@ int main()
             case ST_ACTIVE:
             {
                 static ushort prev = 0;
-                if((*(ushort*)get_reg(7*2) < 11600) && (*(ushort*)get_reg(6*2) < 11600))
+                // Main power supply is OFF or malfunction
+                if((*(ushort*)get_reg(7*2) < 11600))
                 {
                     printf_P(PSTR("Low power!\n"));
                     if(shutdown == -1) shutdown = get_time() + 3600L * 100; // Shutdown in 1 Hour
@@ -328,7 +329,7 @@ int main()
                     // Power restored
                     shutdown = -1;
                 }
-                // Probably in Shutdowns state 3.3V rail is turned OFF.
+                // Probably in Shutdowns state Pi Zero 3.3V rail is turned OFF.
                 if(/*(*(ushort*)get_reg(0*2) < 3200) || */(*(ushort*)get_reg(1*2) < 4800) || (*(ushort*)get_reg(6*2) < 11300))
                 {
                     printf_P(PSTR("Overload!\n"));
@@ -336,10 +337,20 @@ int main()
                     shutdown = get_time() + 600L * 100; // 10 Min
                     status = ST_POWER_OFF;
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
+                    break;
+                }
+                if(shutdown == -1 && (*(ushort*)get_reg(0*2) < 3200))
+                {
+                    printf_P(PSTR("OPi shutdown\n"));
+                    piz_Off();
+                    shutdown = get_time() + 30 * 100; // 30 sec
+                    status = ST_POWER_OFF;
+                    printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
+                    break;
                 }
                 if(*(ushort*)get_reg(8*2) != prev) // Activity reg
                 {
-                    activity = get_time() + 300 * 100; // 5 Min
+                    activity = get_time() + 300L * 100; // 5 Min
                     prev = *(ushort*)get_reg(8*2);
                 }
                 if(shutdown != -1 && timeout_expired(shutdown))
@@ -350,6 +361,7 @@ int main()
                     activity = -1;
                     status = ST_BOOT;
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_BOOT\n"));
+                    break;
                 }
                 if(activity != -1 && timeout_expired(activity))
                 {
@@ -360,6 +372,7 @@ int main()
                     shutdown = get_time() + 60 * 100; // 1 Min
                     status = ST_POWER_OFF;
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
+                    break;
                 }
                 if(*(ushort*)get_reg(5*2) != 0)
                 {
