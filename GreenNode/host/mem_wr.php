@@ -29,9 +29,13 @@ if(($max === FALSE) || ($v > $max))
     $m->set('maxt_'.$n, $t);
 }
 
+$a = array();
 $avg = $m->get('avg_'.$n);
-$a = explode(',', $avg);
-if(count($a) > 4) array_shift($a);
+if($avg != FALSE)
+{
+    $a = explode(',', $avg);
+    if(count($a) > 4) array_shift($a);
+}
 array_push($a, $v);
 $m->set('avg_'.$n, implode(',', $a));
 
