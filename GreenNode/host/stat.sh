@@ -52,6 +52,25 @@ ${I2C_WR} 0x53 ${G1_CIRC}
 #${I2C_WR} 0x54 ${G2_VENT}
 ${I2C_WR} 0x54 ${G2_CIRC}
 
+ping -c 3 -n ya.ru
+rc=$?
+
+COUNT=0
+if [ $rc != 0 ]; then
+  COUNT=$(${PHP} ${MEM_RD} PING_COUNT 0)
+  COUNT=$((${COUNT}+1))
+fi
+${PHP} ${MEM_SET} PING_COUNT ${COUNT}
+
+if [ ${COUNT} -gt 30 ]; then
+  echo "Do cold restart."
+  shutdown -P now
+fi
+
+if [ $rc != 0 ]; then
+  exit 0
+fi
+
 G1_GROUND_T=$(${PHP} ${MEM_RD} ${G1_GROUND} unknown)
 G1_GROUND_TT=$(${PHP} ${MEM_RD} t_${G1_GROUND} unknown)
 G1_AIR_T=$(${PHP} ${MEM_RD} ${G1_AIR} unknown)
