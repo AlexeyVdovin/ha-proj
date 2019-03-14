@@ -25,8 +25,8 @@ void io_init()
     DDRB = 0x07;
 
     // Port C initialization
-    // Func6=In Func5=In Func4=In Func3=In Func2=In Func1=Out Func0=In
-    // State6=T State5=T State4=T State3=T State2=T State1=0 State0=T
+    // Func6=In Func5=In Func4=In Func3=In Func2=In Func1=In Func0=In
+    // State6=T State5=T State4=T State3=T State2=T State1=T State0=T
     PORTC = 0x08;
     DDRC = 0x00;
 
@@ -179,6 +179,8 @@ void led_green_off()
 
 void piz_On()
 {
+    sio_init();
+    twi_init(0x16);
     printf_P(PSTR("Pi Zero -> ON\n"));
     PORTD |= 0x04;
     led_green_on();
@@ -186,7 +188,9 @@ void piz_On()
 
 void piz_Off()
 {
-    printf_P(PSTR("Pi Zero -> OFF\n"));
+    sio_stop();
+    twi_stop();
+    // printf_P(PSTR("Pi Zero -> OFF\n"));
     PORTD &= ~ 0x04;
     led_green_off();
     // Turn OFF all relay to save power

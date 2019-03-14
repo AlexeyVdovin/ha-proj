@@ -181,6 +181,13 @@ sio_init(void)
   Rx_On();
 }
 
+void sio_stop()
+{
+    SIO_UCSRB &= ~(_BV(SIO_TXEN) | _BV(SIO_RXEN));
+    PORTD &= ~0x03;
+    DDRD &= ~0x03;
+}
+
 /*
  * Send character c down the UART Tx, or put to Tx queue
  *

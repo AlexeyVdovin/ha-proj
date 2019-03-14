@@ -157,6 +157,14 @@ void twi_init(uint8_t address)
     for(i = 0; i < sizeof(regs)/sizeof(regs[0]); ++i) regs[i] = 0;
 }
 
+void twi_stop()
+{
+    TWCR = 0;
+    // Configure PC4 and PC5 as Inputs
+    PORTC &= ~0x30;
+    DDRC &= ~0x30;
+}
+
 void* get_reg(uint8_t adr)
 {
     return (adr < sizeof(regs)/sizeof(regs[0]) ? regs+adr : 0);

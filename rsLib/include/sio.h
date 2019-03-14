@@ -4,6 +4,7 @@
 #include "defines.h"
 
 void sio_init();
+void sio_stop();
 
 char sio_putchar(char c);
 int sio_getchar();
