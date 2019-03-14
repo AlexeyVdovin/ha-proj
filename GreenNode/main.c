@@ -339,7 +339,7 @@ int main()
                     printf_P(PSTR("Status: ST_ACTIVE -> ST_POWER_OFF\n"));
                     break;
                 }
-                if(shutdown == -1 && (*(ushort*)get_reg(0*2) < 3200))
+                if(*(ushort*)get_reg(0*2) < 3200)
                 {
                     printf_P(PSTR("OPi shutdown\n"));
                     piz_Off();
