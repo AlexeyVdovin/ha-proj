@@ -179,8 +179,8 @@ void led_green_off()
 
 void piz_On()
 {
-    sio_init();
-    twi_init(0x16);
+    //sio_init();
+    //twi_init(0x16);
     printf_P(PSTR("Pi Zero -> ON\n"));
     PORTD |= 0x04;
     led_green_on();
@@ -188,8 +188,8 @@ void piz_On()
 
 void piz_Off()
 {
-    sio_stop();
-    twi_stop();
+    //sio_stop();
+    //twi_stop();
     // printf_P(PSTR("Pi Zero -> OFF\n"));
     PORTD &= ~ 0x04;
     led_green_off();

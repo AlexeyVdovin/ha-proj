@@ -105,6 +105,7 @@ static volatile uchar tx_wr_index, tx_rd_index, tx_counter;
 static volatile union {
 // This flag is set on USART Receiver buffer overflow
  char rx_buffer_overflow:1;
+ char tx_disable:1;
 } uart_flags;
 
 // USART Receiver interrupt service routine
@@ -156,6 +157,7 @@ void
 sio_init(void)
 {
   uart_flags.rx_buffer_overflow = 0;
+  uart_flags.tx_disable = 0;
   rx_wr_index = 0;
   rx_rd_index = 0;
   rx_counter = 0;
@@ -183,6 +185,7 @@ sio_init(void)
 
 void sio_stop()
 {
+    uart_flags.tx_disable = 1;
     SIO_UCSRB &= ~(_BV(SIO_TXEN) | _BV(SIO_RXEN));
     PORTD &= ~0x03;
     DDRD &= ~0x03;
@@ -194,6 +197,7 @@ void sio_stop()
  */
 char sio_putchar(char c)
 {
+  if(uart_flags.tx_disable) return 0;
   while(tx_counter == TX_BUFFER_SIZE);
 
   cli();
