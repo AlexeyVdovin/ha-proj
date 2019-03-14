@@ -328,7 +328,8 @@ int main()
                     // Power restored
                     shutdown = -1;
                 }
-                if((*(ushort*)get_reg(0*2) < 3200) || (*(ushort*)get_reg(1*2) < 4800) || (*(ushort*)get_reg(6*2) < 11300))
+                // Probably in Shutdowns state 3.3V rail is turned OFF.
+                if(/*(*(ushort*)get_reg(0*2) < 3200) || */(*(ushort*)get_reg(1*2) < 4800) || (*(ushort*)get_reg(6*2) < 11300))
                 {
                     printf_P(PSTR("Overload!\n"));
                     piz_Off();
