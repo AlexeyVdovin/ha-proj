@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 PHP=/usr/bin/php
 REPO=/home/av/ha-proj/GreenNode/host
@@ -44,12 +44,12 @@ G1_CIRC=$(${PHP} ${MEM_RD} G1_CIRC 0)
 G2_CIRC=$(${PHP} ${MEM_RD} G2_CIRC 0)
 
 # FIXME: Set correct channel ID for actuators
-${I2C_WR} 0x51 ${G1_HEAT}
-${I2C_WR} 0x52 ${G1_VENT}
-${I2C_WR} 0x52 ${G1_CIRC}
+${I2C_WR} 0x51 $((${G1_HEAT}+${G2_HEAT}))
+${I2C_WR} 0x52 $((${G1_VENT}+${G2_VENT}))
 
-${I2C_WR} 0x53 ${G2_HEAT}
-${I2C_WR} 0x54 ${G2_VENT}
+${I2C_WR} 0x53 ${G1_CIRC}
+#${I2C_WR} 0x53 ${G2_HEAT}
+#${I2C_WR} 0x54 ${G2_VENT}
 ${I2C_WR} 0x54 ${G2_CIRC}
 
 G1_GROUND_T=$(${PHP} ${MEM_RD} ${G1_GROUND} unknown)
