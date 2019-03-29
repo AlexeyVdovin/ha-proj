@@ -5,11 +5,25 @@ header('Cache-Control: no-cache');
 header('Cache-Control: max-age=0');
 header('Cache-Control: no-store');
 
+function get_corr($m, $n)
+{
+    $v = $m->get($n.'_CORR');
+    if($v === false) $v = "0,1.0";
+    $c = explode(',', $v);
+    return $c;
+}
+
 // 1W seril # for temperature sensors
-$G1_ground['id'] = $m->get('G1_GROUND'); 
-$G1_air['id']    = $m->get('G1_AIR');
-$G2_ground['id'] = $m->get('G2_GROUND');
-$G2_air['id']    = $m->get('G2_AIR');
+$G1_ground['id']   = $m->get('G1_GROUND');
+$G1_ground['corr'] = explode(',', $m->get('G1_GROUND_CORR'));
+$G1_air['id']      = $m->get('G1_AIR');
+$G1_air['corr']    = explode(',', $m->get('G1_AIR_CORR'));
+$G2_ground['id']   = $m->get('G2_GROUND');
+$G2_ground['corr'] = explode(',', $m->get('G2_GROUND_CORR'));
+$G2_air['id']      = $m->get('G2_AIR');
+$G2_air['corr']    = explode(',', $m->get('G2_AIR_CORR'));
+
+
 
 if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
@@ -17,30 +31,36 @@ if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) ||
     die;
 }
 
-function get_sensor($m, $id)
+function get_sensor($m, $id, $c)
 {
     $s['id'] = $id;
-    $s['T'] = $m->get($id);
+    $s['T'] = (int)(($m->get($id)+$c[0])*$c[1]);
     $s['TT'] = $m->get('t_'.$id);
-    $s['max'] = $m->get('max_'.$id);
+    $s['max'] = (int)(($m->get('max_'.$id)+$c[0])*$c[1]);
     $s['maxT'] = $m->get('maxt_'.$id);
-    $s['min'] = $m->get('min_'.$id);
+    $s['min'] = (int)(($m->get('min_'.$id)+$c[0])*$c[1]);
     $s['minT'] = $m->get('mint_'.$id);
     $avg = $s['T'];
     $v = $m->get('avg_'.$id);
     if($v != FALSE)
     {
         $a = explode(',', $v);
-        if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
+        if(count($a) > 0) $avg = (int)((array_sum($a)/count($a) + $c[0])*$c[1]);
     }
     $s['avg'] = $avg;
+    /*
+    echo "<!---\n";
+    echo "c=".$c[0].", ".$c[1]."\n";
+    print_r($s);
+    echo "--->\n";
+    */
     return $s;    
 }
 
-$G1_ground = get_sensor($m, $G1_ground['id']);
-$G2_ground = get_sensor($m, $G2_ground['id']);
-$G1_air = get_sensor($m, $G1_air['id']);
-$G2_air = get_sensor($m, $G2_air['id']);
+$G1_ground = get_sensor($m, $G1_ground['id'], $G1_ground['corr']);
+$G2_ground = get_sensor($m, $G2_ground['id'], $G2_ground['corr']);
+$G1_air = get_sensor($m, $G1_air['id'], $G1_air['corr']);
+$G2_air = get_sensor($m, $G2_air['id'], $G2_air['corr']);
 
 $G1_FREEZ = $m->get('G1_FREEZ');   // 1, 0
 $G1_VENT_C = $m->get('G1_VENT_C'); // ON, OFF, AUTO
@@ -83,7 +103,7 @@ function time_l($t)
 <body>
     <h2>G1</h2>
 <table border="1">
-<tr><th width="25%"> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
+<tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
 <?php echo '<tr><td>Воздух</td>'
     .'<td><b> '.temp_c($G1_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G1_air['min']).' C </font></b><br> '.time_l($G1_air['minT']).' </td>'
@@ -114,7 +134,7 @@ function time_l($t)
 
     <h2>G2</h2>
 <table border="1">
-<tr><th width="25%"> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
+<tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
 <?php echo '<tr><td>Воздух</td>'
     .'<td><b> '.temp_c($G2_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G2_air['min']).' C </font></b><br> '.time_l($G2_air['minT']).' </td>'
