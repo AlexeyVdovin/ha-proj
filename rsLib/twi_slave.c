@@ -5,9 +5,9 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/twi.h>
-#include <util/delay.h>
 
 #include "twi_slave.h"
+#include <util/delay.h>
 
 /* -------------------------------------------------------------------------------------------------------------
 Command:
@@ -207,7 +207,7 @@ uint8_t twi_disable()
 
 void* get_reg(uint8_t adr)
 {
-    return (adr < sizeof(regs)/sizeof(regs[0]) ? regs+adr : 0);
+    return (void*)(adr < sizeof(regs)/sizeof(regs[0]) ? regs+adr : 0);
 }
 
 #endif /* __AVR__ */
