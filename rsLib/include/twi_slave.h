@@ -29,7 +29,9 @@ enum
 
 
 void twi_init(uint8_t address);
-void twi_stop();
+
+void twi_enable();
+uint8_t twi_disable(); // Return: 0 - Success, 1 - Fail
 
 void* get_reg(uint8_t adr);
 

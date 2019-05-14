@@ -188,8 +188,7 @@ void piz_On()
 
 void piz_Off()
 {
-    //sio_stop();
-    //twi_stop();
+
     // printf_P(PSTR("Pi Zero -> OFF\n"));
     PORTD &= ~ 0x04;
     led_green_off();
@@ -313,6 +312,12 @@ int main()
                 }
                 else if((shutdown == -1) && (*(ushort*)get_reg(0*2) > 3200) && (*(ushort*)get_reg(1*2) > 4900))
                 {
+                    if(twi_disable())
+                    {
+                        printf_P(PSTR("Error: TWI stuck detected!\n"));
+                        break;
+                    }
+                    twi_enable();
                     activity = get_time() + 300 * 100; // 5 Min
                     status = ST_ACTIVE;
                     printf_P(PSTR("Status: ST_POWER_ON -> ST_ACTIVE\n"));

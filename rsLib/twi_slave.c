@@ -5,6 +5,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/twi.h>
+#include <util/delay.h>
 
 #include "twi_slave.h"
 
@@ -13,7 +14,8 @@ Command:
 S ADDR W A | CMD | ARGS | RS ADR R A | RET | DATA | P
 ---------------------------------------------------------------------------------------------------------------- */
 
-uint8_t regs[64];
+volatile uint8_t regs[64];
+volatile uint8_t twi_state;
 
 void led_red_on();
 void led_red_off();
@@ -26,8 +28,9 @@ ISR(TWI_vect)
     static uint8_t adr = 0, n = 0;
     uint8_t data = 0x77;
     uint8_t cr = 0;
+    twi_state = TWSR;
 
-    switch(TWSR & 0xF8)
+    switch(twi_state & 0xF8)
     {
         case TW_SR_SLA_ACK:
         { // SLA+W received, ACK returned
@@ -144,7 +147,7 @@ ISR(TWI_vect)
 
     }
     // clear TWI interrupt flag, prepare to receive next byte
-    TWCR |= (1<<TWIE) | (1<<TWINT) | cr | (1<<TWEN);
+    TWCR = (TWCR & (~(1<<TWEA))) | (1<<TWINT) | cr;
 }
 
 void twi_init(uint8_t address)
@@ -157,12 +160,49 @@ void twi_init(uint8_t address)
     for(i = 0; i < sizeof(regs)/sizeof(regs[0]); ++i) regs[i] = 0;
 }
 
-void twi_stop()
+void twi_enable()
 {
+    TWCR = (1<<TWIE) | (1<<TWEA) | (1<<TWINT) | (1<<TWEN);
+}
+
+uint8_t twi_disable()
+{
+    uint8_t i;
     TWCR = 0;
-    // Configure PC4 and PC5 as Inputs
-    PORTC &= ~0x30;
-    DDRC &= ~0x30;
+    DDRC = DDRC & (~0x30);
+    _delay_us(10);
+
+    // SCL is Low -> Fail
+    if((PINC & 0x20) == 0) return 1;
+
+    // SDA is Low -> Resume
+    if((PINC & 0x10) == 0)
+    {
+        PORTC = PORTC & (~0x30);
+        for(i = 0; i < 20; i ++)
+        {
+            // Toggle SCL line
+            DDRC = DDRC | 0x20;    // SCL -> 0
+            _delay_us(10);
+            DDRC = DDRC & (~0x20); // SCL -> 1
+            _delay_us(10);
+            if((PINC & 0x10) == 1)
+            {
+                // Stop condition
+                DDRC = DDRC | 0x20;    // SCL -> 0
+                _delay_us(10);
+                DDRC = DDRC | 0x10;    // SDA -> 0
+                _delay_us(10);
+                DDRC = DDRC & (~0x20); // SCL -> 1
+                _delay_us(10);
+                DDRC = DDRC & (~0x10); // SDA -> 1
+                break;
+            }
+        }
+        DDRC = DDRC & (~0x30);
+        if(i == 20) return 2;
+    }
+    return 0;
 }
 
 void* get_reg(uint8_t adr)
