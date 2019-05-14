@@ -5,10 +5,14 @@ $m = new Memcached();
 $m->addServer('localhost', 11211);
 
 // 1W serial # for temperature sensors
-$G1_ground['id'] = $m->get('G1_GROUND');
-$G1_air['id']    = $m->get('G1_AIR');
-$G2_ground['id'] = $m->get('G2_GROUND');
-$G2_air['id']    = $m->get('G2_AIR');
+$G1_ground['id']   = $m->get('G1_GROUND');
+$G1_ground['corr'] = explode(',', $m->get('G1_GROUND_CORR'));
+$G1_air['id']      = $m->get('G1_AIR');
+$G1_air['corr']    = explode(',', $m->get('G1_AIR_CORR'));
+$G2_ground['id']   = $m->get('G2_GROUND');
+$G2_ground['corr'] = explode(',', $m->get('G2_GROUND_CORR'));
+$G2_air['id']      = $m->get('G2_AIR');
+$G2_air['corr']    = explode(',', $m->get('G2_AIR_CORR'));
 
 if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
@@ -36,42 +40,46 @@ if($G2_VENT_C === FALSE) $G2_VENT_C = 'AUTO';
 if($G2_HEAT_C === FALSE) $G2_HEAT_C = 'AUTO';
 if($G2_CIRC_C === FALSE) $G2_CIRC_C = 'AUTO';
 
-$avg = $m->get($G1_ground['id']);
+$c = $G1_ground['corr'];
+$avg = (int)(($m->get($G1_ground['id']) + $c[0])*$c[1]);
 $v = $m->get('avg_'.$G1_ground['id']);
 if($v != FALSE)
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
+    if(count($a) > 0) $avg = (int)((array_sum($a)/count($a) + $c[0])*$c[1]);
 }
 $G1_ground['avg'] = $avg;
 if($DEBUG) echo "G1 Ground avg: $avg\n";
 
-$avg = $m->get($G1_air['id']);
+$c = $G1_air['corr'];
+$avg = $m->get($G1_air['id']) + $c[0])*$c[1]);
 $v = $m->get('avg_'.$G1_air['id']);
 if($v != FALSE)
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
+    if(count($a) > 0) $avg = (int)((array_sum($a)/count($a) + $c[0])*$c[1]);
 }
 $G1_air['avg'] = $avg; 
 if($DEBUG) echo "G1 Air avg: $avg\n";
 
-$avg = $m->get($G2_ground['id']);
+$c = $G2_ground['corr'];
+$avg = $m->get($G2_ground['id']) + $c[0])*$c[1]);
 $v = $m->get('avg_'.$G2_ground['id']);
 if($v != FALSE)
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
+    if(count($a) > 0) $avg = (int)((array_sum($a)/count($a) + $c[0])*$c[1]);
 }
 $G2_ground['avg'] = $avg; 
 if($DEBUG) echo "G2 Ground avg: $avg\n";
 
-$avg = $m->get($G2_air['id']);
+$c = $G2_air['corr'];
+$avg = $m->get($G2_air['id']) + $c[0])*$c[1]);
 $v = $m->get('avg_'.$G2_air['id']);
 if($v != FALSE)
 {
     $a = explode(',', $v);
-    if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
+    if(count($a) > 0) $avg = (int)((array_sum($a)/count($a) + $c[0])*$c[1]);
 }
 $G2_air['avg'] = $avg; 
 if($DEBUG) echo "G2 Air avg: $avg\n";
@@ -83,12 +91,12 @@ if($G1_CIRC_C == 'AUTO')
 {
     if($G1_circ == 0)
     {
-        if($G1_air['avg'] > $G1_ground['avg'] + 5000 && $G1_ground['avg'] < 18000) $G1_circ = 1;
+        if($G1_air['avg'] > $G1_ground['avg'] + 5000 && $G1_ground['avg'] < 25000) $G1_circ = 1;
         if($G1_FREEZ == 1 && $G1_air['avg'] < 5000 && $G1_ground['avg'] > 12000) $G1_circ = 1;
     }
     else
     {
-        if($G1_air['avg'] < $G1_ground['avg'] + 2000 || $G1_ground['avg'] > 21000) $G1_circ = 0;
+        if($G1_air['avg'] < $G1_ground['avg'] + 2000 || $G1_ground['avg'] > 28000) $G1_circ = 0;
         if($G1_FREEZ == 1 && ($G1_air['avg'] > 7000 || $G1_ground['avg'] < 10000)) $G1_circ = 0;
     }    
 }
