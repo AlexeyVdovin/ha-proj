@@ -159,10 +159,10 @@ void twi_init(uint8_t address)
 
 void twi_stop()
 {
-    TWCR = 0;
     // Configure PC4 and PC5 as Inputs
     PORTC &= ~0x30;
     DDRC &= ~0x30;
+    TWCR = 0;
 }
 
 void* get_reg(uint8_t adr)
