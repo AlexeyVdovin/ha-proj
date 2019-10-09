@@ -12,9 +12,13 @@ MEM_PROC=${REPO}/mem_proc.php
 
 . ${REPO}/sensors.conf
 ${PHP} ${MEM_SET} G1_GROUND ${G1_GROUND}
+${PHP} ${MEM_SET} G1_GROUND_CORR ${G1_GROUND_CORR}
 ${PHP} ${MEM_SET} G1_AIR ${G1_AIR}
+${PHP} ${MEM_SET} G1_AIR_CORR ${G1_AIR_CORR}
 ${PHP} ${MEM_SET} G2_GROUND ${G2_GROUND}
+${PHP} ${MEM_SET} G2_GROUND_CORR ${G2_GROUND_CORR}
 ${PHP} ${MEM_SET} G2_AIR ${G2_AIR}
+${PHP} ${MEM_SET} G2_AIR_CORR ${G2_AIR_CORR}
 
 . /var/www/store/settings.conf
 ${PHP} ${MEM_SET} G1_FREEZ ${G1_FREEZ}
@@ -44,13 +48,11 @@ G1_CIRC=$(${PHP} ${MEM_RD} G1_CIRC 0)
 G2_CIRC=$(${PHP} ${MEM_RD} G2_CIRC 0)
 
 # FIXME: Set correct channel ID for actuators
-${I2C_WR} 0x51 $((${G1_HEAT}+${G2_HEAT}))
-${I2C_WR} 0x52 $((${G1_VENT}+${G2_VENT}))
+${I2C_WR} 0x53 $((${G1_HEAT}+${G2_HEAT}))
+${I2C_WR} 0x54 $((${G1_VENT}+${G2_VENT}))
 
-${I2C_WR} 0x53 ${G1_CIRC}
-#${I2C_WR} 0x53 ${G2_HEAT}
-#${I2C_WR} 0x54 ${G2_VENT}
-${I2C_WR} 0x54 ${G2_CIRC}
+${I2C_WR} 0x51 ${G1_CIRC}
+${I2C_WR} 0x52 ${G2_CIRC}
 
 ping -c 3 -n ya.ru
 rc=$?

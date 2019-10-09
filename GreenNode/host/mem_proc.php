@@ -83,12 +83,12 @@ if($G1_CIRC_C == 'AUTO')
 {
     if($G1_circ == 0)
     {
-        if($G1_air['avg'] > $G1_ground['avg'] + 5000 && $G1_ground['avg'] < 18000) $G1_circ = 1;
+        if($G1_air['avg'] > $G1_ground['avg'] + 6000 && $G1_ground['avg'] < 25000) $G1_circ = 1;
         if($G1_FREEZ == 1 && $G1_air['avg'] < 5000 && $G1_ground['avg'] > 12000) $G1_circ = 1;
     }
     else
     {
-        if($G1_air['avg'] < $G1_ground['avg'] + 2000 || $G1_ground['avg'] > 21000) $G1_circ = 0;
+        if($G1_air['avg'] < $G1_ground['avg'] + 2000 || $G1_ground['avg'] > 28000) $G1_circ = 0;
         if($G1_FREEZ == 1 && ($G1_air['avg'] > 7000 || $G1_ground['avg'] < 10000)) $G1_circ = 0;
     }    
 }
@@ -105,11 +105,11 @@ if($G1_HEAT_C == 'AUTO')
 {
     if($G1_heat == 0)
     {
-        if($G1_air['avg'] < 12000) $G1_heat = 1;
+        if($G1_air['avg'] < 14000) $G1_heat = 1;
     }
     else
     {
-        if($G1_air['avg'] > 14000) $G1_heat = 0;
+        if($G1_air['avg'] > 15000) $G1_heat = 0;
     }    
 }
 else
@@ -126,7 +126,7 @@ if($G2_CIRC_C == 'AUTO')
 {
     if($G2_circ == 0)
     {
-        if($G2_air['avg'] > $G2_ground['avg'] + 5000 && $G2_ground['avg'] < 18000) $G2_circ = 1;
+        if($G2_air['avg'] > $G2_ground['avg'] + 6000 && $G2_ground['avg'] < 18000) $G2_circ = 1;
         if($G2_FREEZ == 1 && $G2_air['avg'] < 5000 && $G2_ground['avg'] > 12000) $G2_circ = 1;
     }
     else
@@ -148,11 +148,11 @@ if($G2_HEAT_C == 'AUTO')
 {
     if($G2_heat == 0)
     {
-        if($G2_air['avg'] < 12000) $G2_heat = 1;
+        if($G2_air['avg'] < 14000) $G2_heat = 1;
     }
     else
     {
-        if($G2_air['avg'] > 14000) $G2_heat = 0;
+        if($G2_air['avg'] > 15000) $G2_heat = 0;
     }    
 }
 else

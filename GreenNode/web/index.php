@@ -83,7 +83,7 @@ function time_l($t)
 <body>
     <h2>G1</h2>
 <table border="1">
-<tr><th width="25%"> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
+<tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
 <?php echo '<tr><td>Воздух</td>'
     .'<td><b> '.temp_c($G1_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G1_air['min']).' C </font></b><br> '.time_l($G1_air['minT']).' </td>'
@@ -114,7 +114,7 @@ function time_l($t)
 
     <h2>G2</h2>
 <table border="1">
-<tr><th width="25%"> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
+<tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
 <?php echo '<tr><td>Воздух</td>'
     .'<td><b> '.temp_c($G2_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G2_air['min']).' C </font></b><br> '.time_l($G2_air['minT']).' </td>'
