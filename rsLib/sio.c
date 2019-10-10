@@ -186,9 +186,10 @@ sio_init(void)
 void sio_stop()
 {
     uart_flags.tx_disable = 1;
-    SIO_UCSRB &= ~(_BV(SIO_TXEN) | _BV(SIO_RXEN));
     PORTD &= ~0x03;
     DDRD &= ~0x03;
+    SIO_UCSRB &= ~(_BV(SIO_TXEN) | _BV(SIO_RXEN));
+
 }
 
 /*
