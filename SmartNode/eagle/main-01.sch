@@ -17481,8 +17481,8 @@ Source: &lt;a href="http://www.fairchildsemi.com/ds/MO%2FMOCD207-M.pdf"&gt; Data
 <part name="R3" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="R4" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="R5" library="rcl" deviceset="R-EU_" device="R0603" value="51K 1%"/>
-<part name="R6" library="rcl" deviceset="R-EU_" device="R0603" value="4.7K"/>
-<part name="R7" library="rcl" deviceset="R-EU_" device="R0603" value="4.7K"/>
+<part name="R6" library="rcl" deviceset="R-EU_" device="R0603" value="NI"/>
+<part name="R7" library="rcl" deviceset="R-EU_" device="R0603" value="NI"/>
 <part name="JP1" library="pinhead" deviceset="PINHD-2X3" device=""/>
 <part name="R8" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="C1" library="rcl" deviceset="C-EU" device="C0603" value="0.1"/>
@@ -17545,7 +17545,7 @@ Source: &lt;a href="http://www.fairchildsemi.com/ds/MO%2FMOCD207-M.pdf"&gt; Data
 <part name="IC3" library="SteveMarple" deviceset="DC-DC-CONV-4PIN-ISOLATING" device="MURATA-NME-05-12-SERIES"/>
 <part name="FS1" library="rcl" deviceset="R-US_" device="R1210" value="0.1A"/>
 <part name="C15" library="rcl" deviceset="C-EU" device="C1206" value="1.0"/>
-<part name="R9" library="rcl" deviceset="R-EU_" device="R1206"/>
+<part name="R9" library="rcl" deviceset="R-EU_" device="R1206" value="120"/>
 <part name="TVS1" library="diode" deviceset="DIODE-" device="SOD323-W"/>
 <part name="TVS2" library="diode" deviceset="DIODE-" device="SOD323-W"/>
 <part name="OK1" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
@@ -17556,49 +17556,49 @@ Source: &lt;a href="http://www.fairchildsemi.com/ds/MO%2FMOCD207-M.pdf"&gt; Data
 <part name="OK6" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
 <part name="OK7" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
 <part name="OK8" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
-<part name="R15" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R16" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R17" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R18" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R19" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R20" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R21" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R24" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R25" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R26" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R27" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R31" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R32" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R36" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R37" library="rcl" deviceset="R-EU_" device="R0603"/>
+<part name="R15" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R16" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R17" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R18" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R19" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R20" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R21" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R24" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R25" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R26" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R27" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R31" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R32" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R36" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R37" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
 <part name="R38" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R39" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R42" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R43" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R44" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R45" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R46" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R47" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R48" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R49" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R50" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R51" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R52" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R53" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R54" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R55" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R56" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R57" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R58" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R59" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R60" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R61" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R62" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R63" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R64" library="rcl" deviceset="R-EU_" device="R0603"/>
+<part name="R39" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R42" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R43" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R44" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R45" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R46" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R47" library="rcl" deviceset="R-EU_" device="R0603" value="390"/>
+<part name="R48" library="rcl" deviceset="R-EU_" device="R0603" value="51"/>
+<part name="R49" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R50" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R51" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R52" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R53" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R54" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R55" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R56" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R57" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R58" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R59" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R60" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R61" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R62" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R63" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
+<part name="R64" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="OK9" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
-<part name="R65" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R66" library="rcl" deviceset="R-EU_" device="R0603"/>
+<part name="R65" library="rcl" deviceset="R-EU_" device="R0603" value="750"/>
+<part name="R66" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="C16" library="rcl" deviceset="C-EU" device="C1206" value="1.0"/>
 <part name="IC5" library="Seeed-OPL-ic" deviceset="INTERFACE-MCP23017-E(SOIC28)" device="" value="MCP23017-E/SO-SOIC28"/>
 <part name="Q1" library="components" deviceset="IRLML2502" device=""/>
