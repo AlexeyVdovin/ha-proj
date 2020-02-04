@@ -69,7 +69,7 @@ int ds2482_reset(int dev)
     {
         res = i2c_io(dev, I2C_SMBUS_WRITE, DS2482_CMD_RESET, I2C_SMBUS_BYTE, NULL);
         if(res < 0) break;
-        usleep(20);
+        usleep(1000);
         res = ds2482_set_conf(dev, 0x00);
     } while(0);
     return res;
@@ -390,6 +390,14 @@ int ds2482_ds18b20_scan_temp(int dev)
 
     do
     {
+        res = ds2482_set_conf(dev, 0x00); // Disable APU
+        if(res < 0)
+        {
+            printf("Error: ds2482_set_conf() failed %d!\n", errno);
+            close(dev);
+            exit(1);
+        }
+
         res = ds2482_1w_reset(dev);
         if(res < 0)
         {
