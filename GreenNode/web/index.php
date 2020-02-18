@@ -5,25 +5,11 @@ header('Cache-Control: no-cache');
 header('Cache-Control: max-age=0');
 header('Cache-Control: no-store');
 
-function get_corr($m, $n)
-{
-    $v = $m->get($n.'_CORR');
-    if($v === false) $v = "0,1.0";
-    $c = explode(',', $v);
-    return $c;
-}
-
 // 1W seril # for temperature sensors
-$G1_ground['id']   = $m->get('G1_GROUND');
-$G1_ground['corr'] = explode(',', $m->get('G1_GROUND_CORR'));
-$G1_air['id']      = $m->get('G1_AIR');
-$G1_air['corr']    = explode(',', $m->get('G1_AIR_CORR'));
-$G2_ground['id']   = $m->get('G2_GROUND');
-$G2_ground['corr'] = explode(',', $m->get('G2_GROUND_CORR'));
-$G2_air['id']      = $m->get('G2_AIR');
-$G2_air['corr']    = explode(',', $m->get('G2_AIR_CORR'));
-
-
+$G1_ground['id'] = $m->get('G1_GROUND'); 
+$G1_air['id']    = $m->get('G1_AIR');
+$G2_ground['id'] = $m->get('G2_GROUND');
+$G2_air['id']    = $m->get('G2_AIR');
 
 if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
@@ -31,34 +17,30 @@ if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) ||
     die;
 }
 
-function get_sensor($m, $id, $c)
+function get_sensor($m, $id)
 {
     $s['id'] = $id;
-    $s['T'] = (int)(($m->get($id)+$c[0])*$c[1]);
+    $s['T'] = $m->get($id);
     $s['TT'] = $m->get('t_'.$id);
-    $s['max'] = (int)(($m->get('max_'.$id)+$c[0])*$c[1]);
+    $s['max'] = $m->get('max_'.$id);
     $s['maxT'] = $m->get('maxt_'.$id);
-    $s['min'] = (int)(($m->get('min_'.$id)+$c[0])*$c[1]);
+    $s['min'] = $m->get('min_'.$id);
     $s['minT'] = $m->get('mint_'.$id);
     $avg = $s['T'];
     $v = $m->get('avg_'.$id);
     if($v != FALSE)
     {
         $a = explode(',', $v);
-        if(count($a) > 0) $avg = (int)((array_sum($a)/count($a) + $c[0])*$c[1]);
+        if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
     }
     $s['avg'] = $avg;
-    echo "<!---\n";
-    echo "c=".$c[0].", ".$c[1]."\n";
-    print_r($s);
-    echo "--->\n";
     return $s;    
 }
 
-$G1_ground = get_sensor($m, $G1_ground['id'], $G1_ground['corr']);
-$G2_ground = get_sensor($m, $G2_ground['id'], $G2_ground['corr']);
-$G1_air = get_sensor($m, $G1_air['id'], $G1_air['corr']);
-$G2_air = get_sensor($m, $G2_air['id'], $G2_air['corr']);
+$G1_ground = get_sensor($m, $G1_ground['id']);
+$G2_ground = get_sensor($m, $G2_ground['id']);
+$G1_air = get_sensor($m, $G1_air['id']);
+$G2_air = get_sensor($m, $G2_air['id']);
 
 $G1_FREEZ = $m->get('G1_FREEZ');   // 1, 0
 $G1_VENT_C = $m->get('G1_VENT_C'); // ON, OFF, AUTO
@@ -102,12 +84,12 @@ function time_l($t)
     <h2>G1</h2>
 <table border="1">
 <tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
-<?php echo '<tr><td>Воздух</td>'
+<?php echo '<tr><td><a href="https://thingspeak.com/channels/981221/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Воздух</a></td>'
     .'<td><b> '.temp_c($G1_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G1_air['min']).' C </font></b><br> '.time_l($G1_air['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G1_air['max']).' C </font></b><br> '.time_l($G1_air['maxT']).' </td>'
     .'</tr>'; ?>
-<?php echo '<tr><td>Земля </td>'
+<?php echo '<tr><td><a href="https://thingspeak.com/channels/981221/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Земля</a> </td>'
     .'<td><b> '.temp_c($G1_ground['T']).' C </b></td>'
     .'<td><b><font color="blue"> '.temp_c($G1_ground['min']).' C </font></b><br> '.time_l($G1_ground['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G1_ground['max']).' C </font></b><br> '.time_l($G1_ground['maxT']).' </td>'
@@ -133,12 +115,12 @@ function time_l($t)
     <h2>G2</h2>
 <table border="1">
 <tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
-<?php echo '<tr><td>Воздух</td>'
+<?php echo '<tr><td><a href="https://thingspeak.com/channels/981229/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Воздух</a></td>'
     .'<td><b> '.temp_c($G2_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G2_air['min']).' C </font></b><br> '.time_l($G2_air['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G2_air['max']).' C </font></b><br> '.time_l($G2_air['maxT']).' </td>'
     .'</tr>'; ?>
-<?php echo '<tr><td>Земля </td>'
+<?php echo '<tr><td><a href="https://thingspeak.com/channels/981229/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Земля</a> </td>'
     .'<td><b> '.temp_c($G2_ground['T']).' C </b></td>'
     .'<td><b><font color="blue"> '.temp_c($G2_ground['min']).' C </font></b><br> '.time_l($G2_ground['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G2_ground['max']).' C </font></b><br> '.time_l($G2_ground['maxT']).' </td>'

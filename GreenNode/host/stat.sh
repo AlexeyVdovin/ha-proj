@@ -30,11 +30,27 @@ ${PHP} ${MEM_SET} G2_VENT_C ${G2_VENT_C}
 ${PHP} ${MEM_SET} G2_HEAT_C ${G2_HEAT_C}
 ${PHP} ${MEM_SET} G2_CIRC_C ${G2_CIRC_C}
 
-${T_RD} 0x18 | while read n v
+${T_RD} 0x18 > /tmp/0x18.tmp
+rc=$?
+
+if [ $rc != 0 ]; then
+  # TODO: Send error to the server
+  exit 0
+fi
+
+${T_RD} 0x1A > /tmp/0x1A.tmp
+rc=$?
+
+if [ $rc != 0 ]; then
+  # TODO: Send error to the server
+  exit 0
+fi
+
+cat /tmp/0x18.tmp | while read n v
   do ${PHP} ${MEM_WR} $n $v
 done
 
-${T_RD} 0x1A | while read n v
+cat /tmp/0x1A.tmp | while read n v
   do ${PHP} ${MEM_WR} $n $v
 done
 
@@ -58,10 +74,10 @@ ping -c 3 -n ya.ru
 rc=$?
 
 COUNT=0
-if [ $rc != 0 ]; then
+# Simulate permanent PING fail # if [ $rc != 0 ]; then
   COUNT=$(${PHP} ${MEM_RD} PING_COUNT 0)
   COUNT=$((${COUNT}+1))
-fi
+# fi
 ${PHP} ${MEM_SET} PING_COUNT ${COUNT}
 
 if [ ${COUNT} -gt 30 ]; then
