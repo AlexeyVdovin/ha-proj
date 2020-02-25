@@ -33,8 +33,8 @@ void io_init()
     // Port D initialization
     // Func7=In Func6=In Func5=In Func4=In Func3=Out Func2=Out Func1=Out Func0=In
     // State7=T State6=T State5=T State4=T State3=1 State2=0 State1=1 State0=P
-    PORTD = 0x03;
-    DDRD = 0xE6;
+    PORTD = 0x00;
+    DDRD = 0xFC;
 
     // Timer/Counter 0 initialization
     // Clock source: System Clock
@@ -179,8 +179,9 @@ void led_green_off()
 
 void piz_On()
 {
-    //sio_init();
-    //twi_init(0x16);
+    sio_init();
+    twi_init(0x16);
+    
     printf_P(PSTR("Pi Zero -> ON\n"));
     PORTD |= 0x04;
     led_green_on();
@@ -188,11 +189,14 @@ void piz_On()
 
 void piz_Off()
 {
-    //sio_stop();
-    //twi_stop();
-    // printf_P(PSTR("Pi Zero -> OFF\n"));
     PORTD &= ~ 0x04;
+
+    sio_stop();
+    twi_stop();
+
+    printf_P(PSTR("Pi Zero -> OFF\n"));
     led_green_off();
+    
     // Turn OFF all relay to save power
     PORTB = (PORTB & ~0x04);
     PORTB = (PORTB & ~0x02);
@@ -205,9 +209,12 @@ int main()
     static FILE my_stdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
     long s = get_time() + 100;
     io_init();
-    twi_init(0x16);
+    // twi_init(0x16);
 
     stdout = &my_stdout;
+    
+    // Pi Zero -> ON
+    // PORTD |= 0x04;
 
     for (;;)
     {

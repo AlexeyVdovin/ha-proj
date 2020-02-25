@@ -154,14 +154,11 @@ void twi_init(uint8_t address)
     TWAR = (address << 1);
     // Enable address matching, clear TWINT, enable TWI interrupt
     TWCR = (1<<TWIE) | (1<<TWEA) | (1<<TWINT) | (1<<TWEN);
-    for(i = 0; i < sizeof(regs)/sizeof(regs[0]); ++i) regs[i] = 0;
+    // for(i = 0; i < sizeof(regs)/sizeof(regs[0]); ++i) regs[i] = 0;
 }
 
 void twi_stop()
 {
-    // Configure PC4 and PC5 as Inputs
-    PORTC &= ~0x30;
-    DDRC &= ~0x30;
     TWCR = 0;
 }
 
