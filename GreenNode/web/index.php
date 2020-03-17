@@ -70,13 +70,15 @@ $G2_vent = $m->get('G2_VENT');
 
 function temp_c($t)
 {
-    return ((int)($t/100 + 0.5))/10;    
+    return ((int)($t/100 + 0.5))/10;
 }
 
 function time_l($t)
 {
     return strftime('%R', $t + 3 * 3600);
 }
+
+$UPTIME = file_get_contents('/tmp/uptime.txt');
 ?>
 <html>
 <head></head>
@@ -142,6 +144,6 @@ function time_l($t)
     .($G2_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
     </table>     
 </form>
-
+<p><?php echo $UPTIME; ?></p>
 </body>
 </html>

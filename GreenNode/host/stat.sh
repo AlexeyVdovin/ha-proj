@@ -70,19 +70,24 @@ ${I2C_WR} 0x54 $((${G1_VENT}+${G2_VENT}))
 ${I2C_WR} 0x51 ${G1_CIRC}
 ${I2C_WR} 0x52 ${G2_CIRC}
 
+uptime -p > /tmp/uptime.txt
+
 ping -c 3 -n ya.ru
 rc=$?
 
+# Simulate failed PING
+#rc=1
+
 COUNT=0
-# Simulate permanent PING fail # if [ $rc != 0 ]; then
+if [ $rc != 0 ]; then
   COUNT=$(${PHP} ${MEM_RD} PING_COUNT 0)
   COUNT=$((${COUNT}+1))
-# fi
+fi
 ${PHP} ${MEM_SET} PING_COUNT ${COUNT}
 
 if [ ${COUNT} -gt 30 ]; then
   echo "Do cold restart."
-  shutdown -P now
+  /sbin/shutdown -P now
 fi
 
 if [ $rc != 0 ]; then
@@ -115,3 +120,9 @@ URL="http://10.8.0.1/greenhouse/bmc.php?piz3v3=${PIZ_3V3}&piz5v0=${PIZ_5V0}&ow3v
 curl --retry 3 --retry-delay 5 --retry-max-time 30 --max-time 30 -f -s -o /dev/null ${URL}
 
 #echo $?
+
+
+#if [ ${COUNT} -gt 30 ]; then
+#  echo "Do cold restart."
+#  /sbin/shutdown -P now
+#fi
