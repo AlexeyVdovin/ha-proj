@@ -6,7 +6,7 @@ header('Cache-Control: max-age=0');
 header('Cache-Control: no-store');
 
 // 1W seril # for temperature sensors
-$G1_ground['id'] = $m->get('G1_GROUND'); 
+$G1_ground['id'] = $m->get('G1_GROUND');
 $G1_air['id']    = $m->get('G1_AIR');
 $G2_ground['id'] = $m->get('G2_GROUND');
 $G2_air['id']    = $m->get('G2_AIR');
@@ -34,7 +34,7 @@ function get_sensor($m, $id)
         if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
     }
     $s['avg'] = $avg;
-    return $s;    
+    return $s;
 }
 
 $G1_ground = get_sensor($m, $G1_ground['id']);
@@ -83,7 +83,7 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
 <html>
 <head></head>
 <body>
-    <h2>G1</h2>
+    <h2>G1</h2><a href="https://thingspeak.com/apps/matlab_visualizations/328861?width=1100&height=300">График температуры</a>
 <table border="1">
 <tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
 <?php echo '<tr><td><a href="https://thingspeak.com/channels/981221/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Воздух</a></td>'
@@ -103,7 +103,7 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G1_circ ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="circ" value="'.(!$G1_circ ? 'ON' : 'OFF').'"</td>'
     .($G1_CIRC_C != 'AUTO' ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
-  <tr></tr>      
+  <tr></tr>
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G1_vent ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="vent" value="'.(!$G1_vent ? 'ON' : 'OFF').'"</td>'
     .($G1_VENT_C != 'AUTO' ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
@@ -111,10 +111,10 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
   <tr><th>Подогрев:</th><?php echo '<td><b>'.($G1_heat ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="heat" value="'.(!$G1_heat ? 'ON' : 'OFF').'"</td>'
     .($G1_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
-    </table>     
+    </table>
 </form>
 
-    <h2>G2</h2>
+    <h2>G2</h2><a href="https://thingspeak.com/apps/matlab_visualizations/350886?width=1100&height=300">График температуры</a>
 <table border="1">
 <tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
 <?php echo '<tr><td><a href="https://thingspeak.com/channels/981229/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Воздух</a></td>'
@@ -134,7 +134,7 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G2_circ ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="circ" value="'.(!$G2_circ ? 'ON' : 'OFF').'"</td>'
     .($G2_CIRC_C != 'AUTO' ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
-  <tr></tr>      
+  <tr></tr>
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G2_vent ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="vent" value="'.(!$G2_vent ? 'ON' : 'OFF').'"</td>'
     .($G2_VENT_C != 'AUTO' ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
@@ -142,7 +142,7 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
   <tr><th>Подогрев:</th><?php echo '<td><b>'.($G2_heat ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="heat" value="'.(!$G2_heat ? 'ON' : 'OFF').'"</td>'
     .($G2_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
-    </table>     
+    </table>
 </form>
 <p><?php echo $UPTIME; ?></p>
 </body>
