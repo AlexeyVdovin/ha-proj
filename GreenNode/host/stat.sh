@@ -46,6 +46,13 @@ if [ $rc != 0 ]; then
   exit 0
 fi
 
+n=$(cat /tmp/0x18.tmp /tmp/0x1A.tmp | grep -E "$G1_AIR|$G1_GROUND|$G2_AIR|$G2_GROUND" | wc -l)
+if [ $n != 4 ]; then
+  # TODO: Send error to the server
+  /sbin/shutdown -P now
+  exit 0
+fi
+
 cat /tmp/0x18.tmp | while read n v
   do ${PHP} ${MEM_WR} $n $v
 done
