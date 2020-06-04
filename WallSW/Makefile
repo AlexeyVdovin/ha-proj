@@ -1,11 +1,11 @@
 target := wallsw
 
 # TODO: Remove dependency on softPwm softTone piHiPri
-OBJS = minini/minIni.o wiringPi/wiringPi.o wiringPi/piHiPri.o wiringPi/softPwm.o wiringPi/softTone.o mcp23017.o stm.o main.o 
+OBJS = minini/minIni.o wiringPi/wiringPi.o mqtt-c/src/mqtt.o mqtt-c/src/mqtt_pal.o mcp23017.o stm.o main.o 
 
 CC := gcc
 OPT := -g -O0
-INCLUDE :=
+INCLUDE := -Imqtt-c/include
 CFLAGS := $(OPT) $(INCLUDE)
 
 all: $(target)
