@@ -70,8 +70,8 @@
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
-#include "softPwm.h"
-#include "softTone.h"
+// #include "softPwm.h"
+// #include "softTone.h"
 
 #include "wiringPi.h"
 
@@ -1962,8 +1962,8 @@ void pinMode (int pin, int mode)
     else if (wiringPiMode != WPI_MODE_GPIO)
       return ;
 
-    softPwmStop  (origPin) ;
-    softToneStop (origPin) ;
+//    softPwmStop  (origPin) ;
+//    softToneStop (origPin) ;
 
     fSel    = gpioToGPFSEL [pin] ;
     shift   = gpioToShift  [pin] ;
@@ -1972,10 +1972,10 @@ void pinMode (int pin, int mode)
       *(gpio + fSel) = (*(gpio + fSel) & ~(7 << shift)) ; // Sets bits to zero = input
     else if (mode == OUTPUT)
       *(gpio + fSel) = (*(gpio + fSel) & ~(7 << shift)) | (1 << shift) ;
-    else if (mode == SOFT_PWM_OUTPUT)
-      softPwmCreate (origPin, 0, 100) ;
-    else if (mode == SOFT_TONE_OUTPUT)
-      softToneCreate (origPin) ;
+//    else if (mode == SOFT_PWM_OUTPUT)
+//      softPwmCreate (origPin, 0, 100) ;
+//    else if (mode == SOFT_TONE_OUTPUT)
+//      softToneCreate (origPin) ;
     else if (mode == PWM_TONE_OUTPUT)
     {
       pinMode (origPin, PWM_OUTPUT) ;	// Call myself to enable PWM mode
@@ -2599,7 +2599,7 @@ static void *interruptHandler (void *arg)
 {
   int myPin ;
 
-  (void)piHiPri (55) ;	// Only effective if we run as root
+//  (void)piHiPri (55) ;	// Only effective if we run as root
 
   myPin   = pinPass ;
   pinPass = -1 ;
@@ -2718,14 +2718,14 @@ int wiringPiISR (int pin, int mode, void (*function)(void))
     read (sysFds [bcmGpioPin], &c, 1) ;
 
   isrFunctions [pin] = function ;
-
+#if 0
   pthread_mutex_lock (&pinMutex) ;
     pinPass = pin ;
     pthread_create (&threadId, NULL, interruptHandler, NULL) ;
     while (pinPass != -1)
       delay (1) ;
   pthread_mutex_unlock (&pinMutex) ;
-
+#endif
   return 0 ;
 }
 
@@ -2916,32 +2916,32 @@ int wiringPiSetup (void)
 			  //gpio += 0x21b; //for PD0 cubieboard
 				//if (wiringPiDebug)
 				//	printf("++++ gpio PDx:0x%x\n", gpio);
-			  if ((int32_t)gpio == -1)
+			  if (gpio == (uint32_t*)-1)
 				return wiringPiFailure (WPI_ALMOST,"wiringPiSetup: mmap (GPIO) failed: %s\n", strerror (errno)) ;
 
 			// PWM
 
 			  pwm = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_PWM_BP) ;
-			  if ((int32_t)pwm == -1)
+			  if (pwm == (uint32_t*)-1)
 				 return wiringPiFailure (WPI_ALMOST,"wiringPiSetup: mmap (PWM) failed: %s\n", strerror (errno)) ;
 			 
 			// Clock control (needed for PWM)
 
 			  clk = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, CLOCK_BASE_BP) ;
-			  if ((int32_t)clk == -1)
+			  if (clk == (uint32_t*)-1)
 				 return wiringPiFailure (WPI_ALMOST,"wiringPiSetup: mmap (CLOCK) failed: %s\n", strerror (errno)) ;
 			 
 			// The drive pads
 
 			  pads = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_PADS_BP) ;
-			  if ((int32_t)pads == -1)
+			  if (pads == (uint32_t*)-1)
 				 return wiringPiFailure (WPI_ALMOST,"wiringPiSetup: mmap (PADS) failed: %s\n", strerror (errno)) ;
 
 			#ifdef	USE_TIMER
 			// The system timer
 
 			  timer = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_TIMER_BP) ;
-			  if ((int32_t)timer == -1)
+			  if (timer == (uint32_t*)-1)
 				return wiringPiFailure (WPI_ALMOST,"wiringPiSetup: mmap (TIMER) failed: %s\n", strerror (errno)) ;
 
 			// Set the timer to free-running, 1MHz.
@@ -2957,32 +2957,32 @@ int wiringPiSetup (void)
 	{
 		// GPIO:
 		  gpio = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_BASE) ;
-		  if ((int32_t)gpio == -1)
+		  if (gpio == (uint32_t*)-1)
 		    return wiringPiFailure (WPI_ALMOST, "wiringPiSetup: mmap (GPIO) failed: %s\n", strerror (errno)) ;
 
 		// PWM
 
 		  pwm = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_PWM) ;
-		  if ((int32_t)pwm == -1)
+		  if (pwm == (uint32_t*)-1)
 		    return wiringPiFailure (WPI_ALMOST, "wiringPiSetup: mmap (PWM) failed: %s\n", strerror (errno)) ;
 		 
 		// Clock control (needed for PWM)
 
 		  clk = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, CLOCK_BASE) ;
-		  if ((int32_t)clk == -1)
+		  if (clk == (uint32_t*)-1)
 		    return wiringPiFailure (WPI_ALMOST, "wiringPiSetup: mmap (CLOCK) failed: %s\n", strerror (errno)) ;
 		 
 		// The drive pads
 
 		  pads = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_PADS) ;
-		  if ((int32_t)pads == -1)
+		  if (pads == (uint32_t*)-1)
 		    return wiringPiFailure (WPI_ALMOST, "wiringPiSetup: mmap (PADS) failed: %s\n", strerror (errno)) ;
 
 #ifdef	USE_TIMER
 		// The system timer
 
 		  timer = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_TIMER) ;
-		  if ((int32_t)timer == -1)
+		  if (timer == (uint32_t*)-1)
 		    return wiringPiFailure (WPI_ALMOST, "wiringPiSetup: mmap (TIMER) failed: %s\n", strerror (errno)) ;
 
 		// Set the timer to free-running, 1MHz.
