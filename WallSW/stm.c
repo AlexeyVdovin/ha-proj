@@ -13,10 +13,14 @@
 #include "stm.h"
 #include "wiringPi/wiringPi.h"
 
+#define STM_CONTROL 77 // TBD
+
+
 typedef struct
 {
     int dev;
     int n_fd;
+    uint8_t control;
 } stm_t;
 
 stm_t stm;
@@ -65,6 +69,13 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     return ioctl(dev, I2C_SMBUS, &args);
 }
 
+int stm_set_control(int dev, uint8_t val)
+{
+    union i2c_smbus_data data;
+    data.byte = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_BYTE_DATA, &data);
+}
+
 // stm32 Interrupt PA07 pin
 static void gpioInterrupt1(void) 
 { 
@@ -97,7 +108,7 @@ void setup_stm_poll()
 
 void init_stm()
 {
-    int v;
+    int v, res;
     int dev;
     
     digitalWrite(PIN_RST, 0);
@@ -122,6 +133,8 @@ void init_stm()
         return;
     }
     wiringPiISR(PIN_PA7, INT_EDGE_FALLING, &gpioInterrupt1);
+    
+    //res = stm_enable_dcdc(dev, 1);
 }
 
 void close_stm()
