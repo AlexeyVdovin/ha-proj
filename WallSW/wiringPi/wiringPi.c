@@ -2586,6 +2586,20 @@ int waitForInterrupt (int pin, int mS)
   return x ;
 }
 
+int getInterruptFS (int pin)
+{
+  int fd ;
+
+  if (wiringPiMode == WPI_MODE_PINS)
+    pin = pinToGpio_BP [pin] ;
+  else if (wiringPiMode == WPI_MODE_PHYS)
+    pin = physToGpio_BP [pin] ;
+
+  if ((fd = sysFds [pin]) == -1)
+    return -2 ;
+  
+  return fd ;
+}
 
 /*
  * interruptHandler:

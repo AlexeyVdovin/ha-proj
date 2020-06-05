@@ -9,7 +9,18 @@
 #include <inttypes.h>
 #include <unistd.h>
 
+#include "config.h"
+#include "uplink.h"
 #include "mcp23017.h"
+#include "wiringPi/wiringPi.h"
+
+typedef struct
+{
+    int dev;
+    int n_fd;
+} mcp23017_t;
+
+mcp23017_t mcp;
 
 int mcp23017_open(uint8_t bus, uint8_t adr)
 {
@@ -55,11 +66,39 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     return ioctl(dev, I2C_SMBUS, &args);
 }
 
-int mcp23017_set_conf(int dev, uint8_t conf)
+int mcp23017_set_conf(int dev, uint8_t val)
 {
     union i2c_smbus_data data;
-    data.byte = conf;
+    data.byte = val;
     return i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_IOCONA, I2C_SMBUS_BYTE_DATA, &data);
+}
+
+int mcp23017_set_dir(int dev, uint16_t val)
+{
+    union i2c_smbus_data data;
+    data.word = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_IODIRA, I2C_SMBUS_WORD_DATA, &data);
+}
+
+int mcp23017_set_defval(int dev, uint16_t val)
+{
+    union i2c_smbus_data data;
+    data.word = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_DEFVALA, I2C_SMBUS_WORD_DATA, &data);
+}
+
+int mcp23017_set_cmpval(int dev, uint16_t val)
+{
+    union i2c_smbus_data data;
+    data.word = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_INTCONA, I2C_SMBUS_WORD_DATA, &data);
+}
+
+int mcp23017_set_inten(int dev, uint16_t val)
+{
+    union i2c_smbus_data data;
+    data.word = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_GPINTENA, I2C_SMBUS_WORD_DATA, &data);
 }
 
 int mcp23017_get_conf(int dev, uint8_t* conf)
@@ -78,7 +117,7 @@ int mcp23017_get_conf(int dev, uint8_t* conf)
     return res;
 }
 
-int mcp23017_get_dirAB(int dev, uint16_t* dir)
+int mcp23017_get_pins(int dev, uint16_t* val)
 {
     int res = -1;
     union i2c_smbus_data data;
@@ -89,43 +128,93 @@ int mcp23017_get_dirAB(int dev, uint16_t* dir)
         if(res < 0) break;
         res = i2c_io(dev, I2C_SMBUS_READ, 0, I2C_SMBUS_WORD_DATA, &data);
         if(res < 0) break;
-        *dir = 0x0FFFF & data.word;
+        *val = 0x0FFFF & data.word;
     } while(0);
     return res;
 }
 
-#if 0
-int main(int argc, char* argv[])
+// mcp23017 Interrupt pin
+static void gpioInterrupt0(void) 
 {
-    uint8_t sa = 0x20;
+    DBG("Interrupt: mcp23017");
+
+}
+
+void handle_mcp23017()
+{
+    uint8_t c;
+    int revents = poll_fds.fds[mcp.n_fd].revents;
+    
+    if(revents)
+    {
+        read(getInterruptFS(PIN_INT), &c, 1);
+        poll_fds.fds[mcp.n_fd].revents = 0;
+        gpioInterrupt0();
+    }
+}
+
+void init_mcp23017()
+{
+    int v;
     int dev;
     int res;
+    
+    mcp.dev  = -1;
+    mcp.n_fd = -1;
 
-    if(argc > 1)
-    {
-        sa = (uint8_t)strtol(argv[1], NULL, 0);
-    }
-
-    dev = mcp23017_open(0, sa);
+    dev = mcp23017_open(0, 0x20 + cfg.dev_id);
 
     if(dev < 0)
     {
-        printf("Error: mcp23017_open() failed %d!\n", errno);
-        exit(1);
+        DBG("Error: mcp23017_open() failed %d!", errno);
+        return;
     }
+    mcp.dev = dev;
+
+    // The INT pins are internally connected
+    // INT output pin - Active-low
+    res = mcp23017_set_conf(dev, 0x40);
+
+    // All inputs
+    res = mcp23017_set_dir(dev, 0xffff);
+
+    // Default value 0x0000
+    res = mcp23017_set_defval(dev, 0x0000);
+
+    // Compare inputs with it's previous values
+    res = mcp23017_set_cmpval(dev, 0x0000);
     
-    res = mcp23017_set_conf(dev, 0x02);
-    
-    uint8_t conf = 0xcc;
-    res = mcp23017_get_conf(dev, &conf);
-    printf("(%d) Conf = 0x%02X\n", res, conf);
+    pinMode (PIN_INT, INPUT);
+    // Read interrupt lane and check it has correct logic level
+    v = digitalRead(PIN_INT);
+    if(v != 1)
+    {
+        DBG("Error: Interrupt lane has incorrect logic level: 0");
+        return;
+    }
+    wiringPiISR(PIN_INT, INT_EDGE_FALLING, &gpioInterrupt0);
 
-    uint16_t dir = 0xccee;
-    res = mcp23017_get_dirAB(dev, &dir);
-    printf("(%d) Direction = 0x%04X\n", res, dir);
-
-    close(dev);
-
-    return 0;
+    // All interrupts enabled
+    res = mcp23017_set_inten(dev, 0xffff);
 }
-#endif
+
+void close_mcp23017()
+{
+    if(mcp.dev > 0) close(mcp.dev);
+    mcp.dev = -1;
+}
+
+void setup_mcp23017_poll()
+{
+    int n = poll_fds.n;
+    mcp.n_fd = n;
+    poll_fds.n += 2;
+    
+    poll_fds.fds[n].fd = getInterruptFS(PIN_INT);
+    poll_fds.fds[n].events = POLLPRI;
+    poll_fds.fds[n].revents = 0;
+    ++n;
+    poll_fds.fds[n].fd = getInterruptFS(PIN_PA7);
+    poll_fds.fds[n].events = POLLPRI;
+    poll_fds.fds[n].revents = 0;
+}

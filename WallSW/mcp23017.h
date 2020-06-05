@@ -26,5 +26,10 @@
 #define MCP23017_GPIOB 0x13
 #define MCP23017_OLATB 0x15
 
+void init_mcp23017();
+void close_mcp23017();
 
+void setup_mcp23017_poll();
+void handle_mcp23017();
+    
 #endif
