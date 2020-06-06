@@ -104,6 +104,8 @@ void setup_stm_poll()
     poll_fds.fds[n].fd = getInterruptFS(PIN_PA7);
     poll_fds.fds[n].events = POLLPRI;
     poll_fds.fds[n].revents = 0;
+    
+    DBG("STM fd: %d", poll_fds.fds[n].fd);
 }
 
 void init_stm()
@@ -115,7 +117,7 @@ void init_stm()
     pinMode (PIN_RST, OUTPUT);
     digitalWrite(PIN_RST, 0);
     
-    dev = stm_open(0, 0x40 + cfg.dev_id);
+    dev = stm_open(0, 0x10 + cfg.dev_id);
 
     if(dev < 0)
     {

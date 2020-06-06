@@ -115,6 +115,7 @@ int open_uplink_socket()
             client.status = SOC_CONNECTING;
             client.addr = addr;
             client.addr_len = sizeof(addr);
+            poll_fds.fds[client.n_fd].fd = sd;
             poll_fds.fds[client.n_fd].events = POLLOUT|POLLWRBAND;
 
             // DBG("Delayed connection initiated %d", sd);
@@ -159,6 +160,7 @@ void uplink_socket_connected(int sd)
             break;
         }
         client.status = SOC_CONNECTED;
+        poll_fds.fds[client.n_fd].fd = sd;
         poll_fds.fds[client.n_fd].events = POLLIN|POLLPRI|POLLRDHUP;
 
         DBG("MQTT: Connected %d", sd);
@@ -204,11 +206,13 @@ void handle_mqtt()
         {
             if(revents & POLLRDHUP)
             {
+                client.status = SOC_DISCONNECTED;
                 DBG("MQTT: Reconnecting...");
                 close(client.sd);
                 client.sd = -1;
+                poll_fds.fds[n].fd = -1;
+                poll_fds.fds[n].events = 0;
                 open_uplink_socket();
-                poll_fds.fds[n].events = (client.status == SOC_CONNECTING) ? POLLOUT|POLLWRBAND : POLLIN|POLLPRI|POLLRDHUP;
             }
             else
             {
