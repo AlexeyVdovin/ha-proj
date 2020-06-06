@@ -40,25 +40,6 @@ static void mqtt_callback(void** unused, struct mqtt_response_publish *published
     process_mqtt((const char*)published->topic_name, published->topic_name_size, (const char*)published->application_message, published->application_message_size);
 }
 
-void init_uplink()
-{
-    client.status = SOC_NONE;
-    client.sd = -1;
-    client.n_fd = -1;
-    
-    memset(&poll_fds, sizeof(poll_fds), 0);
-    mqtt_init(mq(&client), -1, client.sendbuf, sizeof(client.sendbuf), client.recvbuf, sizeof(client.recvbuf), mqtt_callback);
-}
-
-void setup_uplink_poll()
-{
-    int n = poll_fds.n++;
-    client.n_fd = n;
-    poll_fds.fds[n].fd = -1;
-    poll_fds.fds[n].events = 0;
-    poll_fds.fds[n].revents = 0;
-}
-
 // ntohl(inet_addr(uplink_ip))
 int open_uplink_socket()
 {
@@ -68,7 +49,7 @@ int open_uplink_socket()
 
     do
     {
-        //DBG("Open uplink");
+        // DBG("Open uplink");
         client.status = SOC_NONE;
         if((sd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         {
@@ -118,7 +99,7 @@ int open_uplink_socket()
             poll_fds.fds[client.n_fd].fd = sd;
             poll_fds.fds[client.n_fd].events = POLLOUT|POLLWRBAND;
 
-            // DBG("Delayed connection initiated %d", sd);
+            DBG("Delayed connection initiated %d", sd);
         }
     } while(0);
 
@@ -129,9 +110,10 @@ int open_uplink_socket()
     return sd;
 }
 
-void uplink_socket_connected(int sd)
+void uplink_socket_connected()
 {
     long fl;
+    int sd = client.sd;
     int err, valopt;
     socklen_t lon = sizeof(valopt);
     char topic[100];
@@ -160,7 +142,6 @@ void uplink_socket_connected(int sd)
             break;
         }
         client.status = SOC_CONNECTED;
-        poll_fds.fds[client.n_fd].fd = sd;
         poll_fds.fds[client.n_fd].events = POLLIN|POLLPRI|POLLRDHUP;
 
         DBG("MQTT: Connected %d", sd);
@@ -193,14 +174,14 @@ void handle_mqtt()
     int n = client.n_fd;
     int revents = (n > 0) ? (poll_fds.fds[n].revents) : 0;
     
-    //DBG("Handle mqtt");
+    // DBG("Handle mqtt");
 
     if(revents)
     {
+        poll_fds.fds[n].revents = 0;
         if(client.status == SOC_CONNECTING)
         {
             uplink_socket_connected(client.sd);
-            poll_fds.fds[n].events = (client.status == SOC_CONNECTING) ? POLLOUT|POLLWRBAND : POLLIN|POLLPRI|POLLRDHUP;
         }
         else if(client.status == SOC_CONNECTED)
         {
@@ -216,8 +197,33 @@ void handle_mqtt()
             }
             else
             {
-                mqtt_sync(mq(&client));
+//                mqtt_sync(mq(&client));
             }
         }
     }
+    mqtt_sync(mq(&client));
+}
+
+
+void init_uplink()
+{
+    client.status = SOC_NONE;
+    client.sd = -1;
+    client.n_fd = -1;
+    
+    memset(&poll_fds, sizeof(poll_fds), 0);
+    mqtt_init(mq(&client), -1, client.sendbuf, sizeof(client.sendbuf), client.recvbuf, sizeof(client.recvbuf), mqtt_callback);
+    
+    
+}
+
+void setup_uplink_poll()
+{
+    int n = poll_fds.n++;
+    client.n_fd = n;
+    poll_fds.fds[n].fd = -1;
+    poll_fds.fds[n].events = 0;
+    poll_fds.fds[n].revents = 0;
+
+    open_uplink_socket();
 }

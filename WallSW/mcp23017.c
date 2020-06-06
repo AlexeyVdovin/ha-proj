@@ -18,6 +18,7 @@
 
 typedef struct
 {
+    int      n_ints;
     int      dev;
     int      n_fd;
     int      tmr;
@@ -111,14 +112,9 @@ int mcp23017_get_conf(int dev, uint8_t* conf)
 {
     int res = -1;
     union i2c_smbus_data data;
-    do
-    {
-        res = i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_IOCONA, I2C_SMBUS_BYTE, NULL);
-        if(res < 0) break;
-        res = i2c_io(dev, I2C_SMBUS_READ, 0, I2C_SMBUS_BYTE, &data);
-        if(res < 0) break;
-        *conf = 0x0FF & data.byte;
-    } while(0);
+
+    res = i2c_io(dev, I2C_SMBUS_READ, MCP23017_IOCONA, I2C_SMBUS_BYTE_DATA, &data);
+    if(res >= 0) *conf = 0x0FF & data.byte;
     return res;
 }
 
@@ -126,14 +122,9 @@ int mcp23017_get_pins(int dev, uint16_t* val)
 {
     int res = -1;
     union i2c_smbus_data data;
-    do
-    {
-        res = i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_GPIOA, I2C_SMBUS_BYTE, NULL);
-        if(res < 0) break;
-        res = i2c_io(dev, I2C_SMBUS_READ, 0, I2C_SMBUS_WORD_DATA, &data);
-        if(res < 0) break;
-        *val = 0x0FFFF & data.word;
-    } while(0);
+
+    res = i2c_io(dev, I2C_SMBUS_READ, MCP23017_GPIOA, I2C_SMBUS_WORD_DATA, &data);
+    if(res >= 0) *val = 0x0FFFF & data.word;
     return res;
 }
 
@@ -141,14 +132,9 @@ int mcp23017_get_latch(int dev, uint16_t* val)
 {
     int res = -1;
     union i2c_smbus_data data;
-    do
-    {
-        res = i2c_io(dev, I2C_SMBUS_WRITE, MCP23017_INTCAPA, I2C_SMBUS_BYTE, NULL);
-        if(res < 0) break;
-        res = i2c_io(dev, I2C_SMBUS_READ, 0, I2C_SMBUS_WORD_DATA, &data);
-        if(res < 0) break;
-        *val = 0x0FFFF & data.word;
-    } while(0);
+
+    res = i2c_io(dev, I2C_SMBUS_READ, MCP23017_INTCAPA, I2C_SMBUS_WORD_DATA, &data);
+    if(res >= 0) *val = 0x0FFFF & data.word;
     return res;
 }
 
@@ -159,7 +145,9 @@ static void gpioInterrupt0(void)
     uint16_t p;
     int dev = mcp.dev;
     
-    DBG("Interrupt: mcp23017");
+    //DBG("Interrupt: mcp23017");
+    
+    mcp.n_ints++;
     
     // Read current inputs
     res = mcp23017_get_pins(dev, &p);
@@ -176,8 +164,25 @@ static void gpioInterrupt0(void)
 // Contact bounce passed
 static void tmrInterrupt0(void)
 {
-    // mcp.tmr_pins has clean value
-    // TODO: Send Switch change notification
+    int res;
+    uint16_t p;
+    int dev = mcp.dev;
+
+    DBG("Tmr INT: 0x%04X, %d", mcp.tmr_pins, mcp.n_ints);
+    // Read current inputs
+    res = mcp23017_get_pins(dev, &p);
+    if(mcp.tmr_pins != p)
+    {
+        // Contact bounce suppression
+        mcp.tmr_value.it_value.tv_nsec = 20 * 1000000; // 20ms
+        timerfd_settime(mcp.tmr, 0, &mcp.tmr_value, NULL);
+        mcp.tmr_pins = p;
+    }
+    else
+    {
+        // mcp.tmr_pins has clean value
+        // TODO: Send Switch change notification
+    }
 }
 
 void init_mcp23017()
@@ -190,6 +195,7 @@ void init_mcp23017()
     mcp.dev  = -1;
     mcp.n_fd = -1;
     mcp.tmr = -1;
+    mcp.n_ints = 0;
     
     mcp.tmr_value.it_value.tv_sec = 0;
     mcp.tmr_value.it_value.tv_nsec = 0;
@@ -255,17 +261,17 @@ void handle_mcp23017()
     revents = poll_fds.fds[mcp.n_fd].revents;
     if(revents)
     {
-        read(getInterruptFS(PIN_INT), &c, 1);
         poll_fds.fds[mcp.n_fd].revents = 0;
         gpioInterrupt0();
+        read(getInterruptFS(PIN_INT), &c, 1);
     }
 
     revents = poll_fds.fds[mcp.n_fd+1].revents;
     if(revents)
     {
-        read(mcp.tmr, &exp, sizeof(exp));
-        poll_fds.fds[mcp.n_fd].revents = 0;
+        poll_fds.fds[mcp.n_fd+1].revents = 0;
         tmrInterrupt0();
+        read(mcp.tmr, &exp, sizeof(exp));
     }
 }
 

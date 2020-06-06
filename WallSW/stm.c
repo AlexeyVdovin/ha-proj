@@ -104,8 +104,6 @@ void setup_stm_poll()
     poll_fds.fds[n].fd = getInterruptFS(PIN_PA7);
     poll_fds.fds[n].events = POLLPRI;
     poll_fds.fds[n].revents = 0;
-    
-    DBG("STM fd: %d", poll_fds.fds[n].fd);
 }
 
 void init_stm()
