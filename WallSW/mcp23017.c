@@ -23,6 +23,7 @@ typedef struct
     int      n_fd;
     int      tmr;
     uint16_t tmr_pins;
+    uint16_t pub_pins;
     struct itimerspec tmr_value;
     
 } mcp23017_t;
@@ -138,6 +139,29 @@ int mcp23017_get_latch(int dev, uint16_t* val)
     return res;
 }
 
+static void notify()
+{
+    int i;
+    uint16_t mask, val = mcp.tmr_pins;
+    char event[16];
+    
+    DBG("notify: 0x%04X -> 0x%04X", mcp.pub_pins, mcp.tmr_pins);
+    
+    if(mcp.pub_pins != val)
+    {
+        for(i = 0; i < 16; ++i)
+        {
+            mask = 1 << i;
+            if((mcp.pub_pins&mask) != (val&mask))
+            {
+                sprintf(event, "sw:%d", i);
+                send_mqtt(event, (val&mask) ? "1" : "0");
+            }
+        }
+        mcp.pub_pins = val;
+    }       
+}
+
 // mcp23017 Interrupt pin
 static void gpioInterrupt0(void) 
 {
@@ -149,10 +173,10 @@ static void gpioInterrupt0(void)
     
     mcp.n_ints++;
     
-    // Read current inputs
+    // Read latched inputs
     res = mcp23017_get_pins(dev, &p);
     
-    if(mcp.tmr_pins != p)
+//    if(mcp.tmr_pins != p)
     {
         // Contact bounce suppression
         mcp.tmr_value.it_value.tv_nsec = 20 * 1000000; // 20ms
@@ -168,9 +192,11 @@ static void tmrInterrupt0(void)
     uint16_t p;
     int dev = mcp.dev;
 
-    DBG("Tmr INT: 0x%04X, %d", mcp.tmr_pins, mcp.n_ints);
     // Read current inputs
     res = mcp23017_get_pins(dev, &p);
+
+    DBG("Tmr INT: 0x%04X, 0x%04X, 0x%04X, %d", mcp.tmr_pins, p, mcp.pub_pins, mcp.n_ints);
+
     if(mcp.tmr_pins != p)
     {
         // Contact bounce suppression
@@ -182,6 +208,7 @@ static void tmrInterrupt0(void)
     {
         // mcp.tmr_pins has clean value
         // TODO: Send Switch change notification
+        notify();
     }
 }
 
@@ -270,8 +297,8 @@ void handle_mcp23017()
     if(revents)
     {
         poll_fds.fds[mcp.n_fd+1].revents = 0;
-        tmrInterrupt0();
         read(mcp.tmr, &exp, sizeof(exp));
+        tmrInterrupt0();
     }
 }
 

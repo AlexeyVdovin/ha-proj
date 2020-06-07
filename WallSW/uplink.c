@@ -195,10 +195,6 @@ void handle_mqtt()
                 poll_fds.fds[n].events = 0;
                 open_uplink_socket();
             }
-            else
-            {
-//                mqtt_sync(mq(&client));
-            }
         }
     }
     mqtt_sync(mq(&client));
@@ -227,3 +223,13 @@ void setup_uplink_poll()
 
     open_uplink_socket();
 }
+
+void send_mqtt(char* event, char* value)
+{
+    char topic[100];
+    
+    DBG("pub: %s %s", event, value);
+    snprintf(topic, sizeof(topic)-1, "%s/%s", cfg.mqtt_topic, event);
+    mqtt_publish(mq(&client), topic, value, strlen(value), MQTT_PUBLISH_QOS_0);
+}
+
