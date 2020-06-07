@@ -13,14 +13,34 @@
 #include "stm.h"
 #include "wiringPi/wiringPi.h"
 
-#define STM_CONTROL 77 // TBD
+enum
+{
+    ST_IDLE = 0,
+    ST_DC_12V,
+    ST_DC_BATT,
+    ST_DC_5V0,
+    ST_DC_3V3,
+    ST_DC_VCC,
+    ST_DC_REF,
+    ST_TEMPERATURE
+};
+
+static const char STR_DC_12V[]      = "dc:12V";
+static const char STR_DC_BAT[]      = "dc:BATT";
+static const char STR_DC_5V0[]      = "dc:5V0";
+static const char STR_DC_3V3[]      = "dc:3V3";
+static const char STR_DC_VCC[]      = "dc:VCC";
+static const char STR_DC_REF[]      = "dc:REF";
+static const char STR_TEMPERATURE[] = "TEMPERATURE";
 
 
 typedef struct
 {
-    int dev;
-    int n_fd;
-    uint8_t control;
+    int      n_ints;
+    int      dev;
+    int      n_fd;
+    int      state;
+    uint16_t control;
 } stm_t;
 
 stm_t stm;
@@ -69,30 +89,133 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     return ioctl(dev, I2C_SMBUS, &args);
 }
 
-int stm_set_control(int dev, uint8_t val)
+int stm_set_control(int dev, uint16_t val)
 {
     union i2c_smbus_data data;
-    data.byte = val;
-    return i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_BYTE_DATA, &data);
+    data.word = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
+}
+
+int stm_get_status(int dev, uint32_t *val)
+{
+    int res;
+    union i2c_smbus_data data;
+    
+    do
+    {
+        res = i2c_io(dev, I2C_SMBUS_READ, STM_STATUS, I2C_SMBUS_WORD_DATA, &data);
+        if(res < 0) break;
+        *val = (0x0FFFF & data.word) << 16;
+        res = i2c_io(dev, I2C_SMBUS_READ, STM_STATUS+2, I2C_SMBUS_WORD_DATA, &data);
+        if(res < 0) break;
+        *val |= 0x0FFFF & data.word;
+    } while(0);
+    return res;
+}
+
+int stm_get_dc(int dev, uint8_t in, uint16_t *val)
+{
+    int res;
+    union i2c_smbus_data data;
+
+    res = i2c_io(dev, I2C_SMBUS_READ, in, I2C_SMBUS_WORD_DATA, &data);
+    if(res >= 0) *val = 0x0FFFF & data.word;
+    
+    return res;
 }
 
 // stm32 Interrupt PA07 pin
 static void gpioInterrupt1(void) 
 { 
+    stm.n_ints++;
     DBG("Interrupt: stm32");
 
 }
 
 void handle_stm()
 {
+    static int s = -20;
+    int t;
     uint8_t c;
+    uint16_t val;
     int revents = poll_fds.fds[stm.n_fd].revents;
+    const char* event;
+    char str[16];
     
     if(revents)
     {
-        read(getInterruptFS(PIN_PA7), &c, 1);
         poll_fds.fds[stm.n_fd].revents = 0;
         gpioInterrupt1();
+        read(getInterruptFS(PIN_PA7), &c, 1);
+    }
+
+#if 0    
+    if(s < 0)
+    {
+        s++;
+        return;
+    }
+#endif
+    t = time(0);
+    if(t != s)
+    {
+        s = t;
+        // DBG("stm: %d", t%60);
+        switch(t%60)
+        {
+            case ST_DC_12V:
+            {
+                event = STR_DC_12V;
+                stm_get_dc(stm.dev, STM_DC_12V, &val);
+                break;
+            }
+            case ST_DC_BATT:
+            {
+                event = STR_DC_BAT;
+                stm_get_dc(stm.dev, STM_DC_BATT, &val);
+                break;
+            }
+            case ST_DC_5V0:
+            {
+                event = STR_DC_5V0;
+                stm_get_dc(stm.dev, STM_DC_5V0, &val);
+                break;
+            }
+            case ST_DC_3V3:
+            {
+                event = STR_DC_3V3;
+                stm_get_dc(stm.dev, STM_DC_3V3, &val);
+                break;
+            }
+            case ST_DC_VCC:
+            {
+                event = STR_DC_VCC;
+                stm_get_dc(stm.dev, STM_DC_VCC, &val);
+                break;
+            }
+            case ST_DC_REF:
+            {
+                event = STR_DC_REF;
+                stm_get_dc(stm.dev, STM_DC_REF, &val);
+                break;
+            }
+            case ST_TEMPERATURE:
+            {
+                event = STR_TEMPERATURE;
+                stm_get_dc(stm.dev, STM_TEMPR, &val);
+                break;
+            }
+            default:
+            {
+                t = 0;
+                break;
+            }
+        }
+        if(t)
+        {
+            sprintf(str, "%d", val);
+            send_mqtt(event, str);
+        }
     }
 }
 
@@ -110,6 +233,11 @@ void init_stm()
 {
     int v, res;
     int dev;
+    
+    stm.dev = -1;
+    stm.n_fd = -1;
+    stm.control = 0;
+    stm.state = 0;
     
     digitalWrite(PIN_RST, 0);
     pinMode (PIN_RST, OUTPUT);
@@ -134,7 +262,8 @@ void init_stm()
     }
     wiringPiISR(PIN_PA7, INT_EDGE_FALLING, &gpioInterrupt1);
     
-    //res = stm_enable_dcdc(dev, 1);
+    stm.control = STM_DCDC_EN;
+    res = stm_set_control(dev, stm.control);
 }
 
 void close_stm()

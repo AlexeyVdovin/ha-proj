@@ -25,6 +25,6 @@ void init_uplink();
 void setup_uplink_poll();
 
 void handle_mqtt();
-void send_mqtt(char* event, char* value);
+void send_mqtt(const char* event, char* value);
     
 #endif

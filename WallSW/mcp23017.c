@@ -145,21 +145,18 @@ static void notify()
     uint16_t mask, val = mcp.tmr_pins;
     char event[16];
     
-    DBG("notify: 0x%04X -> 0x%04X", mcp.pub_pins, mcp.tmr_pins);
+    // DBG("notify: 0x%04X -> 0x%04X", mcp.pub_pins, mcp.tmr_pins);
     
-    if(mcp.pub_pins != val)
+    for(i = 0; i < 16; ++i)
     {
-        for(i = 0; i < 16; ++i)
+        mask = 1 << i;
+        if((mcp.pub_pins&mask) != (val&mask))
         {
-            mask = 1 << i;
-            if((mcp.pub_pins&mask) != (val&mask))
-            {
-                sprintf(event, "sw:%d", i);
-                send_mqtt(event, (val&mask) ? "1" : "0");
-            }
+            sprintf(event, "sw:%d", i);
+            send_mqtt(event, (val&mask) ? "1" : "0");
         }
-        mcp.pub_pins = val;
-    }       
+    }
+    mcp.pub_pins = val;
 }
 
 // mcp23017 Interrupt pin
@@ -173,16 +170,13 @@ static void gpioInterrupt0(void)
     
     mcp.n_ints++;
     
-    // Read latched inputs
+    // Read current inputs
     res = mcp23017_get_pins(dev, &p);
     
-//    if(mcp.tmr_pins != p)
-    {
-        // Contact bounce suppression
-        mcp.tmr_value.it_value.tv_nsec = 20 * 1000000; // 20ms
-        timerfd_settime(mcp.tmr, 0, &mcp.tmr_value, NULL);
-        mcp.tmr_pins = p;
-    }
+    // Contact bounce suppression
+    mcp.tmr_value.it_value.tv_nsec = 20 * 1000000; // 20ms
+    timerfd_settime(mcp.tmr, 0, &mcp.tmr_value, NULL);
+    mcp.tmr_pins = p;
 }
 
 // Contact bounce passed
@@ -195,7 +189,7 @@ static void tmrInterrupt0(void)
     // Read current inputs
     res = mcp23017_get_pins(dev, &p);
 
-    DBG("Tmr INT: 0x%04X, 0x%04X, 0x%04X, %d", mcp.tmr_pins, p, mcp.pub_pins, mcp.n_ints);
+    // DBG("Tmr INT: 0x%04X, 0x%04X, 0x%04X, %d", mcp.tmr_pins, p, mcp.pub_pins, mcp.n_ints);
 
     if(mcp.tmr_pins != p)
     {
@@ -206,9 +200,7 @@ static void tmrInterrupt0(void)
     }
     else
     {
-        // mcp.tmr_pins has clean value
-        // TODO: Send Switch change notification
-        notify();
+        if(mcp.pub_pins != mcp.tmr_pins) notify();
     }
 }
 
@@ -225,7 +217,7 @@ void init_mcp23017()
     mcp.n_ints = 0;
     
     mcp.tmr_value.it_value.tv_sec = 0;
-    mcp.tmr_value.it_value.tv_nsec = 0;
+    mcp.tmr_value.it_value.tv_nsec = 900 * 1000000;
     mcp.tmr_value.it_interval.tv_sec = 0;
     mcp.tmr_value.it_interval.tv_nsec = 0;
 
@@ -254,6 +246,7 @@ void init_mcp23017()
     // Read current inputs
     res = mcp23017_get_pins(dev, &p);
     mcp.tmr_pins = p;
+    mcp.pub_pins = ~p;
     
     pinMode (PIN_INT, INPUT);
     // Read interrupt lane and check it has correct logic level
@@ -266,7 +259,9 @@ void init_mcp23017()
     wiringPiISR(PIN_INT, INT_EDGE_FALLING, &gpioInterrupt0);
     
     mcp.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
-
+    // Set timer to publish initial satus
+    timerfd_settime(mcp.tmr, 0, &mcp.tmr_value, NULL);
+    
     // All interrupts enabled
     res = mcp23017_set_inten(dev, 0xffff);
 }

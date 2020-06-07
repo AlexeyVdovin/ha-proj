@@ -224,7 +224,7 @@ void setup_uplink_poll()
     open_uplink_socket();
 }
 
-void send_mqtt(char* event, char* value)
+void send_mqtt(const char* event, char* value)
 {
     char topic[100];
     

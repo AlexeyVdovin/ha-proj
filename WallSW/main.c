@@ -71,11 +71,11 @@ int main(int argc, char* argv[])
     wiringPiSetup();
 
     init_uplink();
-//    init_stm();
+    init_stm();
     init_mcp23017();
     
     setup_mcp23017_poll();
-//    setup_stm_poll();
+    setup_stm_poll();
     setup_uplink_poll();
     
     while(!do_exit)
@@ -83,8 +83,8 @@ int main(int argc, char* argv[])
         if(events_poll() > 0)
         {
             handle_mcp23017();
-//            handle_stm();
         }
+        handle_stm();
         handle_mqtt();
     }
 
