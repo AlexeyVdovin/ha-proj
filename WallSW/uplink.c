@@ -12,6 +12,13 @@
 
 typedef struct
 {
+    char*   str;
+    msgfn_t cb;
+    int     param;
+} filter_t;
+
+typedef struct
+{
     struct mqtt_client client;
     uint8_t sendbuf[2048];
     uint8_t recvbuf[1024];
@@ -20,6 +27,8 @@ typedef struct
     t_soc_st  status;
     int       sd;
     int       n_fd;
+    int       n_ft;
+    filter_t  ft[MAX_FILTERS];
 } mqtt_t;
 
 
@@ -31,7 +40,18 @@ static inline struct mqtt_client* mq(mqtt_t* c) { return &c->client; }
 
 static void process_mqtt(const char* topic, size_t topic_len, const char* message, size_t message_len)
 {
-
+    int i;
+    char match[256];
+    
+    for(i = 0; i < client.n_ft; ++i)
+    {
+        snprintf(match, sizeof(match)-1, "%s/%s/cmd", cfg.mqtt_topic, client.ft[i].str);
+        if(memcmp(topic, match, topic_len) == 0)
+        {
+            client.ft[i].cb(client.ft[i].param, message, message_len);
+            break;
+        }
+    }
 }
 
 static void mqtt_callback(void** unused, struct mqtt_response_publish *published)
@@ -163,7 +183,7 @@ void uplink_socket_connected()
         }
 
         /* subscribe */
-        snprintf(topic, sizeof(topic)-1, "%s/cmd", cfg.mqtt_topic);
+        snprintf(topic, sizeof(topic)-1, "%s/+/cmd", cfg.mqtt_topic);
         mqtt_subscribe(mq(&client), topic, 0);
 
     } while(0);
@@ -231,5 +251,21 @@ void send_mqtt(const char* event, char* value)
     DBG("pub: %s %s", event, value);
     snprintf(topic, sizeof(topic)-1, "%s/%s", cfg.mqtt_topic, event);
     mqtt_publish(mq(&client), topic, value, strlen(value), MQTT_PUBLISH_QOS_0);
+}
+
+void set_uplink_filter(char* filter, msgfn_t cb, int param)
+{
+    int n = client.n_ft;
+    
+    if(n == MAX_FILTERS)
+    {
+        DBG("Error: Max filters reached!");
+        return;
+    }
+    
+    client.n_ft++;
+    client.ft[n].str = filter;
+    client.ft[n].cb = cb;
+    client.ft[n].param = param;
 }
 

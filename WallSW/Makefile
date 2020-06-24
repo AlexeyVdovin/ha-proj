@@ -1,7 +1,6 @@
 target := wallsw
 
-# TODO: Remove dependency on softPwm softTone piHiPri
-OBJS = minini/minIni.o wiringPi/wiringPi.o mqtt-c/src/mqtt.o mqtt-c/src/mqtt_pal.o uplink.o mcp23017.o stm.o main.o 
+OBJS = minini/minIni.o wiringPi/wiringPi.o mqtt-c/src/mqtt.o mqtt-c/src/mqtt_pal.o uplink.o mcp23017.o pca9454.o stm.o main.o 
 
 CC := gcc
 OPT := -g -O0

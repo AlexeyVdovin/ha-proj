@@ -1,7 +1,10 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#define MAX_POLL_FDS    20
+#define LIGHTS_MAX_DEV   2
+#define POWER_MAX_DEV  4
+
+#define MAX_POLL_FDS    32
 #define POLL_TIMEOUT    1000
 
 
@@ -14,12 +17,30 @@
 
 typedef struct
 {
+    int   id;
+} wallsw_t;
+
+typedef struct
+{
+    int   id;
+} lights_t;
+
+typedef struct
+{
+    int id;   
+} power_t;
+
+typedef struct
+{
     char  client_name[32];
     char  mqtt_topic[64];
     char  uplink_ip[32];
     int   uplink_port;
-    int   dev_id;
-    
+    wallsw_t  sw;
+    int       n_lts;
+    lights_t  lts[LIGHTS_MAX_DEV];
+    int       n_pwr;
+    power_t pwr[POWER_MAX_DEV];
 } config_t;
 
 extern config_t cfg;

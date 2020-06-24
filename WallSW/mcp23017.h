@@ -31,5 +31,7 @@ void close_mcp23017();
 
 void setup_mcp23017_poll();
 void handle_mcp23017();
+
+void msg_mcp23017(int param, const char* message, size_t message_len);
     
 #endif

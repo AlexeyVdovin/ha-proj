@@ -221,7 +221,7 @@ void init_mcp23017()
     mcp.tmr_value.it_interval.tv_sec = 0;
     mcp.tmr_value.it_interval.tv_nsec = 0;
 
-    dev = mcp23017_open(0, 0x20 + cfg.dev_id);
+    dev = mcp23017_open(0, 0x20 + cfg.sw.id);
 
     if(dev < 0)
     {
@@ -310,4 +310,9 @@ void setup_mcp23017_poll()
     poll_fds.fds[n].fd = mcp.tmr;
     poll_fds.fds[n].events = POLLIN;
     poll_fds.fds[n].revents = 0;
+}
+
+void msg_mcp23017(int param, const char* message, size_t message_len)
+{
+    
 }
