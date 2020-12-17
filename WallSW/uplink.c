@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/timerfd.h>
+#include <time.h>
 
 #include "config.h"
 #include "uplink.h"
@@ -88,7 +90,7 @@ int open_uplink_socket()
         if((fl = fcntl(sd, F_GETFL, NULL)) < 0)
         {
             err = errno;
-            DBG("Error fcntl(..., F_GETFL) (%s)\n", strerror(err));
+            DBG("Error fcntl(..., F_GETFL) (%s)", strerror(err));
             close(sd);
             sd = -1;
             break;
@@ -97,7 +99,7 @@ int open_uplink_socket()
         if(fcntl(sd, F_SETFL, fl) < 0)
         {
             err = errno;
-            DBG("Error fcntl(..., F_SETFL) (%s)\n", strerror(err));
+            DBG("Error fcntl(..., F_SETFL) (%s)", strerror(err));
             close(sd);
             sd = -1;
             break;
@@ -144,7 +146,7 @@ void uplink_socket_connected()
         if(getsockopt(sd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0)
         {
             err = errno;
-            DBG("Error in getsockopt() - %s\n", strerror(err));
+            DBG("Error in getsockopt() - %s", strerror(err));
             close(sd);
             client.sd = -1;
             client.status = SOC_NONE;
@@ -154,7 +156,7 @@ void uplink_socket_connected()
         // Check the value returned...
         if(valopt)
         {
-            // DBG("Error in delayed connection() %d - %s\n", valopt, strerror(valopt));
+            DBG("Error in delayed connection() %d - %s", valopt, strerror(valopt));
             close(sd);
             client.sd = -1;
             client.status = SOC_NONE;
@@ -191,6 +193,7 @@ void uplink_socket_connected()
 
 void handle_mqtt()
 {
+    enum MQTTErrors err;
     int n = client.n_fd;
     int revents = (n > 0) ? (poll_fds.fds[n].revents) : 0;
     
@@ -199,25 +202,70 @@ void handle_mqtt()
     if(revents)
     {
         poll_fds.fds[n].revents = 0;
-        if(client.status == SOC_CONNECTING)
+        
+        switch(client.status)
         {
-            uplink_socket_connected(client.sd);
-        }
-        else if(client.status == SOC_CONNECTED)
-        {
-            if(revents & POLLRDHUP)
+            case SOC_CONNECTING:
             {
-                client.status = SOC_DISCONNECTED;
-                DBG("MQTT: Reconnecting...");
+                uplink_socket_connected(client.sd);
+                break;
+            }    
+            case SOC_CONNECTED:
+            {
+                if(revents & POLLRDHUP)
+                {
+                    client.status = SOC_DISCONNECTED;
+                    DBG("MQTT: Reconnecting...");
+                    close(client.sd);
+                    client.sd = -1;
+                    poll_fds.fds[n].fd = -1;
+                    poll_fds.fds[n].events = 0;
+                    open_uplink_socket();
+                }
+                break;
+            }
+            case SOC_TIMEOUT:
+            {
+                uint64_t exp;
+                // Reconnect timer fired
+                read(client.sd, &exp, sizeof(exp));
                 close(client.sd);
                 client.sd = -1;
                 poll_fds.fds[n].fd = -1;
                 poll_fds.fds[n].events = 0;
                 open_uplink_socket();
-            }
+                break;
+            }    
         }
     }
-    mqtt_sync(mq(&client));
+    if(client.status == SOC_CONNECTED)
+    {
+        err = mqtt_sync(mq(&client));
+        if(err != MQTT_OK)
+        {
+            DBG("Error: %d: %s", mq(&client)->error, mqtt_error_str(mq(&client)->error));
+            mqtt_disconnect(mq(&client));
+            client.status = SOC_DISCONNECTED;
+        }
+    }
+    if(client.status == SOC_NONE && client.sd == -1)
+    {
+        struct itimerspec tmr_value;
+        
+        DBG("Setting timeout ...");
+        
+        client.status = SOC_TIMEOUT;
+        tmr_value.it_value.tv_sec = 3;
+        tmr_value.it_value.tv_nsec = 0;
+        tmr_value.it_interval.tv_sec = 0;
+        tmr_value.it_interval.tv_nsec = 0;
+
+        // Start reconnect timeout
+        client.sd = timerfd_create(CLOCK_MONOTONIC, 0);
+        timerfd_settime(client.sd, 0, &tmr_value, NULL);
+        poll_fds.fds[n].fd = client.sd;
+        poll_fds.fds[n].events = POLLIN;
+    }
 }
 
 

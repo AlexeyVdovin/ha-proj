@@ -29,11 +29,11 @@ static void read_config(const char* name)
     DBG("powersw: '%s'", str);
     cfg.n_pwr = atol(str);
 
-    n = ini_gets("mqtt", "client", "opiz-03", str, array_sz(str), name);
+    n = ini_gets("mqtt", "client", "sgw2.2", str, array_sz(str), name);
     DBG("client_name: '%s'", str);
     strncpy(cfg.client_name, str, sizeof(cfg.client_name));
 
-    n = ini_gets("mqtt", "topic", "/nn/kan25/floor-03", str, array_sz(str), name);
+    n = ini_gets("mqtt", "topic", "/nn/kan25/floor-02", str, array_sz(str), name);
     DBG("mqtt_topic: '%s'", str);
     strncpy(cfg.mqtt_topic, str, sizeof(cfg.mqtt_topic));
 

@@ -7,7 +7,7 @@
 #define PCA9454_INPUT  0x00
 #define PCA9454_OUTPUT 0x01
 #define PCA9454_INV    0x02
-#define PCA9454_DIR    0x06
+#define PCA9454_DIR    0x03
 
 void init_pca9454(int id);
 void close_pca9454(int id);
