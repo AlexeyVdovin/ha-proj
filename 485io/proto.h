@@ -1,10 +1,11 @@
 #ifndef _PROTO_H_
 #define _PROTO_H_
-
+#include <stdio.h>
 #include <stdint.h>
 
 #define BAUD 9600
 #define MAX_DATA_LEN  110
+#define PACKET_RX_TIMEOUT  20
 
 enum
 {
@@ -31,27 +32,29 @@ typedef struct
 {
 	uint8_t  sop[4];  // Start of packet
 	uint8_t  dst; 
-	uint8_t  from;
+	uint8_t  src;
 	uint8_t  trid; // Transaction id
 	uint8_t  cmd;  // Command/Reply code
 	uint8_t  len;  // Data length
 	uint8_t  data[];
-} t_packet;
+} packet_t;
 
 typedef struct
 {
 	int      fd;
-	uint8_t  rx_pkt[sizeof(t_packet)+MAX_DATA_LEN+2]; // +2 for CRC
+	uint8_t  rx_pkt[sizeof(packet_t)+MAX_DATA_LEN+2]; // +2 for CRC
 	uint8_t  rx_pos;
 	long     rx_time;
 	
-} t_port;
+} port_t;
 
-t_port* proto_init(int fd);
-void proto_close(t_port* port);
+port_t* proto_init(int fd);
+void proto_close(port_t* port);
 
-t_packet* proto_poll(t_port* port);
-int proto_tx(t_port* port, t_packet* packet);
+packet_t* proto_poll(port_t* port);
+int proto_tx(port_t* port, packet_t* packet);
+long proto_get_time();
 
+void pkt_dump(FILE* f, const char* s, packet_t* packet);
 
 #endif /* _PROTO_H_ */

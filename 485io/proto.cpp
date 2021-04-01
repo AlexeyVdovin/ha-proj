@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "proto.h"
 
@@ -31,84 +32,97 @@ static uint16_t crc16(uint8_t* addr, int len, uint32_t crc)
     return (uint16_t)crc;                     /* Return updated CRC */
 }
 
-t_port* proto_init(int fd)
+long proto_get_time()
 {
-	t_port* port = (t_port*)malloc(sizeof(t_port));
+	long ms;
+	struct timeval tv;
+	gettimeofday(&tv, null);
+	ms = tv.tv_sec * 1000 + tv.tv_usec/1000;
+	return ms;
+}
+
+port_t* proto_init(int fd)
+{
+	port_t* port = (port_t*)malloc(sizeof(port_t));
 	port->fd = fd;
+	port->rx_pos = 0;
+	port->rx_time = 0;
 	return port;
 }
 
-void proto_close(t_port* port)
+void proto_close(port_t* port)
 {
 	free(port);
 }
 
-int proto_tx(t_port* port, t_packet* packet)
+void pkt_dump(FILE* f, const char* s, packet_t* p)
 {
-    int rc, len = packet->len + sizeof(t_packet);
-	uint8_t* p = (uint8_t*)packet;
+	int i;
+	fprintf(f, "%s: 0x%02X->0x%02X 0x%02X cmd:0x%02X [%d]: ", s, p->src, p->dst, p->trid, p->cmd, p->len);
+	for(i = 0; i < p->len; ++i) { fprintf(f, "0x%02X ", p->data[i]); }
+	fprintf(f, "0x%04X\n", p->data[p->len] + (p->data[p->len+1]<<8));
+	fflush(f);
+}
+
+static inline uint16_t packet_crc(packet_t* pkt)
+{
+    int len = pkt->len + sizeof(packet_t);
+	uint8_t* p = (uint8_t*)pkt;
 	uint16_t crc = crc16(p, len, 0);
+	return crc;
+}
+
+int proto_tx(port_t* port, packet_t* packet)
+{
+    int rc, len = packet->len + sizeof(packet_t);
+	uint8_t* p = (uint8_t*)packet;
+	uint16_t crc = packet_crc(packet);
 	uint8_t* c = (uint8_t*)&crc;
 	packet->data[packet->len + 0] = c[0];
 	packet->data[packet->len + 1] = c[1];
+	pkt_dump(stdout, "TX", packet);
     rc = write(port->fd, p, len+2);
 	return rc;
 }
 
-t_packet* proto_poll(t_port* port)
+packet_t* proto_poll(port_t* port)
 {
-
-	return null;
-}
-
-
-/*
-static uchar rx_pkt[sizeof(packet_t)+MAX_DATA_LEN+2];
-static uchar _rx_pos = 0;
-static long rx_time = 0;
-
-static packet_t* rx_packet()
-{
-    packet_t *pkt = (packet_t*)rx_pkt;
-    register uchar rx_pos = _rx_pos;
+	int rc;
+    packet_t *pkt = (packet_t*)port->rx_pkt;
+    uint8_t rx_pos = port->rx_pos;
+	uint8_t  c;
 
     // Check for timeout    
-    if(rx_pos && rx_time && get_time() > rx_time) rx_pos = 0;
-
-    while(rx_count())
-    {
-        int c = rx_byte();
-        if(c < 0) break;
-        register uchar u = (uchar)(c & 0x00FF);
-        
-        if(rx_pos == 0 || (rx_pos == 1 && u == DATA_ID1))
-        {
-            rx_pos = 0;
-            if(u != DATA_ID1) continue;
-            else rx_time = get_time()+PACKET_RX_TIMEOUT;
-        }
-        if(rx_pos == 1 && u != DATA_ID2) { rx_pos = 0; continue; }
-        if(rx_pos == sizeof(packet_t)-1 && pkt->len > MAX_DATA_LEN) { rx_pos = 0; continue; }
-        if(rx_pos < sizeof(packet_t) || rx_pos < sizeof(packet_t) + pkt->len + 2)
+    if(rx_pos && port->rx_time && proto_get_time() > port->rx_time) rx_pos = 0;
+	
+	do
+	{
+		rc = read(port->fd, &c, 1);
+		if(rc < 0) { pkt = null; break; }
+		
+		if(rx_pos == 0 && c != SOP_485_CODE0) continue;
+		if(rx_pos == 1 && c != SOP_485_CODE1) { rx_pos = 0; continue; }
+		if(rx_pos == 2 && c != SOP_485_CODE2) { rx_pos = 0; continue; }
+		if(rx_pos == 3 && c != SOP_485_CODE3) { rx_pos = 0; continue; }
+		
+		if(rx_pos == sizeof(packet_t)-1 && pkt->len > MAX_DATA_LEN) { rx_pos = 0; continue; }
+			
+		if(rx_pos < sizeof(packet_t) || rx_pos < sizeof(packet_t) + pkt->len + 2)
         { 
-            rx_pkt[rx_pos++] = u;
-        }
-        if(rx_pos >= sizeof(packet_t) + pkt->len + 2)
+            port->rx_pkt[rx_pos++] = c;
+			port->rx_time = proto_get_time()+PACKET_RX_TIMEOUT;
+		}
+
+		if(rx_pos >= sizeof(packet_t) + pkt->len + 2)
         {
             rx_pos = 0;
-            ushort* crc = (ushort*)(pkt->data + pkt->len);
-            if(pkt->len > 0 && *crc == packet_crc(pkt)) { _rx_pos = rx_pos; return pkt; }
+            uint16_t crc = (pkt->data[pkt->len+1] << 8) + pkt->data[pkt->len];
+            if(pkt->len > 0 && crc == packet_crc(pkt)) break;
         }
-    }
-    _rx_pos = rx_pos;
-    return NULL;
+	} while(1);
+	
+	port->rx_pos = rx_pos;
+
+	return pkt;
 }
 
-static void tx_packet(packet_t* pkt)
-{
-    uchar i = pkt->len + sizeof(packet_t)+2, *c = (uchar*)pkt;
-    ushort* crc = (ushort*)(pkt->data + pkt->len);
-    *crc = packet_crc(pkt);
-    while(--i) tx_byte(*c++);
-}
-*/
