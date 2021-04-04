@@ -89,7 +89,87 @@ int open_comm(char* dev)
 	return fd;
 }
 
-static const uint8_t pkt_len[] = {0, 2, 2, 2, 2, 2, 2, 2, 2};
+static const uint8_t pkt_len[] = {0, 2, 2, 2, 3, 2, 2, 2, 3};
+static uint32_t regs[0x100];
+
+void process_pkt(port_t* port, packet_t* pkt, int id)
+{
+	uint8_t tx[sizeof(packet_t)+MAX_DATA_LEN+2] = {
+			SOP_485_CODE0, SOP_485_CODE1, SOP_485_CODE2, SOP_485_CODE3,
+			pkt->src, (uint8_t)(id&0xFF)/*from*/, 1, 0, 0 };
+	packet_t* p = null;
+	uint8_t i, len = 0;
+	uint16_t addr = 0;
+	
+	// printf("process_pkt()\n");
+	
+	switch(pkt->cmd)
+	{
+		case CMD_485_PING:
+			p = (packet_t*)tx;
+			p->len = 0;
+			p->cmd = 0x80 | CMD_485_PING;
+			break;
+		case CMD_485_REG_READ8:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			if(addr < sizeof(regs))
+			{
+				p = (packet_t*)tx;
+				p->len = 1;
+				p->cmd = 0x80 | CMD_485_REG_READ8;
+				p->data[0] = regs[addr];
+			}
+			break;
+		}
+		case CMD_485_REG_READ16:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			if(addr+1 < sizeof(regs))
+			{
+				p = (packet_t*)tx;
+				p->len = 2;
+				p->cmd = 0x80 | CMD_485_REG_READ16;
+				p->data[0] = regs[addr];
+				p->data[1] = regs[addr+1];
+			}
+			break;
+		}
+		case CMD_485_REG_READ32:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			if(addr+3 < sizeof(regs))
+			{
+				p = (packet_t*)tx;
+				p->len = 4;
+				p->cmd = 0x80 | CMD_485_REG_READ16;
+				p->data[0] = regs[addr];
+				p->data[1] = regs[addr+1];
+				p->data[2] = regs[addr+2];
+				p->data[3] = regs[addr+3];
+			}
+			break;
+		}
+		case CMD_485_DATA_READ:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			len = pkt->data[2];
+			if(len && addr+len-1 < sizeof(regs))
+			{
+				p = (packet_t*)tx;
+				p->len = len;
+				p->cmd = 0x80 | CMD_485_DATA_READ;
+				for(i = 0; i < len; ++i) p->data[i] = regs[addr+i];
+			}
+			break;
+		}
+			
+		default:
+			break;
+	}
+	if(p) proto_tx(port, p);
+};
+
 
 int main(int argc, char* argv[])
 {
@@ -97,69 +177,20 @@ int main(int argc, char* argv[])
 	char* dev = null;
 	int id = -1;
 	int cmd = -1;
-	int addr = 0;
-	int len = 0;
+	int addr = -1;
+	int len = -1;
 	uint8_t data[MAX_DATA_LEN];
 	port_t* port = null;
 	
-	if(argc > 3)
+	if(argc > 2)
 	{
 		dev = argv[1];
 		id = strtol(argv[2], null, 0);
-		for(i = 0; i < sizeof(commands)/sizeof(commands[0]); ++i)
-		{
-			if(strcmp(commands[i], argv[3]) == 0) { cmd = i; break; }
-		}
-		if(cmd < 0) { printf("Unknown command: %s\n", argv[3]); exit(1); }
 	}
 	else
 	{
 		help(argv[0]);
 		exit(1);
-	}
-	
-	if(argc > 4)
-	{
-		addr = strtol(argv[4], null, 0);
-		if(argc > 5 && cmd == CMD_485_DATA_READ)
-		{
-			int a = strtol(argv[5], null, 0);
-			data[0] = (uint8_t)(a&0xFF); // req len
-			len = 1;
-			
-		}
-		else if(argc > 5 && cmd == CMD_485_DATA_WRITE)
-		{
-			int n = 0;
-			for(i = 5; i < argc; ++i)
-			{
-				int a = strtol(argv[i], null, 0);
-				data[n++] = (uint8_t)(a&0xFF);
-			}
-			len = n;
-		}
-		else if(argc > 5 && cmd == CMD_485_REG_WRITE8)
-		{
-			int a = strtol(argv[5], null, 0);
-			data[0] = (uint8_t)(a&0xFF);
-			len = 1;
-		}
-		else if(argc > 5 && cmd == CMD_485_REG_WRITE16)
-		{
-			int a = strtol(argv[5], null, 0);
-			data[0] = (uint8_t)(a&0xFF);
-			data[1] = (uint8_t)((a>>8)&0xFF);
-			len = 2;
-		}
-		else if(argc > 5 && cmd == CMD_485_REG_WRITE32)
-		{
-			int a = strtol(argv[5], null, 0);
-			data[0] = (uint8_t)(a&0xFF);
-			data[1] = (uint8_t)((a>>8)&0xFF);
-			data[2] = (uint8_t)((a>>16)&0xFF);
-			data[3] = (uint8_t)((a>>24)&0xFF);
-			len = 4;
-		}
 	}
 	
 	if(dev)
@@ -170,33 +201,17 @@ int main(int argc, char* argv[])
 		port = proto_init(fd);
 	}
 	
-	if(id >= 0 && cmd >= 0)
+	if(id >= 0)
 	{
-		uint8_t plen = pkt_len[cmd] + len;
-		uint8_t p[sizeof(packet_t)+plen+2] = {
-			SOP_485_CODE0, SOP_485_CODE1, SOP_485_CODE2, SOP_485_CODE3,
-			(uint8_t)(id&0xFF), 1 /*from*/, 1, (uint8_t)(cmd&0xFF), plen, (uint8_t)(addr&0xFF), (uint8_t)((addr>>8)&0xFF) };
-		packet_t* pkt = (packet_t*)p;
-		long rx_timeout = 0;
+		packet_t* pkt = null;
 		
-		if(len > 0) for(i = 0; i < len; ++i) pkt->data[i+2] = data[i];
-		
-		printf("0x%02x: %s 0x%04x\n", id, commands[cmd], addr);
-		i = proto_tx(port, pkt);
-		rx_timeout = proto_get_time() + 3000; // 3s response timeout
-		
-		while(i > 0)
+		while(1)
 		{
 			pkt = proto_poll(port);
 			if(pkt)
 			{
 				pkt_dump(stdout, "RX", pkt);
-				break;
-			}
-			if(rx_timeout < proto_get_time())
-			{
-				printf("Timeout...\n");
-				break;
+				process_pkt(port, pkt, id);
 			}
 			usleep(1000*1000); // 1ms sleep
 		}

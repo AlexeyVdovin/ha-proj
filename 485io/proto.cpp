@@ -117,7 +117,11 @@ packet_t* proto_poll(port_t* port)
         {
             rx_pos = 0;
             uint16_t crc = (pkt->data[pkt->len+1] << 8) + pkt->data[pkt->len];
-            if(pkt->len > 0 && crc == packet_crc(pkt)) break;
+#if 0 // debug
+			pkt_dump(stdout, "PKT", pkt);
+			printf("crc: 0x%04X\n", crc /*packet_crc(pkt)*/);
+#endif
+            if(crc == packet_crc(pkt)) break;
         }
 	} while(1);
 	
