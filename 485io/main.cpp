@@ -198,7 +198,7 @@ int main(int argc, char* argv[])
 				printf("Timeout...\n");
 				break;
 			}
-			usleep(1000*1000); // 1ms sleep
+			usleep(1000); // 1ms sleep
 		}
 	}
 

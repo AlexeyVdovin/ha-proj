@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
 				pkt_dump(stdout, "RX", pkt);
 				process_pkt(port, pkt, id);
 			}
-			usleep(1000*1000); // 1ms sleep
+			usleep(1000); // 1ms sleep
 		}
 	}
 
