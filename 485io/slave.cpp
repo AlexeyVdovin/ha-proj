@@ -163,6 +163,59 @@ void process_pkt(port_t* port, packet_t* pkt, int id)
 			}
 			break;
 		}
+		case CMD_485_REG_WRITE8:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			if(addr < sizeof(regs))
+			{
+				regs[addr] = pkt->data[2];
+				p = (packet_t*)tx;
+				p->len = 0;
+				p->cmd = 0x80 | CMD_485_REG_WRITE8;
+			}
+			break;
+		}
+		case CMD_485_REG_WRITE16:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			if(addr+1 < sizeof(regs))
+			{
+				regs[addr] = pkt->data[2];
+				regs[addr+1] = pkt->data[3];
+				p = (packet_t*)tx;
+				p->len = 0;
+				p->cmd = 0x80 | CMD_485_REG_WRITE16;
+			}
+			break;
+		}
+		case CMD_485_REG_WRITE32:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			if(addr+3 < sizeof(regs))
+			{
+				regs[addr] = pkt->data[2];
+				regs[addr+1] = pkt->data[3];
+				regs[addr+2] = pkt->data[4];
+				regs[addr+3] = pkt->data[5];
+				p = (packet_t*)tx;
+				p->len = 0;
+				p->cmd = 0x80 | CMD_485_REG_WRITE32;
+			}
+			break;
+		}
+		case CMD_485_DATA_WRITE:
+		{
+			addr = pkt->data[0] | (pkt->data[1]<<8);
+			len = pkt->data[2];
+			if(len && addr+len-1 < sizeof(regs))
+			{
+				for(i=0; i < len; ++i) regs[addr+i] = pkt->data[3+i];
+				p = (packet_t*)tx;
+				p->len = 0;
+				p->cmd = 0x80 | CMD_485_DATA_WRITE;
+			}
+			break;
+		}
 			
 		default:
 			break;
