@@ -45,7 +45,7 @@ typedef struct
 
 stm_t stm;
 
-int stm_open(uint8_t bus, uint8_t adr)
+static int stm_open(uint8_t bus, uint8_t adr)
 {
     char devname[] = "/dev/i2c-0";
     int res, dev = -1;
@@ -89,14 +89,14 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     return ioctl(dev, I2C_SMBUS, &args);
 }
 
-int stm_set_control(int dev, uint16_t val)
+static int stm_set_control(int dev, uint16_t val)
 {
     union i2c_smbus_data data;
     data.word = val;
     return i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
 }
 
-int stm_get_status(int dev, uint32_t *val)
+static int stm_get_status(int dev, uint32_t *val)
 {
     int res;
     union i2c_smbus_data data;
@@ -113,7 +113,7 @@ int stm_get_status(int dev, uint32_t *val)
     return res;
 }
 
-int stm_get_dc(int dev, uint8_t in, uint16_t *val)
+static int stm_get_dc(int dev, uint8_t in, uint16_t *val)
 {
     int res;
     union i2c_smbus_data data;
