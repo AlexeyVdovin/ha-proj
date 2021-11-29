@@ -86,6 +86,31 @@ static void read_config(const char* name)
         n = ini_gets("boiler", "gas_hwater_in", "", cfg.boiler.sensor[OW_HWATER_IN], 20, name);
         n = ini_gets("boiler", "gas_hwater_out", "", cfg.boiler.sensor[OW_HWATER_OUT], 20, name);
         n = ini_gets("boiler", "ambient", "", cfg.boiler.sensor[OW_AMBIENT], 20, name);
+
+        n = ini_gets("boiler", "pid1_p_gain", "0", str, array_sz(str), name);
+        DBG("boiler.pid1_p_gain: '%s'", str);
+        cfg.boiler.pid1_p_gain = atol(str);
+
+        n = ini_gets("boiler", "pid1_i_gain", "0", str, array_sz(str), name);
+        DBG("boiler.pid1_i_gain: '%s'", str);
+        cfg.boiler.pid1_i_gain = atol(str);
+
+        n = ini_gets("boiler", "pwm1_min", "0", str, array_sz(str), name);
+        DBG("boiler.pwm1_min: '%s'", str);
+        cfg.boiler.pwm1_min = atol(str);
+
+        n = ini_gets("boiler", "pwm1_max", "0", str, array_sz(str), name);
+        DBG("boiler.pwm1_max: '%s'", str);
+        cfg.boiler.pwm1_max = atol(str);
+
+        n = ini_gets("boiler", "hwater_min", "45", str, array_sz(str), name);
+        DBG("boiler.hwater_min: '%s'", str);
+        cfg.boiler.hwater_min = atol(str);
+
+        n = ini_gets("boiler", "hwater_max", "50", str, array_sz(str), name);
+        DBG("boiler.hwater_max: '%s'", str);
+        cfg.boiler.hwater_max = atol(str);
+
     }
     
 }

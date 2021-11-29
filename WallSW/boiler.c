@@ -49,6 +49,16 @@ enum
     ST_OW_CH4_READ
 };
 
+enum
+{
+    ST_CTL_CH1 = 0x01,
+    ST_CTL_CH2 = 0x02,
+    ST_CTL_CH3 = 0x04,
+    ST_CTL_CH4 = 0x08,
+    ST_CTL_CH5 = 0x10,
+    ST_CTL_CH6 = 0x20
+};
+
 static const char STR_DC_12V[]      = "bl:12V";
 static const char STR_ADC_IN1[]     = "bl:pressure1";
 static const char STR_ADC_IN2[]     = "bl:pressure1";
@@ -62,9 +72,18 @@ static const char STR_OW_CH4_ENUM[] = "bl:ch4";
 typedef struct 
 {
     uint8_t addr[8];
+    int     type;
     float   t;
 } ow_t;
 
+typedef struct {
+  int16_t p;   // Proportional gain
+  int16_t i;   // Integral gain
+  int32_t val; // control Value
+  float   d;   // Derivative
+  float   t;   // previouse Temp
+  float   integral;
+} pd_t;
 
 typedef struct
 {
@@ -84,6 +103,12 @@ typedef struct
     ow_t     ch3[OW_MAX_DEVCES];
     int      ch4_n;
     ow_t     ch4[OW_MAX_DEVCES];
+    float    hwater1;
+    float    hwater2;
+    float    ht_floor_out;
+    float    ht_floor_ret;
+    float    ht_floor_set;
+    pd_t     pid1;
     struct itimerspec tmr_value;
 } boil_t;
 
@@ -131,6 +156,13 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     args.size = size;
     args.data = data;
     return ioctl(dev, I2C_SMBUS, &args);
+}
+
+static int boiler_set_pwm1(int dev, uint16_t val)
+{
+    union i2c_smbus_data data;
+    data.word = val;
+    return i2c_io(dev, I2C_SMBUS_WRITE, STM_PWM1, I2C_SMBUS_WORD_DATA, &data);
 }
 
 static int stm_set_control(int dev, uint16_t val)
@@ -410,13 +442,64 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
     return res;
 }
 
+/* p - pid*, set - target T, t - current T */
+static int32_t update_pid(pd_t* p, float set, float t)
+{
+  float error = set - t;
+  float delta = p->t - t;
+  int32_t out = (int32_t)(p->p * error / 1024);
+  out += (int32_t)(p->d * delta / 1024);
+  p->integral += p->i * error / 1024;
+  p->t = t;
+  out += (int32_t)(p->integral);
+  p->val = out;
+  return out;
+}
+
+
+static void boiler_hot_water()
+{
+    uint16_t control = boiler.control;
+    uint16_t state = (control & ST_CTL_CH6);
+    float t;
+
+    if(boiler.hwater1 != -200) t = boiler.hwater1;
+    if(boiler.hwater2 != -200) t = boiler.hwater2;
+
+    if(t < cfg.boiler.hwater_min) state = 1;
+    if(t > cfg.boiler.hwater_max) state = 0;
+
+    control &= ~ST_CTL_CH6;
+    control |= state ? ST_CTL_CH6 : 0;
+    if(control != boiler.control)
+    {
+        stm_set_control(boiler.dev, control);
+        boiler.control = control;
+    }
+}
+
+static void boiler_pid_floor()
+{
+    float t;
+    int32_t out = 0;
+    uint16_t pwm = 0;
+
+    if(boiler.ht_floor_out != -200 && boiler.ht_floor_ret != -200)
+    {
+        t = (boiler.ht_floor_out + boiler.ht_floor_ret)/2;
+        out = update_pid(&boiler.pid1, boiler.ht_floor_set, t);
+        pwm = (out > cfg.boiler.pwm1_max) ? cfg.boiler.pwm1_max : (out < cfg.boiler.pwm1_min) ? cfg.boiler.pwm1_min : out;
+        boiler_set_pwm1(boiler.dev, pwm);
+    }
+}
+
 static void tmrInterrupt0(void)
 {
     static int s = -20;
     uint16_t val;
     int16_t value;
     const char* event;
-    char str[16];
+    char str[32];
     int res, i, t = time(0);
 
    // DBG("boiler: Tmr INT: %d", s);
@@ -459,6 +542,21 @@ static void tmrInterrupt0(void)
             boiler.ch1_n = val;
             sprintf(str, "%d", val);
             boiler_ch_measure();
+            for(i = 0; i < boiler.ch1_n; ++i)
+            {
+                int x;
+                uint8_t* addr = boiler.ch1[i].addr;
+                boiler.ch1[i].type = -1;
+                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+                for(x = 0; x < OW_RESERVED; ++x)
+                {
+                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
+                    {
+                        boiler.ch1[i].type = x;
+                        break;
+                    }
+                }
+            }
             break;
         }
         case ST_OW_CH1_READ:
@@ -471,6 +569,21 @@ static void tmrInterrupt0(void)
                 if(res < 0) continue;
                 boiler.ch1[i].t = value/16.0f;
                 DBG("ch1: %d = %fC", i, boiler.ch1[i].t);
+                switch(boiler.ch1[i].type)
+                {
+                    case OW_BOILER_TEMP1:
+                        boiler.hwater1 = value/16.0f;
+                        break;
+                    case OW_BOILER_TEMP2:
+                        boiler.hwater2 = value/16.0f;
+                        break;
+                    case OW_FLOOR_OUT:
+                        boiler.ht_floor_out = value/16.0f;
+                        break;
+                    case OW_FLOOR_RET:
+                        boiler.ht_floor_ret = value/16.0f;
+                        break;
+                }
             }
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
@@ -483,6 +596,21 @@ static void tmrInterrupt0(void)
             boiler.ch2_n = val;
             sprintf(str, "%d", val);
             boiler_ch_measure();
+            for(i = 0; i < boiler.ch2_n; ++i)
+            {
+                int x;
+                uint8_t* addr = boiler.ch2[i].addr;
+                boiler.ch2[i].type = -1;
+                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+                for(x = 0; x < OW_RESERVED; ++x)
+                {
+                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
+                    {
+                        boiler.ch2[i].type = x;
+                        break;
+                    }
+                }
+            }
             break;
         }
         case ST_OW_CH2_READ:
@@ -495,6 +623,21 @@ static void tmrInterrupt0(void)
                 if(res < 0) continue;
                 boiler.ch2[i].t = value/16.0f;
                 DBG("ch2: %d = %fC", i, boiler.ch2[i].t);
+                switch(boiler.ch2[i].type)
+                {
+                    case OW_BOILER_TEMP1:
+                        boiler.hwater1 = value/16.0f;
+                        break;
+                    case OW_BOILER_TEMP2:
+                        boiler.hwater2 = value/16.0f;
+                        break;
+                    case OW_FLOOR_OUT:
+                        boiler.ht_floor_out = value/16.0f;
+                        break;
+                    case OW_FLOOR_RET:
+                        boiler.ht_floor_ret = value/16.0f;
+                        break;
+                }
             }
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
@@ -507,6 +650,21 @@ static void tmrInterrupt0(void)
             boiler.ch3_n = val;
             sprintf(str, "%d", val);
             boiler_ch_measure();
+            for(i = 0; i < boiler.ch3_n; ++i)
+            {
+                int x;
+                uint8_t* addr = boiler.ch3[i].addr;
+                boiler.ch3[i].type = -1;
+                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+                for(x = 0; x < OW_RESERVED; ++x)
+                {
+                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
+                    {
+                        boiler.ch3[i].type = x;
+                        break;
+                    }
+                }
+            }
             break;
         }
         case ST_OW_CH3_READ:
@@ -519,6 +677,21 @@ static void tmrInterrupt0(void)
                 if(res < 0) continue;
                 boiler.ch3[i].t = value/16.0f;
                 DBG("ch3: %d = %fC", i, boiler.ch3[i].t);
+                switch(boiler.ch3[i].type)
+                {
+                    case OW_BOILER_TEMP1:
+                        boiler.hwater1 = value/16.0f;
+                        break;
+                    case OW_BOILER_TEMP2:
+                        boiler.hwater2 = value/16.0f;
+                        break;
+                    case OW_FLOOR_OUT:
+                        boiler.ht_floor_out = value/16.0f;
+                        break;
+                    case OW_FLOOR_RET:
+                        boiler.ht_floor_ret = value/16.0f;
+                        break;
+                }
             }
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
@@ -531,6 +704,21 @@ static void tmrInterrupt0(void)
             boiler.ch4_n = val;
             sprintf(str, "%d", val);
             boiler_ch_measure();
+            for(i = 0; i < boiler.ch4_n; ++i)
+            {
+                int x;
+                uint8_t* addr = boiler.ch4[i].addr;
+                boiler.ch4[i].type = -1;
+                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+                for(x = 0; x < OW_RESERVED; ++x)
+                {
+                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
+                    {
+                        boiler.ch4[i].type = x;
+                        break;
+                    }
+                }
+            }
             break;
         }
         case ST_OW_CH4_READ:
@@ -543,6 +731,21 @@ static void tmrInterrupt0(void)
                 if(res < 0) continue;
                 boiler.ch4[i].t = value/16.0f;
                 DBG("ch4: %d = %fC", i, boiler.ch4[i].t);
+                switch(boiler.ch4[i].type)
+                {
+                    case OW_BOILER_TEMP1:
+                        boiler.hwater1 = value/16.0f;
+                        break;
+                    case OW_BOILER_TEMP2:
+                        boiler.hwater2 = value/16.0f;
+                        break;
+                    case OW_FLOOR_OUT:
+                        boiler.ht_floor_out = value/16.0f;
+                        break;
+                    case OW_FLOOR_RET:
+                        boiler.ht_floor_ret = value/16.0f;
+                        break;
+                }
             }
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
@@ -552,6 +755,8 @@ static void tmrInterrupt0(void)
             t = 0;
             s = 0;
             res = stm_set_ow_ch(boiler.dev, 0);
+            boiler_pid_floor();
+            boiler_hot_water();
             break;
         }
     }
@@ -600,6 +805,13 @@ void init_boiler()
     boiler.dev = -1;
     boiler.ds2482 = -1;
     boiler.tmr = -1;
+
+    boiler.hwater1 = -200;
+    boiler.hwater2 = -200;
+    boiler.ht_floor_out = -200;
+    boiler.ht_floor_ret = -200;
+
+    boiler.ht_floor_set = 25;
 
     boiler.tmr_value.it_value.tv_sec = 5;
     boiler.tmr_value.it_value.tv_nsec = 0;

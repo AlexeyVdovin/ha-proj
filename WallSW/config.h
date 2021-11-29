@@ -33,8 +33,14 @@ typedef struct
 
 typedef struct
 {
-    int id;
+    int  id;
     char sensor[20][20];
+    int  pid1_p_gain;
+    int  pid1_i_gain;
+    int  pwm1_min;
+    int  pwm1_max;
+    int  hwater_min;
+    int  hwater_max;
 } boiler_t;
 
 typedef struct
