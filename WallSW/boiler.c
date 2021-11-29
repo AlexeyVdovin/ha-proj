@@ -7,6 +7,8 @@
 #include <linux/i2c-dev.h>
 #include <inttypes.h>
 #include <unistd.h>
+#include <sys/timerfd.h>
+#include <time.h>
 
 #include "config.h"
 #include "uplink.h"
@@ -68,6 +70,8 @@ typedef struct
 {
     int      dev;
     int      ds2482;
+    int      n_fd;
+    int      tmr;
     int      n;
     int      state;
     uint16_t control;
@@ -80,6 +84,7 @@ typedef struct
     ow_t     ch3[OW_MAX_DEVCES];
     int      ch4_n;
     ow_t     ch4[OW_MAX_DEVCES];
+    struct itimerspec tmr_value;
 } boil_t;
 
 boil_t boiler;
@@ -403,155 +408,178 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
     return res;
 }
 
-
-void handle_boiler()
+static void tmrInterrupt0(void)
 {
     static int s = -20;
-    int i, t, res;
-    uint8_t c;
     uint16_t val;
     int16_t value;
     const char* event;
     char str[16];
-    
-    t = time(0);
-    if(t != s)
+    int res, i, t = time(0);
+
+   DBG("boiler: Tmr INT: %d", s);
+
+    switch(s)
     {
-        s = t;
-        // DBG("stm: %d", t%60);
-        switch(t%60)
+        case ST_DC_12V:
         {
-            case ST_DC_12V:
-            {
-                event = STR_DC_12V;
-                stm_get_dc(boiler.dev, STM_DC_12V, &val);
-                sprintf(str, "%d", val);
-                break;
-            }
-            case ST_ADC_IN1:
-            {
-                event = STR_ADC_IN1;
-                stm_get_dc(boiler.dev, STM_ADC_IN1, &val);
-                sprintf(str, "%d", val);
-                break;
-            }
-            case ST_ADC_IN2:
-            {
-                event = STR_ADC_IN2;
-                stm_get_dc(boiler.dev, STM_ADC_IN2, &val);
-                sprintf(str, "%d", val);
-                break;
-            }
-            case ST_IN_VDD:
-            {
-                event = STR_VDD_OK;
-                stm_get_vdd(boiler.dev, &val);
-                sprintf(str, "%s", val ? "ON" : "OFF");
-                break;
-            }
-            case ST_OW_CH1_ENUM:
-            {
-                event = STR_OW_CH1_ENUM;
-                val = 0;
-                boiler_ch_enum(1, &val);
-                boiler.ch1_n = val;
-                boiler_ch_measure();
-                break;
-            }
-            case ST_OW_CH1_READ:
-            {
-                t = 0;
-                for(i = 0; i < boiler.ch1_n; ++i)
-                {
-                    boiler.ch1[i].t = -200;
-                    res = boiler_ch_read(boiler.ch1[i].addr, &value);
-                    if(res < 0) continue;
-                    boiler.ch1[i].t = value/16.0f;
-                    DBG("ch1: %d = %fC", i, boiler.ch1[i].t);
-                }
-                break;
-            }
-            case ST_OW_CH2_ENUM:
-            {
-                event = STR_OW_CH2_ENUM;
-                val = 0;
-                boiler_ch_enum(2, &val);
-                boiler.ch2_n = val;
-                boiler_ch_measure();
-                break;
-            }
-            case ST_OW_CH2_READ:
-            {
-                t = 0;
-                for(i = 0; i < boiler.ch2_n; ++i)
-                {
-                    boiler.ch2[i].t = -200;
-                    res = boiler_ch_read(boiler.ch2[i].addr, &value);
-                    if(res < 0) continue;
-                    boiler.ch2[i].t = value/16.0f;
-                    DBG("ch2: %d = %fC", i, boiler.ch2[i].t);
-                }
-                break;
-            }
-            case ST_OW_CH3_ENUM:
-            {
-                event = STR_OW_CH3_ENUM;
-                val = 0;
-                boiler_ch_enum(3, &val);
-                boiler.ch3_n = val;
-                boiler_ch_measure();
-                break;
-            }
-            case ST_OW_CH3_READ:
-            {
-                t = 0;
-                for(i = 0; i < boiler.ch3_n; ++i)
-                {
-                    boiler.ch3[i].t = -200;
-                    res = boiler_ch_read(boiler.ch3[i].addr, &value);
-                    if(res < 0) continue;
-                    boiler.ch3[i].t = value/16.0f;
-                    DBG("ch3: %d = %fC", i, boiler.ch3[i].t);
-                }
-                break;
-            }
-            case ST_OW_CH4_ENUM:
-            {
-                event = STR_OW_CH4_ENUM;
-                val = 0;
-                boiler_ch_enum(4, &val);
-                boiler.ch4_n = val;
-                boiler_ch_measure();
-                break;
-            }
-            case ST_OW_CH4_READ:
-            {
-                t = 0;
-                for(i = 0; i < boiler.ch4_n; ++i)
-                {
-                    boiler.ch4[i].t = -200;
-                    res = boiler_ch_read(boiler.ch4[i].addr, &value);
-                    if(res < 0) continue;
-                    boiler.ch4[i].t = value/16.0f;
-                    DBG("ch4: %d = %fC", i, boiler.ch4[i].t);
-                }
-                break;
-            }
-            default:
-            {
-                t = 0;
-                break;
-            }
+            event = STR_DC_12V;
+            stm_get_dc(boiler.dev, STM_DC_12V, &val);
+            sprintf(str, "%d", val);
+            break;
         }
-        if(t)
+        case ST_ADC_IN1:
         {
-            send_mqtt(event, str);
+            event = STR_ADC_IN1;
+            stm_get_dc(boiler.dev, STM_ADC_IN1, &val);
+            sprintf(str, "%d", val);
+            break;
+        }
+        case ST_ADC_IN2:
+        {
+            event = STR_ADC_IN2;
+            stm_get_dc(boiler.dev, STM_ADC_IN2, &val);
+            sprintf(str, "%d", val);
+            break;
+        }
+        case ST_IN_VDD:
+        {
+            event = STR_VDD_OK;
+            stm_get_vdd(boiler.dev, &val);
+            sprintf(str, "%s", val ? "ON" : "OFF");
+            break;
+        }
+        case ST_OW_CH1_ENUM:
+        {
+            event = STR_OW_CH1_ENUM;
+            val = 0;
+            boiler_ch_enum(1, &val);
+            boiler.ch1_n = val;
+            boiler_ch_measure();
+            break;
+        }
+        case ST_OW_CH1_READ:
+        {
+            t = 0;
+            for(i = 0; i < boiler.ch1_n; ++i)
+            {
+                boiler.ch1[i].t = -200;
+                res = boiler_ch_read(boiler.ch1[i].addr, &value);
+                if(res < 0) continue;
+                boiler.ch1[i].t = value/16.0f;
+                DBG("ch1: %d = %fC", i, boiler.ch1[i].t);
+            }
+            break;
+        }
+        case ST_OW_CH2_ENUM:
+        {
+            event = STR_OW_CH2_ENUM;
+            val = 0;
+            boiler_ch_enum(2, &val);
+            boiler.ch2_n = val;
+            boiler_ch_measure();
+            break;
+        }
+        case ST_OW_CH2_READ:
+        {
+            t = 0;
+            for(i = 0; i < boiler.ch2_n; ++i)
+            {
+                boiler.ch2[i].t = -200;
+                res = boiler_ch_read(boiler.ch2[i].addr, &value);
+                if(res < 0) continue;
+                boiler.ch2[i].t = value/16.0f;
+                DBG("ch2: %d = %fC", i, boiler.ch2[i].t);
+            }
+            break;
+        }
+        case ST_OW_CH3_ENUM:
+        {
+            event = STR_OW_CH3_ENUM;
+            val = 0;
+            boiler_ch_enum(3, &val);
+            boiler.ch3_n = val;
+            boiler_ch_measure();
+            break;
+        }
+        case ST_OW_CH3_READ:
+        {
+            t = 0;
+            for(i = 0; i < boiler.ch3_n; ++i)
+            {
+                boiler.ch3[i].t = -200;
+                res = boiler_ch_read(boiler.ch3[i].addr, &value);
+                if(res < 0) continue;
+                boiler.ch3[i].t = value/16.0f;
+                DBG("ch3: %d = %fC", i, boiler.ch3[i].t);
+            }
+            break;
+        }
+        case ST_OW_CH4_ENUM:
+        {
+            event = STR_OW_CH4_ENUM;
+            val = 0;
+            boiler_ch_enum(4, &val);
+            boiler.ch4_n = val;
+            boiler_ch_measure();
+            break;
+        }
+        case ST_OW_CH4_READ:
+        {
+            t = 0;
+            for(i = 0; i < boiler.ch4_n; ++i)
+            {
+                boiler.ch4[i].t = -200;
+                res = boiler_ch_read(boiler.ch4[i].addr, &value);
+                if(res < 0) continue;
+                boiler.ch4[i].t = value/16.0f;
+                DBG("ch4: %d = %fC", i, boiler.ch4[i].t);
+            }
+            break;
+        }
+        default:
+        {
+            t = 0;
+            s = 0;
+            break;
         }
     }
+    ++s;
+    if(t)
+    {
+        send_mqtt(event, str);
+    }
+
+
+
+    boiler.tmr_value.it_value.tv_sec = 1;
+    timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
+}
+
+void handle_boiler()
+{
+    uint64_t exp;
+    int revents;
+
+    revents = poll_fds.fds[boiler.n_fd].revents;
+    if(revents)
+    {
+        poll_fds.fds[boiler.n_fd].revents = 0;
+        read(boiler.tmr, &exp, sizeof(exp));
+        tmrInterrupt0();
+    }
+
 }
 
 void setup_boiler_poll()
 {
+    int n = poll_fds.n;
+    boiler.n_fd = n;
+    poll_fds.n += 1;
+    
+    poll_fds.fds[n].fd = boiler.tmr;
+    poll_fds.fds[n].events = POLLIN;
+    poll_fds.fds[n].revents = 0;
 }
 
 void init_boiler()
@@ -562,6 +590,11 @@ void init_boiler()
     memset(&boiler, 0, sizeof(boiler));
     boiler.dev = -1;
     boiler.ds2482 = -1;
+
+    boiler.tmr_value.it_value.tv_sec = 5;
+    boiler.tmr_value.it_value.tv_nsec = 0;
+    boiler.tmr_value.it_interval.tv_sec = 0;
+    boiler.tmr_value.it_interval.tv_nsec = 0;
 
     dev = boiler_i2c_open(0, 0x40 + cfg.boiler.id);
 
@@ -583,6 +616,8 @@ void init_boiler()
     }
     boiler.ds2482 = dev;
 
+    boiler.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
+    timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
 }
 
 void close_boiler()
