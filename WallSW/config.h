@@ -34,6 +34,7 @@ typedef struct
 typedef struct
 {
     int id;
+    char sensor[20][20];
 } boiler_t;
 
 typedef struct

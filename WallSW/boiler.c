@@ -561,8 +561,6 @@ static void tmrInterrupt0(void)
         send_mqtt(event, str);
     }
 
-
-
     boiler.tmr_value.it_value.tv_sec = 1;
     timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
 }
@@ -601,6 +599,7 @@ void init_boiler()
     memset(&boiler, 0, sizeof(boiler));
     boiler.dev = -1;
     boiler.ds2482 = -1;
+    boiler.tmr = -1;
 
     boiler.tmr_value.it_value.tv_sec = 5;
     boiler.tmr_value.it_value.tv_nsec = 0;
@@ -635,6 +634,12 @@ void close_boiler()
 {
     if(boiler.dev > 0) close(boiler.dev);   
     boiler.dev = -1;
+
+    if(boiler.ds2482 > 0) close(boiler.ds2482);
+    boiler.ds2482 = -1;
+
+    if(boiler.tmr > 0) close(boiler.tmr);
+    boiler.tmr = -1;
 }
 
 void msg_boiler(int param, const char* message, size_t message_len)

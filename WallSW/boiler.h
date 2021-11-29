@@ -12,12 +12,12 @@ enum {
   OW_FLOOR_IN,     //  5
   OW_FLOOR_OUT,    //  6
   OW_FLOOR_RET,    //  7
-  OW_RADIATOR_OUT, //  8
-  OW_RADIATOR_RET, //  9
+  OW_PIPE_OUT,     //  8
+  OW_PIPE_RET,     //  9
   OW_HEAT_IN,      // 10 Gas heater in/out
   OW_HEAT_OUT,     // 11
-  OW_HOTW_IN,      // 12 Hot water heater in/out
-  OW_HOTW_OUT,     // 13
+  OW_HWATER_IN,    // 12 Hot water heater in/out
+  OW_HWATER_OUT,   // 13
   OW_AMBIENT,      // 14
   OW_RESERVED      // 15
 };
