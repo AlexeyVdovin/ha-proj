@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "ds2482.h"
 
 int ds2482_open(uint8_t bus, uint8_t adr)
@@ -309,6 +310,7 @@ int ds2482_ds18b20_read_scratchpad(int dev, uint8_t* data)
         for(i = 0; i < 9; ++i)
         {
             res = ds2482_1w_rbyte(dev);
+            if(res < 0) break;
 
             status = 0;
             res = ds2482_pool(dev, 0x01, &status, 2000);
@@ -317,7 +319,7 @@ int ds2482_ds18b20_read_scratchpad(int dev, uint8_t* data)
             res = ds2482_get_data(dev, &data[i]);
             if(res < 0) break;
 
-            //printf("scr[%d]: 0x%02x\n", i, data[i]);
+            // DBG("scr[%d]: 0x%02x\n", i, data[i]);
         }
         // TODO: Check CRC
     } while(0);
@@ -484,7 +486,6 @@ static int ds2482_ds18b20_scan_temp(int dev)
         }
 
         res = ds2482_1w_skip(dev);
-//        res = ds2482_1w_match(dev, addr[0]);
         if(res < 0)
         {
             printf("Error: ds2482_1w_match() failed %d!\n", errno);
@@ -546,7 +547,6 @@ static int ds2482_ds18b20_scan_temp(int dev)
             break;
         }
 
-//        res = ds2482_1w_skip(dev);
         res = ds2482_1w_match(dev, addr[i]);
         if(res < 0)
         {

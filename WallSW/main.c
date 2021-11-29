@@ -9,6 +9,8 @@
 #include "mcp23017.h"
 #include "pca9454.h"
 #include "stm.h"
+#include "boiler.h"
+
 
 #define array_sz(a)  (sizeof(a)/sizeof((a)[0]))
 const char* cfg_name = "wallsw.conf";
@@ -29,6 +31,10 @@ static void read_config(const char* name)
     DBG("powersw: '%s'", str);
     cfg.n_pwr = atol(str);
 
+    n = ini_gets("general", "boiler", "0", str, array_sz(str), name);
+    DBG("boiler: '%s'", str);
+    cfg.n_bol = atol(str);
+
     n = ini_gets("mqtt", "client", "sgw2.2", str, array_sz(str), name);
     DBG("client_name: '%s'", str);
     strncpy(cfg.client_name, str, sizeof(cfg.client_name));
@@ -48,17 +54,24 @@ static void read_config(const char* name)
     for(i = 0; i < cfg.n_lts; ++i)
     {
         snprintf(section, sizeof(section), "lights-%d", i);
-        n = ini_gets(section, "id", "1", str, array_sz(str), name);
+        n = ini_gets(section, "id", "0", str, array_sz(str), name);
         DBG("%s.id: '%s'", section, str);
         cfg.lts[i].id = atol(str);
     }        
     for(i = 0; i < cfg.n_pwr; ++i)
     {
         snprintf(section, sizeof(section), "power-%d", i);
-        n = ini_gets(section, "id", "1", str, array_sz(str), name);
+        n = ini_gets(section, "id", "0", str, array_sz(str), name);
         DBG("%s.id: '%s'", section, str);
         cfg.lts[i].id = atol(str);
     }        
+    if(cfg.n_bol > 0)
+    {
+        n = ini_gets("boiler", "id", "0", str, array_sz(str), name);
+        DBG("boiler.id: '%s'", str);
+        cfg.boiler.id = atol(str);
+        // TODO: Add sensor SERIAL IDs for every sensor type
+    }
     
 }
 
@@ -85,6 +98,8 @@ int main(int argc, char* argv[])
     init_stm();
     init_mcp23017();
     set_uplink_filter("mcp", msg_mcp23017, 0);
+    init_boiler();
+    set_uplink_filter("boiler", msg_boiler, 0);
 
     for(i = 0; i < cfg.n_lts; ++i)
     {
@@ -95,6 +110,7 @@ int main(int argc, char* argv[])
     
     setup_mcp23017_poll();
     setup_stm_poll();
+    setup_boiler_poll();
     setup_uplink_poll();
     
     while(!do_exit)
@@ -102,6 +118,7 @@ int main(int argc, char* argv[])
         if(events_poll() > 0)
         {
             handle_mcp23017();
+            handle_boiler();
         }
         handle_stm();
         handle_mqtt();

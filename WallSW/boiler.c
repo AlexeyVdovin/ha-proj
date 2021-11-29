@@ -103,7 +103,7 @@ static int boiler_i2c_open(uint8_t bus, uint8_t adr)
 
         if(dev < 0)
         {
-            DBG("Error %d: Can't open i2c device %s\n", errno, devname);
+            DBG("Error %d: Can't open i2c device %s", errno, devname);
             break;
         }
 
@@ -113,7 +113,7 @@ static int boiler_i2c_open(uint8_t bus, uint8_t adr)
         {
             close(dev);
             dev = -1;
-            DBG("Error %d: Can't assign slave i2c address.\n", errno);
+            DBG("Error %d: Can't assign slave i2c address.", errno);
             break;
         }
 
@@ -193,7 +193,7 @@ static int boiler_ch_enum(uint16_t ch, uint16_t *val)
             break;
         case 4:
             en = 0x0008;
-            ow = boiler.ch3;
+            ow = boiler.ch4;
             break;
         default:
             return -1;
@@ -204,16 +204,16 @@ static int boiler_ch_enum(uint16_t ch, uint16_t *val)
         res = stm_set_ow_ch(boiler.dev, (en & 0x0F));
         if(res < 0)
         {
-            DBG("Error: stm_set_ow_ch() failed %d!\n", errno);
+            DBG("Error: stm_set_ow_ch() failed %d!", errno);
             break;
         }
         res = ds2482_reset(dev);
         if(res < 0)
         {
-            DBG("Error: ds2482_reset() failed %d!\n", errno);
+            DBG("Error: ds2482_reset() failed %d!", errno);
             status = 0;
             res = ds2482_get_status(dev, &status);
-            DBG("Error: ds2482_get_status() = %d, status = %d\n", res, status);
+            DBG("Error: ds2482_get_status() = %d, status = %d", res, status);
             break;
         }
 
@@ -221,7 +221,7 @@ static int boiler_ch_enum(uint16_t ch, uint16_t *val)
         res = ds2482_pool(dev, 0x10, &status, 4000);
         if(res < 0)
         {
-            DBG("Error: ds2482_pool(0x10) failed %d!\n", errno);
+            DBG("Error: ds2482_pool(0x10) failed %d!", errno);
             break;
         }
 
@@ -232,14 +232,14 @@ static int boiler_ch_enum(uint16_t ch, uint16_t *val)
             res = ds2482_set_conf(dev, 0x00); // Disable APU
             if(res < 0)
             {
-                DBG("Error: ds2482_set_conf() failed %d!\n", errno);
+                DBG("Error: ds2482_set_conf() failed %d!", errno);
                 break;
             }
 
             res = ds2482_1w_reset(dev);
             if(res < 0)
             {
-                DBG("Error: ds2482_1w_reset() failed %d!\n", errno);
+                DBG("Error: ds2482_1w_reset() failed %d!", errno);
                 break;
             }
 
@@ -247,26 +247,26 @@ static int boiler_ch_enum(uint16_t ch, uint16_t *val)
             res = ds2482_pool(dev, 0x01, &status, 3000);
             if(res < 0)
             {
-                DBG("Error: ds2482_pool(0x01) failed %d!\n", errno);
+                DBG("Error: ds2482_pool(0x01) failed %d!", errno);
                 break;
             }
 
             if(status & 0x04)
             {
-                DBG("Error: 1W short to GND detected 0x%02X!\n", status);
+                DBG("Error: 1W short to GND detected 0x%02X!", status);
                 break;
             }
 
             if(status & 0x02 == 0)
             {
-                DBG("Error: 1W presence pulse is not detected 0x%02X!\n", status);
+                DBG("Error: 1W presence pulse is not detected 0x%02X!", status);
                 break;
             }
 
             res = ds2482_set_conf(dev, 0x01); // Enable APU
             if(res < 0)
             {
-                DBG("Error: ds2482_set_conf() failed %d!\n", errno);
+                DBG("Error: ds2482_set_conf() failed %d!", errno);
                 break;
             }
 
@@ -278,7 +278,7 @@ static int boiler_ch_enum(uint16_t ch, uint16_t *val)
                 break;
             }
 
-            DBG("Found 1W device [%d]: 0x%02x%02x%02x%02x%02x%02x%02x%02x\n", n, search.addr[0], search.addr[1], search.addr[2], search.addr[3], search.addr[4], search.addr[5], search.addr[6], search.addr[7]);
+            DBG("Found 1W device [%d]: 0x%02x%02x%02x%02x%02x%02x%02x%02x", n, search.addr[0], search.addr[1], search.addr[2], search.addr[3], search.addr[4], search.addr[5], search.addr[6], search.addr[7]);
             memcpy(ow[n].addr, search.addr, sizeof(ow[n].addr));
             ++n;
         } while(1);
@@ -297,7 +297,7 @@ static int boiler_ch_measure()
         res = ds2482_1w_reset(dev);
         if(res < 0)
         {
-            DBG("Error: ds2482_1w_reset() failed %d!\n", errno);
+            DBG("Error: ds2482_1w_reset() failed %d!", errno);
             break;
         }
 
@@ -305,26 +305,26 @@ static int boiler_ch_measure()
         res = ds2482_pool(dev, 0x01, &status, 3000);
         if(res < 0)
         {
-            DBG("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            DBG("Error: ds2482_pool(0x01) failed %d!", errno);
             break;
         }
 
         if(status & 0x04)
         {
-            DBG("Error: 1W short to GND detected 0x%02X!\n", status);
+            DBG("Error: 1W short to GND detected 0x%02X!", status);
             break;
         }
 
         if(status & 0x02 == 0)
         {
-            DBG("Error: 1W presence pulse is not detected 0x%02X!\n", status);
+            DBG("Error: 1W presence pulse is not detected 0x%02X!", status);
             break;
         }
 
         res = ds2482_1w_skip(dev);
         if(res < 0)
         {
-            DBG("Error: ds2482_1w_skip() failed %d!\n", errno);
+            DBG("Error: ds2482_1w_skip() failed %d!", errno);
             break;
         }
 
@@ -332,14 +332,14 @@ static int boiler_ch_measure()
         res = ds2482_pool(dev, 0x01, &status, 2000);
         if(res < 0)
         {
-            DBG("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            DBG("Error: ds2482_pool(0x01) failed %d!", errno);
             break;
         }
 
         res = ds2482_ds18b20_convert(dev);
         if(res < 0)
         {
-            DBG("Error: ds2482_ds18b20_convert() failed %d!\n", errno);
+            DBG("Error: ds2482_ds18b20_convert() failed %d!", errno);
             break;
         }
     } while(0);
@@ -357,7 +357,7 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
         res = ds2482_1w_reset(dev);
         if(res < 0)
         {
-            DBG("Error: ds2482_1w_reset() failed %d!\n", errno);
+            DBG("Error: ds2482_1w_reset() failed %d!", errno);
             break;
         }
 
@@ -365,26 +365,26 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
         res = ds2482_pool(dev, 0x01, &status, 3000);
         if(res < 0)
         {
-            DBG("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            DBG("Error: ds2482_pool(0x01) failed %d!", errno);
             break;
         }
 
         if(status & 0x04)
         {
-            DBG("Error: 1W short to GND detected 0x%02X!\n", status);
+            DBG("Error: 1W short to GND detected 0x%02X!", status);
             break;
         }
 
         if(status & 0x02 == 0)
         {
-            DBG("Error: 1W presence pulse is not detected 0x%02X!\n", status);
+            DBG("Error: 1W presence pulse is not detected 0x%02X!", status);
             break;
         }
 
         res = ds2482_1w_match(dev, addr);
         if(res < 0)
         {
-            DBG("Error: ds2482_1w_match() failed %d!\n", errno);
+            DBG("Error: ds2482_1w_match() failed %d!", errno);
             break;
         }
 
@@ -392,18 +392,20 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
         res = ds2482_pool(dev, 0x01, &status, 2000);
         if(res < 0)
         {
-            DBG("Error: ds2482_pool(0x01) failed %d!\n", errno);
+            DBG("Error: ds2482_pool(0x01) failed %d!", errno);
             break;
         }
 
         res = ds2482_ds18b20_read_scratchpad(dev, data);
         if(res < 0)
         {
-            DBG("Error: ds2482_ds18b20_read_scratchpad() failed %d!\n", errno);
+            DBG("Error: ds2482_ds18b20_read_scratchpad() failed %d!", errno);
             break;
         }
 
         *value = (data[1] << 8) | data[0];   
+        // DBG("0x%02x%02x%02x%02x%02x%02x%02x%02x %d\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7], (int)((*value)*125/2));
+
     } while(0);
     return res;
 }
@@ -417,7 +419,7 @@ static void tmrInterrupt0(void)
     char str[16];
     int res, i, t = time(0);
 
-   DBG("boiler: Tmr INT: %d", s);
+   // DBG("boiler: Tmr INT: %d", s);
 
     switch(s)
     {
@@ -455,6 +457,7 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(1, &val);
             boiler.ch1_n = val;
+            sprintf(str, "%d", val);
             boiler_ch_measure();
             break;
         }
@@ -469,6 +472,7 @@ static void tmrInterrupt0(void)
                 boiler.ch1[i].t = value/16.0f;
                 DBG("ch1: %d = %fC", i, boiler.ch1[i].t);
             }
+            res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         case ST_OW_CH2_ENUM:
@@ -477,6 +481,7 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(2, &val);
             boiler.ch2_n = val;
+            sprintf(str, "%d", val);
             boiler_ch_measure();
             break;
         }
@@ -491,6 +496,7 @@ static void tmrInterrupt0(void)
                 boiler.ch2[i].t = value/16.0f;
                 DBG("ch2: %d = %fC", i, boiler.ch2[i].t);
             }
+            res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         case ST_OW_CH3_ENUM:
@@ -499,6 +505,7 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(3, &val);
             boiler.ch3_n = val;
+            sprintf(str, "%d", val);
             boiler_ch_measure();
             break;
         }
@@ -513,6 +520,7 @@ static void tmrInterrupt0(void)
                 boiler.ch3[i].t = value/16.0f;
                 DBG("ch3: %d = %fC", i, boiler.ch3[i].t);
             }
+            res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         case ST_OW_CH4_ENUM:
@@ -521,6 +529,7 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(4, &val);
             boiler.ch4_n = val;
+            sprintf(str, "%d", val);
             boiler_ch_measure();
             break;
         }
@@ -535,12 +544,14 @@ static void tmrInterrupt0(void)
                 boiler.ch4[i].t = value/16.0f;
                 DBG("ch4: %d = %fC", i, boiler.ch4[i].t);
             }
+            res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         default:
         {
             t = 0;
             s = 0;
+            res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
     }
@@ -624,4 +635,9 @@ void close_boiler()
 {
     if(boiler.dev > 0) close(boiler.dev);   
     boiler.dev = -1;
+}
+
+void msg_boiler(int param, const char* message, size_t message_len)
+{
+    
 }
