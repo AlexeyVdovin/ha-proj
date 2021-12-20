@@ -16,6 +16,184 @@
 
 #include "ds2482.h"
 
+ha_device_t device =
+{
+    "Heating Controller",
+    "Heating Controller",
+    "WallSW 0.0.1"
+};
+
+// Topic: "homeassistant/sensor/heating_pressure1/config"
+/* Resulted JSON:
+{
+  "name": "Cold Water",
+  "unique_id": "heating_pressure1",
+  "state_topic": "homeassistant/sensor/heating_pressure1/state",
+  "device_class": "pressure",
+  "unit_of_measurement": "Bar",
+  "platform": "mqtt",
+  "device": {
+    "identifiers": ["Heating Controller"],
+    "name": "Heating Controller",
+    "manufacturer": "AtHome",
+    "model": "Heating Controller",
+    "sw_version": "WallSW 0.0.1"
+  }
+} */
+ha_entity_t en_pressure1 =
+{
+    "heating_pressure1",
+    "sensor",
+    "Cold Water",
+    "pressure",
+    "Bar"
+};
+
+ha_entity_t en_pressure2 =
+{
+    "heating_pressure2",
+    "sensor",
+    "Coolant Water",
+    "pressure",
+    "Bar"
+};
+
+ha_entity_t en_t_boiler1 =
+{
+    "boiler_temperature1",
+    "sensor",
+    "Boiler 1",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_boiler2 =
+{
+    "boiler_temperature2",
+    "sensor",
+    "Boiler 2",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_boiler_in =
+{
+    "boiler_temperature_in",
+    "sensor",
+    "Boiler Inlet",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_boiler_out =
+{
+    "boiler_temperature_out",
+    "sensor",
+    "Boiler Outlet",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_boiler_ret =
+{
+    "boiler_temperature_ret",
+    "sensor",
+    "Boiler Circulation",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_floor_in =
+{
+    "ht_floor_temperature_in",
+    "sensor",
+    "Heating Floor in",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_floor_out =
+{
+    "ht_floor_temperature_out",
+    "sensor",
+    "Heating Floor out",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_floor_ret =
+{
+    "ht_floor_temperature_ret",
+    "sensor",
+    "Heating Floor ret",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_heating_out =
+{
+    "heating_temperature_out",
+    "sensor",
+    "Heating out",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_heating_ret =
+{
+    "heating_temperature_ret",
+    "sensor",
+    "Heating ret",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_gas_heater_in =
+{
+    "gas_heater_temperature_in",
+    "sensor",
+    "Gas Heater in",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_gas_heater_out =
+{
+    "gas_heater_temperature_out",
+    "sensor",
+    "Gas Heater out",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_gas_boiler_in =
+{
+    "gas_boiler_temperature_in",
+    "sensor",
+    "Gas Boiler in",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_gas_boiler_out =
+{
+    "gas_boiler_temperature_out",
+    "sensor",
+    "Gas Boiler out",
+    "temperature",
+    "°C"
+};
+
+ha_entity_t en_t_ambient =
+{
+    "boiler_temperature_ambient",
+    "sensor",
+    "Ambient",
+    "temperature",
+    "°C"
+};
+
+
 #define STM_EXT_RST 0x8000
 #define STM_DCDC_EN 0x0100
 #define STM_LED_ON	0x0001
@@ -46,7 +224,10 @@ enum
     ST_OW_CH3_ENUM,
     ST_OW_CH3_READ,
     ST_OW_CH4_ENUM,
-    ST_OW_CH4_READ
+    ST_OW_CH4_READ,
+    ST_CYCLE_CONTROL,
+    ST_CYCLE_START,
+    ST_CYCLE_END = 30
 };
 
 enum
@@ -61,7 +242,7 @@ enum
 
 static const char STR_DC_12V[]      = "bl:12V";
 static const char STR_ADC_IN1[]     = "bl:pressure1";
-static const char STR_ADC_IN2[]     = "bl:pressure1";
+static const char STR_ADC_IN2[]     = "bl:pressure2";
 static const char STR_VDD_OK[]      = "bl:VDD";
 static const char STR_OW_CH1_ENUM[] = "bl:ch1";
 static const char STR_OW_CH2_ENUM[] = "bl:ch2";
@@ -453,6 +634,7 @@ static int32_t update_pid(pd_t* p, float set, float t)
   p->t = t;
   out += (int32_t)(p->integral);
   p->val = out;
+  DBG("pid: Set=%.2f T=%.2f Out=%d Pint=%f", set, t, out, p->integral);
   return out;
 }
 
@@ -499,7 +681,7 @@ static void tmrInterrupt0(void)
     uint16_t val;
     int16_t value;
     const char* event;
-    char str[32];
+    char str[32], topic[32];
     int res, i, t = time(0);
 
    // DBG("boiler: Tmr INT: %d", s);
@@ -540,7 +722,6 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(1, &val);
             boiler.ch1_n = val;
-            sprintf(str, "%d", val);
             boiler_ch_measure();
             for(i = 0; i < boiler.ch1_n; ++i)
             {
@@ -557,6 +738,7 @@ static void tmrInterrupt0(void)
                     }
                 }
             }
+            sprintf(str, "%d", val);
             break;
         }
         case ST_OW_CH1_READ:
@@ -594,7 +776,6 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(2, &val);
             boiler.ch2_n = val;
-            sprintf(str, "%d", val);
             boiler_ch_measure();
             for(i = 0; i < boiler.ch2_n; ++i)
             {
@@ -611,6 +792,7 @@ static void tmrInterrupt0(void)
                     }
                 }
             }
+            sprintf(str, "%d", val);
             break;
         }
         case ST_OW_CH2_READ:
@@ -648,7 +830,6 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(3, &val);
             boiler.ch3_n = val;
-            sprintf(str, "%d", val);
             boiler_ch_measure();
             for(i = 0; i < boiler.ch3_n; ++i)
             {
@@ -665,6 +846,7 @@ static void tmrInterrupt0(void)
                     }
                 }
             }
+            sprintf(str, "%d", val);
             break;
         }
         case ST_OW_CH3_READ:
@@ -702,7 +884,6 @@ static void tmrInterrupt0(void)
             val = 0;
             boiler_ch_enum(4, &val);
             boiler.ch4_n = val;
-            sprintf(str, "%d", val);
             boiler_ch_measure();
             for(i = 0; i < boiler.ch4_n; ++i)
             {
@@ -719,44 +900,61 @@ static void tmrInterrupt0(void)
                     }
                 }
             }
+            sprintf(str, "%d", val);
             break;
         }
         case ST_OW_CH4_READ:
         {
             t = 0;
+            float temp;
             for(i = 0; i < boiler.ch4_n; ++i)
             {
+                uint8_t* addr = boiler.ch4[i].addr;
                 boiler.ch4[i].t = -200;
                 res = boiler_ch_read(boiler.ch4[i].addr, &value);
                 if(res < 0) continue;
-                boiler.ch4[i].t = value/16.0f;
+                temp = value/16.0f;
+                boiler.ch4[i].t = temp;
                 DBG("ch4: %d = %fC", i, boiler.ch4[i].t);
+                sprintf(topic, "0x%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+                sprintf(str, "%.5f", temp);
+                send_mqtt(topic, str);
                 switch(boiler.ch4[i].type)
                 {
                     case OW_BOILER_TEMP1:
-                        boiler.hwater1 = value/16.0f;
+                        boiler.hwater1 = temp;
                         break;
                     case OW_BOILER_TEMP2:
-                        boiler.hwater2 = value/16.0f;
+                        boiler.hwater2 = temp;
                         break;
                     case OW_FLOOR_OUT:
-                        boiler.ht_floor_out = value/16.0f;
+                        boiler.ht_floor_out = temp;
                         break;
                     case OW_FLOOR_RET:
-                        boiler.ht_floor_ret = value/16.0f;
+                        boiler.ht_floor_ret = temp;
                         break;
                 }
             }
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
+        case ST_CYCLE_CONTROL:
+        {
+            t = 0;
+            res = stm_set_ow_ch(boiler.dev, 0);
+            boiler_pid_floor();
+            boiler_hot_water();
+            break;
+        }
+        case ST_CYCLE_START ... ST_CYCLE_END:
+        {
+            t = 0;
+            break;
+        }
         default:
         {
             t = 0;
             s = 0;
-            res = stm_set_ow_ch(boiler.dev, 0);
-            boiler_pid_floor();
-            boiler_hot_water();
             break;
         }
     }
@@ -811,7 +1009,10 @@ void init_boiler()
     boiler.ht_floor_out = -200;
     boiler.ht_floor_ret = -200;
 
-    boiler.ht_floor_set = 25;
+    boiler.pid1.p = cfg.boiler.pid1_p_gain;
+    boiler.pid1.i = cfg.boiler.pid1_i_gain;
+
+    boiler.ht_floor_set = 28;
 
     boiler.tmr_value.it_value.tv_sec = 5;
     boiler.tmr_value.it_value.tv_nsec = 0;
@@ -840,6 +1041,24 @@ void init_boiler()
 
     boiler.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
     timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
+
+    ha_register(&device, &en_pressure1);
+    ha_register(&device, &en_pressure2);
+    ha_register(&device, &en_t_boiler1);
+    ha_register(&device, &en_t_boiler2);
+    ha_register(&device, &en_t_boiler_in);
+    ha_register(&device, &en_t_boiler_out);
+    ha_register(&device, &en_t_boiler_ret);
+    ha_register(&device, &en_t_floor_in);
+    ha_register(&device, &en_t_floor_out);
+    ha_register(&device, &en_t_floor_ret);
+    ha_register(&device, &en_t_heating_out);
+    ha_register(&device, &en_t_heating_ret);
+    ha_register(&device, &en_t_gas_heater_in);
+    ha_register(&device, &en_t_gas_heater_out);
+    ha_register(&device, &en_t_gas_boiler_in);
+    ha_register(&device, &en_t_gas_boiler_out);
+    ha_register(&device, &en_t_ambient);
 }
 
 void close_boiler()

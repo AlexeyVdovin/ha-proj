@@ -6,6 +6,7 @@
 #include "mqtt.h"
 
 #define MAX_FILTERS     32
+#define MAX_HA_ENTITIES 128
 
 typedef enum
 {
@@ -15,6 +16,29 @@ typedef enum
     SOC_DISCONNECTED,
     SOC_TIMEOUT
 } t_soc_st;
+
+typedef struct
+{
+    const char* unique_id;
+    const char* type;
+    const char* name;
+    const char* cls;
+    const char* units;
+} ha_entity_t;
+
+typedef struct
+{
+    const char* name;
+    const char* model;
+    const char* ver;
+} ha_device_t;
+
+typedef struct
+{
+    int n;
+    ha_device_t* dev[MAX_HA_ENTITIES];
+    ha_entity_t* ent[MAX_HA_ENTITIES];
+} ha_registry_t;
 
 typedef void (*msgfn_t)(int param, const char* message, size_t message_len);
 
@@ -33,5 +57,6 @@ void handle_mqtt();
 void send_mqtt(const char* event, char* value);
 
 void set_uplink_filter(char* filter, msgfn_t cb, int param);
-    
+void ha_register(ha_device_t* device, ha_entity_t* entity);
+
 #endif

@@ -11,7 +11,6 @@
 #include "stm.h"
 #include "boiler.h"
 
-
 #define array_sz(a)  (sizeof(a)/sizeof((a)[0]))
 const char* cfg_name = "wallsw.conf";
 config_t cfg;
@@ -140,6 +139,7 @@ int main(int argc, char* argv[])
     set_uplink_filter("mcp", msg_mcp23017, 0);
     init_boiler();
     set_uplink_filter("boiler", msg_boiler, 0);
+
 
     for(i = 0; i < cfg.n_lts; ++i)
     {

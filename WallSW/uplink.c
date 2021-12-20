@@ -22,7 +22,7 @@ typedef struct
 typedef struct
 {
     struct mqtt_client client;
-    uint8_t sendbuf[2048];
+    uint8_t sendbuf[8192];
     uint8_t recvbuf[1024];
     struct sockaddr_in addr;
     socklen_t addr_len;
@@ -36,6 +36,8 @@ typedef struct
 
 poll_t      poll_fds;
 mqtt_t      client;
+
+ha_registry_t registry = { 0 };
 
 static inline struct mqtt_client* mq(mqtt_t* c) { return &c->client; }
 
@@ -61,6 +63,58 @@ static void mqtt_callback(void** unused, struct mqtt_response_publish *published
     DBG("Received publish('%.*s'): %.*s", (int)published->topic_name_size, (const char*)published->topic_name, (int)published->application_message_size, (const char*)published->application_message);
     process_mqtt((const char*)published->topic_name, published->topic_name_size, (const char*)published->application_message, published->application_message_size);
 }
+
+void send_registry()
+{
+    static int i = 0;
+    int error = MQTT_OK;
+    char topic[64];
+    char config[2048];
+
+    //if(i >= registry.n) return;
+    for(; i < registry.n; i++)
+    {
+
+    ha_device_t* device = registry.dev[i];
+    ha_entity_t* entity = registry.ent[i];
+
+    snprintf(topic, sizeof(topic)-1, "homeassistant/%s/%s/config", entity->type, entity->unique_id);
+    snprintf(config, sizeof(config)-1, "{"
+        " \"name\": \"%s\","
+        " \"unique_id\": \"%s\","
+        " \"state_topic\": \"%s/%s/state\","
+        " \"device_class\": \"%s\","
+        " \"unit_of_measurement\": \"%s\","
+        " \"platform\": \"mqtt\","
+        " \"device\": {"
+            " \"identifiers\": [\"%s\"],"
+            " \"name\": \"%s\","
+            " \"manufacturer\": \"AtHome\","
+            " \"model\": \"%s\","
+            " \"sw_version\": \"%s\""
+            " }"
+        " }",
+        entity->name, 
+        entity->unique_id, 
+        cfg.mqtt_topic, entity->unique_id,
+        entity->cls,
+        entity->units,
+        device->name,
+        device->name,
+        device->model,
+        device->ver);
+    error = mqtt_publish(mq(&client), topic, config, strlen(config), MQTT_PUBLISH_QOS_0);
+    DBG("reg: %s: %s", topic, config);
+    if(error != MQTT_OK)
+    {
+        DBG("error: %s", mqtt_error_str(error));
+        break;
+    }
+
+    }
+    //else ++i;
+}
+
 
 // ntohl(inet_addr(uplink_ip))
 int open_uplink_socket()
@@ -182,12 +236,12 @@ void uplink_socket_connected()
             client.sd = -1;
             client.status = SOC_NONE;
             sd = -1;
+            break;
         }
 
         /* subscribe */
         snprintf(topic, sizeof(topic)-1, "%s/+/cmd", cfg.mqtt_topic);
         mqtt_subscribe(mq(&client), topic, 0);
-
     } while(0);
 }
 
@@ -240,6 +294,9 @@ void handle_mqtt()
     }
     if(client.status == SOC_CONNECTED)
     {
+        /* Send HA registration requests */
+        send_registry();
+
         err = mqtt_sync(mq(&client));
         if(err != MQTT_OK)
         {
@@ -271,6 +328,8 @@ void handle_mqtt()
 
 void init_uplink()
 {
+    registry.n = 0;
+
     client.status = SOC_NONE;
     client.sd = -1;
     client.n_fd = -1;
@@ -315,5 +374,19 @@ void set_uplink_filter(char* filter, msgfn_t cb, int param)
     client.ft[n].str = filter;
     client.ft[n].cb = cb;
     client.ft[n].param = param;
+}
+
+/* All component registration should be done on INIT stage */
+void ha_register(ha_device_t* device, ha_entity_t* entity)
+{
+    int i = registry.n;
+
+    // Check for overflow
+    if(i < MAX_HA_ENTITIES)
+    {
+        registry.dev[i] = device;
+        registry.ent[i] = entity;
+        registry.n++;
+    }
 }
 
