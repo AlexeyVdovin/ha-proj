@@ -22,7 +22,7 @@ typedef struct
 typedef struct
 {
     struct mqtt_client client;
-    uint8_t sendbuf[8192];
+    uint8_t sendbuf[32768];
     uint8_t recvbuf[1024];
     struct sockaddr_in addr;
     socklen_t addr_len;
@@ -84,7 +84,7 @@ void send_registry()
         " \"unique_id\": \"%s\","
         " \"state_topic\": \"%s/%s/state\","
         " \"device_class\": \"%s\","
-        " \"unit_of_measurement\": \"%s\","
+        " \"%s\": \"%s\","
         " \"platform\": \"mqtt\","
         " \"device\": {"
             " \"identifiers\": [\"%s\"],"
@@ -98,7 +98,7 @@ void send_registry()
         entity->unique_id, 
         cfg.mqtt_topic, entity->unique_id,
         entity->cls,
-        entity->units,
+        entity->units ? "unit_of_measurement" : "enabled_by_default", entity->units ? entity->units : "true",
         device->name,
         device->name,
         device->model,
@@ -358,6 +358,15 @@ void send_mqtt(const char* event, char* value)
     DBG("pub: %s %s", event, value);
     snprintf(topic, sizeof(topic)-1, "%s/%s", cfg.mqtt_topic, event);
     mqtt_publish(mq(&client), topic, value, strlen(value), MQTT_PUBLISH_QOS_0);
+}
+
+void mqtt_send_status(ha_entity_t* entity, char* status)
+{
+    char topic[100];
+
+    snprintf(topic, sizeof(topic), "%s/%s/state", cfg.mqtt_topic, entity->unique_id);
+    DBG("pub: %s: %s", topic, status);
+    mqtt_publish(mq(&client), topic, status, strlen(status), MQTT_PUBLISH_QOS_0);
 }
 
 void set_uplink_filter(char* filter, msgfn_t cb, int param)

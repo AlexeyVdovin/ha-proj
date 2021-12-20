@@ -69,7 +69,7 @@ static void read_config(const char* name)
         n = ini_gets("boiler", "id", "0", str, array_sz(str), name);
         DBG("boiler.id: '%s'", str);
         cfg.boiler.id = atol(str);
-        // TODO: Add sensor SERIAL IDs for every sensor type
+        // TODO: Add correction constants for every sensor
         n = ini_gets("boiler", "boiler_temp_1", "", cfg.boiler.sensor[OW_BOILER_TEMP1], 20, name);
         n = ini_gets("boiler", "boiler_temp_2", "", cfg.boiler.sensor[OW_BOILER_TEMP2], 20, name);
         n = ini_gets("boiler", "boiler_in", "", cfg.boiler.sensor[OW_BOILER_IN], 20, name);

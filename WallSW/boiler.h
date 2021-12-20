@@ -19,7 +19,7 @@ enum {
   OW_HWATER_IN,    // 12 Hot water heater in/out
   OW_HWATER_OUT,   // 13
   OW_AMBIENT,      // 14
-  OW_RESERVED      // 15
+  OW_UNKNOWN       // 15
 };
 
 
