@@ -138,8 +138,6 @@ int main(int argc, char* argv[])
     init_mcp23017();
     set_uplink_filter("mcp", msg_mcp23017, 0);
     init_boiler();
-    set_uplink_filter("boiler", msg_boiler, 0);
-
 
     for(i = 0; i < cfg.n_lts; ++i)
     {

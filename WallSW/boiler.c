@@ -202,12 +202,30 @@ ha_entity_t en_pwm_1 =
     "%"
 };
 
+ha_entity_t en_pwm_2 =
+{
+    "boiler_pwm2",
+    "sensor",
+    "PWM 2",
+    "power_factor",
+    "%"
+};
+
 ha_entity_t en_water_heating =
 {
     "boiler_hot_water_heating",
     "binary_sensor",
     "Water Heating",
     "power",
+    NULL
+};
+
+ha_entity_t en_t_floor_set =
+{
+    "ht_floor_t_set",
+    "number",
+    "Heating Floor Temperature",
+    NULL,
     NULL
 };
 
@@ -228,6 +246,12 @@ ha_entity_t en_water_heating =
 #define STM_PWM1      0x1C
 #define STM_PWM2      0x1E
 #define STM_OW_CH     0x20
+
+enum
+{
+    EE_ADR_RESERVED = 0,
+    EE_ADR_FLOOR = 4
+};
 
 enum
 {
@@ -256,7 +280,8 @@ enum
     ST_CTL_CH3 = 0x04,
     ST_CTL_CH4 = 0x08,
     ST_CTL_CH5 = 0x10,
-    ST_CTL_CH6 = 0x20
+    ST_CTL_CH6 = 0x20,
+    ST_CTL_EEWR = 4096
 };
 
 static const char STR_DC_12V[]      = "bl:12V";
@@ -327,26 +352,10 @@ typedef struct
     struct itimerspec tmr_value;
 } boil_t;
 
-
-
-float    boiler_in;
-float    boiler_out;
-float    boiler_ret;
-
-float    heating_out;
-float    heating_ret;
-float    gas_heater_in;
-float    gas_heater_out;
-float    gas_boiler_in;
-float    gas_boiler_out;
-float    ambient;
-
-
-
-
-
-
 boil_t boiler;
+
+void msg_boiler(int param, const char* message, size_t message_len);
+static int stm_set_control(int dev, uint16_t val);
 
 static int boiler_i2c_open(uint8_t bus, uint8_t adr)
 {
@@ -390,6 +399,81 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     args.size = size;
     args.data = data;
     return ioctl(dev, I2C_SMBUS, &args);
+}
+
+static void eeprom_read_byte(uint8_t addr, uint8_t* value)
+{
+    union i2c_smbus_data data;
+    int res, dev = boiler_i2c_open(0, 0x50+cfg.boiler.id);
+
+    if(dev < 0) return;
+    res = i2c_io(dev, I2C_SMBUS_READ, addr, I2C_SMBUS_BYTE_DATA, &data);
+    if(res < 0)
+    {
+        close(dev);
+        return;
+    }
+    *value = data.byte;
+    close(dev);
+    return;
+}
+
+static void eeprom_read_word(uint8_t addr, uint16_t* value)
+{
+    union i2c_smbus_data data;
+    int res, dev = boiler_i2c_open(0, 0x50+cfg.boiler.id);
+
+    if(dev < 0) return;
+    res = i2c_io(dev, I2C_SMBUS_READ, addr, I2C_SMBUS_WORD_DATA, &data);
+    if(res < 0)
+    {
+        close(dev);
+        return;
+    }
+    *value = data.word;
+    close(dev);
+    return;
+}
+
+static void eeprom_write(uint8_t addr, uint8_t* value)
+{
+    union i2c_smbus_data data;
+    uint16_t control = boiler.control;
+    int res, dev = boiler_i2c_open(0, 0x50+cfg.boiler.id);
+
+    if(dev < 0) return;
+    control |= ST_CTL_EEWR;
+    if(control != boiler.control)
+    {
+        stm_set_control(boiler.dev, control);
+        boiler.control = control;
+    }
+    data.byte = *value;
+    res = i2c_io(dev, I2C_SMBUS_WRITE, addr, I2C_SMBUS_BYTE_DATA, &data);
+    usleep(10 * 1000); // Wait for write complete 5ms min
+    control &= ~ST_CTL_EEWR;
+    if(control != boiler.control)
+    {
+        stm_set_control(boiler.dev, control);
+        boiler.control = control;
+    }
+    close(dev);
+    return;
+}
+
+static inline void eeprom_write_byte(uint8_t addr, uint8_t* value)
+{
+    eeprom_write(addr, value);
+    return;
+}
+
+static inline void eeprom_write_word(uint8_t addr, uint16_t* value)
+{
+    uint8_t byte = (uint8_t)((*value) & 0x00FF);
+    eeprom_write(addr, &byte);
+    byte = (uint8_t)(((*value) >> 8) & 0x00FF);
+    eeprom_write(addr+1, &byte);
+    return;
 }
 
 static int boiler_set_pwm1(int dev, uint16_t val)
@@ -684,6 +768,8 @@ static int32_t update_pid(pd_t* p, float set, float t)
   int32_t out = (int32_t)(p->p * error / 1024);
   out += (int32_t)(p->d * delta / 1024);
   p->integral += p->i * error / 1024;
+  if(p->integral > 1024) p->integral = 1024;
+  if(p->integral < -1023) p->integral = -1023;
   p->t = t;
   out += (int32_t)(p->integral);
   p->val = out;
@@ -727,6 +813,10 @@ static void boiler_pid_floor()
         out = update_pid(&boiler.pid1, boiler.floor_set, t);
         pwm = (out > cfg.boiler.pwm1_max) ? cfg.boiler.pwm1_max : (out < cfg.boiler.pwm1_min) ? cfg.boiler.pwm1_min : out;
         boiler_set_pwm1(boiler.dev, pwm);
+        
+        snprintf(status, sizeof(status)-1, "%.1f", boiler.floor_set);
+        mqtt_send_status(&en_t_floor_set, status);
+
         snprintf(status, sizeof(status)-1, "%.1f", pwm/10.0f);
         mqtt_send_status(&en_pwm_1, status);
     }
@@ -1051,6 +1141,7 @@ void init_boiler()
 {
     int v, res;
     int dev;
+    uint16_t t;
     
     memset(&boiler, 0, sizeof(boiler));
     boiler.dev = -1;
@@ -1078,7 +1169,7 @@ void init_boiler()
     boiler.pid1.p = cfg.boiler.pid1_p_gain;
     boiler.pid1.i = cfg.boiler.pid1_i_gain;
 
-    boiler.floor_set = 28;
+    boiler.floor_set = 23;
 
     boiler.tmr_value.it_value.tv_sec = 5;
     boiler.tmr_value.it_value.tv_nsec = 0;
@@ -1097,6 +1188,10 @@ void init_boiler()
     res = stm_set_control(dev, boiler.control);
     res = stm_set_ow_ch(dev, boiler.ow_ch);
 
+    t = 23 * 16;
+    eeprom_read_word(EE_ADR_FLOOR, &t);
+    boiler.floor_set = t / 16.0f;
+
     dev = ds2482_open(0, 0x18 + cfg.boiler.id);
     if(dev < 0)
     {
@@ -1108,26 +1203,29 @@ void init_boiler()
     boiler.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
     timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
 
-    ha_register(&device, &en_pressure1);
-    ha_register(&device, &en_pressure2);
-    ha_register(&device, &en_t_boiler1);
-    ha_register(&device, &en_t_boiler2);
-    ha_register(&device, &en_t_boiler_in);
-    ha_register(&device, &en_t_boiler_out);
-    ha_register(&device, &en_t_boiler_ret);
-    ha_register(&device, &en_t_floor_in);
-    ha_register(&device, &en_t_floor_out);
-    ha_register(&device, &en_t_floor_ret);
-    ha_register(&device, &en_t_heating_out);
-    ha_register(&device, &en_t_heating_ret);
-    ha_register(&device, &en_t_gas_heater_in);
-    ha_register(&device, &en_t_gas_heater_out);
-    ha_register(&device, &en_t_gas_boiler_in);
-    ha_register(&device, &en_t_gas_boiler_out);
-    ha_register(&device, &en_t_ambient);
-    ha_register(&device, &en_pwm_1);
-    // ha_register(&device, &en_pwm_2);
-    ha_register(&device, &en_water_heating);
+    ha_register_sensor(&device, &en_pressure1);
+    ha_register_sensor(&device, &en_pressure2);
+    ha_register_sensor(&device, &en_t_boiler1);
+    ha_register_sensor(&device, &en_t_boiler2);
+    ha_register_sensor(&device, &en_t_boiler_in);
+    ha_register_sensor(&device, &en_t_boiler_out);
+    ha_register_sensor(&device, &en_t_boiler_ret);
+    ha_register_sensor(&device, &en_t_floor_in);
+    ha_register_sensor(&device, &en_t_floor_out);
+    ha_register_sensor(&device, &en_t_floor_ret);
+    ha_register_sensor(&device, &en_t_heating_out);
+    ha_register_sensor(&device, &en_t_heating_ret);
+    ha_register_sensor(&device, &en_t_gas_heater_in);
+    ha_register_sensor(&device, &en_t_gas_heater_out);
+    ha_register_sensor(&device, &en_t_gas_boiler_in);
+    ha_register_sensor(&device, &en_t_gas_boiler_out);
+    ha_register_sensor(&device, &en_t_ambient);
+    ha_register_sensor(&device, &en_pwm_1);
+    ha_register_sensor(&device, &en_pwm_2);
+    ha_register_binary(&device, &en_water_heating);
+    ha_register_number(&device, &en_t_floor_set);
+
+    set_uplink_filter(en_t_floor_set.unique_id, msg_boiler, 0);
 }
 
 void close_boiler()
@@ -1144,5 +1242,18 @@ void close_boiler()
 
 void msg_boiler(int param, const char* message, size_t message_len)
 {
+    uint16_t t;
+    int n = 0;
+    float v;
+    
+    n = sscanf(message, "%f", &v);
+    if(n == 1)
+    {
+        DBG("boiler.t_floor_set: %.1f", v);
+        boiler.floor_set = v;
+        t = (uint16_t)(v * 16);
+        eeprom_write_word(EE_ADR_FLOOR, &t);
+        return;
+    }
     
 }
