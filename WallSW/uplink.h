@@ -61,6 +61,7 @@ void mqtt_send_status(ha_entity_t* entity, char* status);
 void set_uplink_filter(const char* filter, msgfn_t cb, int param);
 void ha_register_sensor(ha_device_t* device, ha_entity_t* entity);
 void ha_register_binary(ha_device_t* device, ha_entity_t* entity);
+void ha_register_switch(ha_device_t* device, ha_entity_t* entity);
 void ha_register_number(ha_device_t* device, ha_entity_t* entity);
 
 #endif

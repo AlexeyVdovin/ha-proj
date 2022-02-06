@@ -34,7 +34,9 @@ typedef struct
 typedef struct
 {
     int  id;
-    char sensor[20][20];
+    char sensor[20][32];
+    float sensor_c[20];
+    float sensor_k[20];
     int  pid1_p_gain;
     int  pid1_i_gain;
     int  pwm1_min;

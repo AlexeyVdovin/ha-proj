@@ -16,6 +16,7 @@ enum
 {
     HA_REG_SENSOR = 0,
     HA_REG_BINARY,
+    HA_REG_SWITCH,
     HA_REG_NUMBER,
     HA_REG_UNKNOWN
 };
@@ -133,6 +134,30 @@ void send_registry()
                     entity->unique_id, 
                     cfg.mqtt_topic, entity->unique_id,
                     entity->cls,
+                    device->name,
+                    device->name,
+                    device->model,
+                    device->ver);
+                break;
+            case HA_REG_SWITCH:
+                snprintf(config, sizeof(config)-1, "{"
+                    " \"name\": \"%s\","
+                    " \"unique_id\": \"%s\","
+                    " \"state_topic\": \"%s/%s/state\","
+                    " \"command_topic\": \"%s/%s/cmd\","
+                    " \"platform\": \"mqtt\","
+                    " \"device\": {"
+                        " \"identifiers\": [\"%s\"],"
+                        " \"name\": \"%s\","
+                        " \"manufacturer\": \"AtHome\","
+                        " \"model\": \"%s\","
+                        " \"sw_version\": \"%s\""
+                        " }"
+                    " }",
+                    entity->name, 
+                    entity->unique_id, 
+                    cfg.mqtt_topic, entity->unique_id,
+                    cfg.mqtt_topic, entity->unique_id,
                     device->name,
                     device->name,
                     device->model,
@@ -466,6 +491,20 @@ void ha_register_binary(ha_device_t* device, ha_entity_t* entity)
     if(i < MAX_HA_ENTITIES)
     {
         registry.type[i] = HA_REG_BINARY;
+        registry.dev[i] = device;
+        registry.ent[i] = entity;
+        registry.n++;
+    }
+}
+
+void ha_register_switch(ha_device_t* device, ha_entity_t* entity)
+{
+    int i = registry.n;
+
+    // Check for overflow
+    if(i < MAX_HA_ENTITIES)
+    {
+        registry.type[i] = HA_REG_SWITCH;
         registry.dev[i] = device;
         registry.ent[i] = entity;
         registry.n++;
