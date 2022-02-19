@@ -39,6 +39,7 @@ typedef struct
     float sensor_k[20];
     int  pid1_p_gain;
     int  pid1_i_gain;
+    int  pid1_d_gain;
     int  pwm1_min;
     int  pwm1_max;
     int  hwater_min;

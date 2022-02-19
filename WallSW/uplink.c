@@ -188,7 +188,7 @@ void send_registry()
                     device->ver);
                 break;
         }
-        error = mqtt_publish(mq(&client), topic, config, strlen(config), MQTT_PUBLISH_QOS_0);
+        error = mqtt_publish(mq(&client), topic, config, strlen(config), MQTT_PUBLISH_QOS_0|MQTT_PUBLISH_RETAIN);
         DBG("reg: %s: %s", topic, config);
         if(error != MQTT_OK)
         {
@@ -450,6 +450,15 @@ void mqtt_send_status(ha_entity_t* entity, char* status)
     snprintf(topic, sizeof(topic), "%s/%s/state", cfg.mqtt_topic, entity->unique_id);
     DBG("pub: %s: %s", topic, status);
     mqtt_publish(mq(&client), topic, status, strlen(status), MQTT_PUBLISH_QOS_0);
+}
+
+void mqtt_pin_status(ha_entity_t* entity, char* status)
+{
+    char topic[100];
+
+    snprintf(topic, sizeof(topic), "%s/%s/state", cfg.mqtt_topic, entity->unique_id);
+    DBG("pub: %s: %s", topic, status);
+    mqtt_publish(mq(&client), topic, status, strlen(status), MQTT_PUBLISH_QOS_0|MQTT_PUBLISH_RETAIN);
 }
 
 void set_uplink_filter(const char* filter, msgfn_t cb, int param)

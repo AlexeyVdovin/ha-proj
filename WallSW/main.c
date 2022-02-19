@@ -96,6 +96,10 @@ static void read_config(const char* name)
         DBG("boiler.pid1_i_gain: '%s'", str);
         cfg.boiler.pid1_i_gain = atol(str);
 
+        n = ini_gets("boiler", "pid1_d_gain", "0", str, array_sz(str), name);
+        DBG("boiler.pid1_d_gain: '%s'", str);
+        cfg.boiler.pid1_d_gain = atol(str);
+
         n = ini_gets("boiler", "pwm1_min", "0", str, array_sz(str), name);
         DBG("boiler.pwm1_min: '%s'", str);
         cfg.boiler.pwm1_min = atol(str);

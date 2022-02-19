@@ -332,8 +332,8 @@ typedef struct
 typedef struct {
   int16_t p;   // Proportional gain
   int16_t i;   // Integral gain
+  int16_t d;   // Derivative gain
   int32_t val; // control Value
-  float   d;   // Derivative
   float   t;   // previouse Temp
   float   integral;
 } pd_t;
@@ -817,16 +817,18 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
 static int32_t update_pid(pd_t* p, float set, float t)
 {
   float error = set - t;
-  float delta = (p->t > 0) ? p->t - t : 0;
-  int32_t out = (int32_t)(p->p * error / 1024);
-  out += (int32_t)(p->d * delta / 1024);
-  p->integral += p->i * error / 1024;
+  float delta = p->t - t;
+  int32_t out = p->val;
+
+  p->integral += p->i * error / 100;
   if(p->integral > 1024) p->integral = 1024;
   if(p->integral < -1023) p->integral = -1023;
-  p->t = t;
+  out += (int32_t)(p->p * error / 100);
+  out += (int32_t)(p->d * delta / 100);
   out += (int32_t)(p->integral);
+  p->t = t;
   p->val = out;
-  DBG("pid: Set=%.2f T=%.2f Out=%d Pint=%f", set, t, out, p->integral);
+  DBG("pid: (%d,%d,%d) Set=%.2f T=%.2f Delta=%f Out=%d Pint=%f", p->p, p->i, p->d, set, t, delta, out, p->integral);
   return out;
 }
 
@@ -865,6 +867,7 @@ static void boiler_pid_floor()
     if(boiler.floor_out != -200 && boiler.floor_ret != -200)
     {
         t = (boiler.floor_out + boiler.floor_ret)/2;
+        if(boiler.pid1.t == -200) boiler.pid1.t = t;
         out = update_pid(&boiler.pid1, boiler.floor_set, t);
         pwm = (out > cfg.boiler.pwm1_max) ? cfg.boiler.pwm1_max : (out < cfg.boiler.pwm1_min) ? cfg.boiler.pwm1_min : out;
         boiler_set_pwm1(boiler.dev, pwm);
@@ -1054,9 +1057,9 @@ static void tmrInterrupt0(void)
         {
             snprintf(str, sizeof(str)-1, "%.1f", boiler.floor_set);
             mqtt_send_status(&en_t_floor_set, str);
-            mqtt_send_status(&en_sw_hfloor_pump, (boiler.control & ST_CTL_CH3) ? "ON" : "OFF");
-            mqtt_send_status(&en_sw_ch_pump, (boiler.control & ST_CTL_CH4) ? "ON" : "OFF");
-            mqtt_send_status(&en_sw_hw_pump, (boiler.control & ST_CTL_CH5) ? "ON" : "OFF");
+            mqtt_pin_status(&en_sw_hfloor_pump, (boiler.control & ST_CTL_CH3) ? "ON" : "OFF");
+            mqtt_pin_status(&en_sw_ch_pump, (boiler.control & ST_CTL_CH4) ? "ON" : "OFF");
+            mqtt_pin_status(&en_sw_hw_pump, (boiler.control & ST_CTL_CH5) ? "ON" : "OFF");
             mqtt_send_status(&en_water_heating, (boiler.control & ST_CTL_CH6) ? "ON" : "OFF");
         }
         case ST_DC_12V:
@@ -1069,7 +1072,7 @@ static void tmrInterrupt0(void)
         {
             event = STR_ADC_IN1;
             stm_get_dc(boiler.dev, STM_ADC_IN1, &val);
-            f = (val-1200)/790.0f;
+            f = (val-1250)/790.0f;
             if(boiler.pressure1 != f)
             {
                 boiler.pressure1 = f;
@@ -1082,7 +1085,7 @@ static void tmrInterrupt0(void)
         {
             event = STR_ADC_IN2;
             stm_get_dc(boiler.dev, STM_ADC_IN2, &val);
-            f = (val-1200)/790.0f;
+            f = (val-1250)/790.0f;
             if(boiler.pressure2 != f)
             {
                 boiler.pressure2 = f;
@@ -1228,6 +1231,7 @@ void init_boiler()
 
     boiler.pid1.p = cfg.boiler.pid1_p_gain;
     boiler.pid1.i = cfg.boiler.pid1_i_gain;
+    boiler.pid1.d = cfg.boiler.pid1_d_gain;
 
     boiler.floor_set = 23;
 
@@ -1250,7 +1254,8 @@ void init_boiler()
     res = boiler_get_pwm1(boiler.dev, &t);
     if(res >= 0)
     {
-        boiler.pid1.integral = t;
+        boiler.pid1.val = t;
+        boiler.pid1.t = -200;
     }
 
     res = stm_get_control(boiler.dev, &t);
@@ -1355,7 +1360,7 @@ void msg_boiler_sw_hfloor(int param, const char* message, size_t message_len)
     control |= state ? ST_CTL_CH3 : 0;
     stm_set_control(boiler.dev, control);
     boiler.control = control;
-    mqtt_send_status(&en_sw_hfloor_pump, state ? "ON" : "OFF");
+    mqtt_pin_status(&en_sw_hfloor_pump, state ? "ON" : "OFF");
 }
 
 void msg_boiler_sw_ch_pump(int param, const char* message, size_t message_len)
@@ -1377,7 +1382,7 @@ void msg_boiler_sw_ch_pump(int param, const char* message, size_t message_len)
     control |= state ? ST_CTL_CH4 : 0;
     stm_set_control(boiler.dev, control);
     boiler.control = control;
-    mqtt_send_status(&en_sw_ch_pump, state ? "ON" : "OFF");
+    mqtt_pin_status(&en_sw_ch_pump, state ? "ON" : "OFF");
 }
 
 void msg_boiler_sw_hw_pump(int param, const char* message, size_t message_len)
@@ -1399,5 +1404,5 @@ void msg_boiler_sw_hw_pump(int param, const char* message, size_t message_len)
     control |= state ? ST_CTL_CH5 : 0;
     stm_set_control(boiler.dev, control);
     boiler.control = control;
-    mqtt_send_status(&en_sw_hw_pump, state ? "ON" : "OFF");
+    mqtt_pin_status(&en_sw_hw_pump, state ? "ON" : "OFF");
 }
