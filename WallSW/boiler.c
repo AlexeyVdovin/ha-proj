@@ -130,6 +130,15 @@ ha_entity_t en_t_floor_ret =
     "°C"
 };
 
+ha_entity_t en_t_floor_calc =
+{
+    "ht_floor_temperature_calc",
+    "sensor",
+    "Heating Floor T",
+    "temperature",
+    "°C"
+};
+
 ha_entity_t en_t_heating_out =
 {
     "heating_temperature_out",
@@ -813,22 +822,45 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
     return res;
 }
 
-/* p - pid*, set - target T, t - current T */
-static int32_t update_pid(pd_t* p, float set, float t)
-{
-  float error = set - t;
-  float delta = p->t - t;
-  int32_t out = p->val;
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
-  p->integral += p->i * error / 100;
-  if(p->integral > 1024) p->integral = 1024;
-  if(p->integral < -1023) p->integral = -1023;
-  out += (int32_t)(p->p * error / 100);
-  out += (int32_t)(p->d * delta / 100);
-  out += (int32_t)(p->integral);
-  p->t = t;
-  p->val = out;
-  DBG("pid: (%d,%d,%d) Set=%.2f T=%.2f Delta=%f Out=%d Pint=%f", p->p, p->i, p->d, set, t, delta, out, p->integral);
+/* p - pid*, set - target T, curr - current T */
+static int32_t update_pid(pd_t* p, float set, float curr)
+{
+  static int tm = 0;
+  static float avg;
+  static int n = 0;
+  int32_t out = p->val;
+  char status[20];
+  int dt;
+
+  if(n == 0) avg = curr;
+  else avg += curr;
+  ++n;
+
+  if(tm < time(0))
+  {
+    float t = avg/n;
+    float error = set - t;
+    float delta = p->t - t;
+
+    dt = (max(delta, -delta)*10 > 1) ? (int)(7200 / (max(delta, -delta)*10)) : 7200;
+    if(max(error, -error) > 0.4) dt = (int)(dt / (max(error, -error) * 5));
+    tm = time(0) + dt;
+    n = 0;
+
+    p->integral += p->i * error / 100;
+    if(p->integral > 1024) p->integral = 1024;
+    if(p->integral < -1023) p->integral = -1023;
+    out += (int32_t)(p->p * error / 100);
+    out += (int32_t)(p->d * delta / 100);
+    out += (int32_t)(p->integral);
+    p->t = t;
+    p->val = out;
+    DBG("pid: (%d,%d,%d) Set=%.2f T=%.2f Delta=%f Out=%d Pint=%f Dt=%d", p->p, p->i, p->d, set, t, delta, out, p->integral, dt);
+    snprintf(status, sizeof(status)-1, "%.2f", t);
+    mqtt_send_status(&en_t_floor_calc, status);
+  }
   return out;
 }
 
@@ -863,8 +895,10 @@ static void boiler_pid_floor()
     int32_t out = 0;
     uint16_t pwm = 0;
     char status[20];
+    // Check if heating floor pump is On?
+    uint16_t state = (control & ST_CTL_CH3);
 
-    if(boiler.floor_out != -200 && boiler.floor_ret != -200)
+    if(state && boiler.floor_out != -200 && boiler.floor_ret != -200)
     {
         t = (boiler.floor_out + boiler.floor_ret)/2;
         if(boiler.pid1.t == -200) boiler.pid1.t = t;
@@ -872,9 +906,6 @@ static void boiler_pid_floor()
         pwm = (out > cfg.boiler.pwm1_max) ? cfg.boiler.pwm1_max : (out < cfg.boiler.pwm1_min) ? cfg.boiler.pwm1_min : out;
         boiler_set_pwm1(boiler.dev, pwm);
         
-//        snprintf(status, sizeof(status)-1, "%.1f", boiler.floor_set);
-//        mqtt_send_status(&en_t_floor_set, status);
-
         snprintf(status, sizeof(status)-1, "%.1f", pwm/10.0f);
         mqtt_send_status(&en_pwm_1, status);
     }
@@ -1289,6 +1320,7 @@ void init_boiler()
     ha_register_sensor(&device, &en_t_floor_in);
     ha_register_sensor(&device, &en_t_floor_out);
     ha_register_sensor(&device, &en_t_floor_ret);
+    ha_register_sensor(&device, &en_t_floor_calc);
     ha_register_sensor(&device, &en_t_heating_out);
     ha_register_sensor(&device, &en_t_heating_ret);
     ha_register_sensor(&device, &en_t_gas_heater_in);
