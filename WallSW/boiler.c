@@ -896,7 +896,7 @@ static void boiler_pid_floor()
     uint16_t pwm = 0;
     char status[20];
     // Check if heating floor pump is On?
-    uint16_t state = (control & ST_CTL_CH3);
+    uint16_t state = (boiler.control & ST_CTL_CH3);
 
     if(state && boiler.floor_out != -200 && boiler.floor_ret != -200)
     {
