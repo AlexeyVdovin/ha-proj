@@ -130,6 +130,15 @@ ha_entity_t en_t_floor_ret =
     "°C"
 };
 
+ha_entity_t en_t_floor_calc =
+{
+    "ht_floor_temperature_calc",
+    "sensor",
+    "Heating Floor T",
+    "temperature",
+    "°C"
+};
+
 ha_entity_t en_t_heating_out =
 {
     "heating_temperature_out",
@@ -193,6 +202,68 @@ ha_entity_t en_t_ambient =
     "°C"
 };
 
+ha_entity_t en_pwm_1 =
+{
+    "boiler_pwm1",
+    "sensor",
+    "PWM 1",
+    "power_factor",
+    "%"
+};
+
+ha_entity_t en_pwm_2 =
+{
+    "boiler_pwm2",
+    "sensor",
+    "PWM 2",
+    "power_factor",
+    "%"
+};
+
+ha_entity_t en_water_heating =
+{
+    "boiler_hot_water_heating",
+    "binary_sensor",
+    "Water Heating",
+    "power",
+    NULL
+};
+
+ha_entity_t en_t_floor_set =
+{
+    "ht_floor_t_set",
+    "number",
+    "Heating Floor Temperature",
+    NULL,
+    NULL
+};
+
+ha_entity_t en_sw_hfloor_pump =
+{
+    "ht_floor_switch",
+    "switch",
+    "Heating Floor Pump",
+    NULL,
+    NULL
+};
+
+ha_entity_t en_sw_ch_pump =
+{
+    "ht_ch_switch",
+    "switch",
+    "Central Heating Pump",
+    NULL,
+    NULL
+};
+
+ha_entity_t en_sw_hw_pump =
+{
+    "ht_hwater_switch",
+    "switch",
+    "Hot Water Pump",
+    NULL,
+    NULL
+};
 
 #define STM_EXT_RST 0x8000
 #define STM_DCDC_EN 0x0100
@@ -212,6 +283,13 @@ ha_entity_t en_t_ambient =
 
 enum
 {
+    EE_ADR_RESERVED = 0,
+    EE_ADR_FLOOR_T = 4
+};
+
+enum
+{
+    ST_INIT = -20,
     ST_IDLE = 0,
     ST_DC_12V,
     ST_ADC_IN1,
@@ -237,7 +315,8 @@ enum
     ST_CTL_CH3 = 0x04,
     ST_CTL_CH4 = 0x08,
     ST_CTL_CH5 = 0x10,
-    ST_CTL_CH6 = 0x20
+    ST_CTL_CH6 = 0x20,
+    ST_CTL_EEWR = 4096
 };
 
 static const char STR_DC_12V[]      = "bl:12V";
@@ -255,13 +334,15 @@ typedef struct
     uint8_t addr[8];
     int     type;
     float   t;
+    float   k;
+    float   c;
 } ow_t;
 
 typedef struct {
   int16_t p;   // Proportional gain
   int16_t i;   // Integral gain
+  int16_t d;   // Derivative gain
   int32_t val; // control Value
-  float   d;   // Derivative
   float   t;   // previouse Temp
   float   integral;
 } pd_t;
@@ -284,16 +365,37 @@ typedef struct
     ow_t     ch3[OW_MAX_DEVCES];
     int      ch4_n;
     ow_t     ch4[OW_MAX_DEVCES];
-    float    hwater1;
-    float    hwater2;
-    float    ht_floor_out;
-    float    ht_floor_ret;
-    float    ht_floor_set;
+// ------- Results --------
+    float    pressure1;
+    float    pressure2;
+    float    boiler1;
+    float    boiler2;
+    float    boiler_in;
+    float    boiler_out;
+    float    boiler_ret;
+    float    floor_in;
+    float    floor_out;
+    float    floor_ret;
+    float    heating_out;
+    float    heating_ret;
+    float    gas_heater_in;
+    float    gas_heater_out;
+    float    gas_boiler_in;
+    float    gas_boiler_out;
+    float    ambient;
+// ------- Settings --------
+    float    floor_set;
     pd_t     pid1;
     struct itimerspec tmr_value;
 } boil_t;
 
 boil_t boiler;
+
+void msg_boiler_t_hfloor(int param, const char* message, size_t message_len);
+void msg_boiler_sw_hfloor(int param, const char* message, size_t message_len);
+void msg_boiler_sw_ch_pump(int param, const char* message, size_t message_len);
+void msg_boiler_sw_hw_pump(int param, const char* message, size_t message_len);
+static int stm_set_control(int dev, uint16_t val);
 
 static int boiler_i2c_open(uint8_t bus, uint8_t adr)
 {
@@ -339,6 +441,81 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
     return ioctl(dev, I2C_SMBUS, &args);
 }
 
+static void eeprom_read_byte(uint8_t addr, uint8_t* value)
+{
+    union i2c_smbus_data data;
+    int res, dev = boiler_i2c_open(0, 0x50+cfg.boiler.id);
+
+    if(dev < 0) return;
+    res = i2c_io(dev, I2C_SMBUS_READ, addr, I2C_SMBUS_BYTE_DATA, &data);
+    if(res < 0)
+    {
+        close(dev);
+        return;
+    }
+    *value = data.byte;
+    close(dev);
+    return;
+}
+
+static void eeprom_read_word(uint8_t addr, uint16_t* value)
+{
+    union i2c_smbus_data data;
+    int res, dev = boiler_i2c_open(0, 0x50+cfg.boiler.id);
+
+    if(dev < 0) return;
+    res = i2c_io(dev, I2C_SMBUS_READ, addr, I2C_SMBUS_WORD_DATA, &data);
+    if(res < 0)
+    {
+        close(dev);
+        return;
+    }
+    *value = data.word;
+    close(dev);
+    return;
+}
+
+static void eeprom_write(uint8_t addr, uint8_t* value)
+{
+    union i2c_smbus_data data;
+    uint16_t control = boiler.control;
+    int res, dev = boiler_i2c_open(0, 0x50+cfg.boiler.id);
+
+    if(dev < 0) return;
+    control |= ST_CTL_EEWR;
+    if(control != boiler.control)
+    {
+        stm_set_control(boiler.dev, control);
+        boiler.control = control;
+    }
+    data.byte = *value;
+    res = i2c_io(dev, I2C_SMBUS_WRITE, addr, I2C_SMBUS_BYTE_DATA, &data);
+    usleep(10 * 1000); // Wait for write complete 5ms min
+    control &= ~ST_CTL_EEWR;
+    if(control != boiler.control)
+    {
+        stm_set_control(boiler.dev, control);
+        boiler.control = control;
+    }
+    close(dev);
+    return;
+}
+
+static inline void eeprom_write_byte(uint8_t addr, uint8_t* value)
+{
+    eeprom_write(addr, value);
+    return;
+}
+
+static inline void eeprom_write_word(uint8_t addr, uint16_t* value)
+{
+    uint8_t byte = (uint8_t)((*value) & 0x00FF);
+    eeprom_write(addr, &byte);
+    byte = (uint8_t)(((*value) >> 8) & 0x00FF);
+    eeprom_write(addr+1, &byte);
+    return;
+}
+
 static int boiler_set_pwm1(int dev, uint16_t val)
 {
     union i2c_smbus_data data;
@@ -346,11 +523,33 @@ static int boiler_set_pwm1(int dev, uint16_t val)
     return i2c_io(dev, I2C_SMBUS_WRITE, STM_PWM1, I2C_SMBUS_WORD_DATA, &data);
 }
 
+static int boiler_get_pwm1(int dev, uint16_t *val)
+{
+    int res;
+    union i2c_smbus_data data;
+
+    res = i2c_io(dev, I2C_SMBUS_READ, STM_PWM1, I2C_SMBUS_WORD_DATA, &data);
+    if(res >= 0) *val = 0x0FFFF & data.word;
+
+    return res;
+}
+
 static int stm_set_control(int dev, uint16_t val)
 {
     union i2c_smbus_data data;
     data.word = val;
     return i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
+}
+
+static int stm_get_control(int dev, uint16_t *val)
+{
+    int res;
+    union i2c_smbus_data data;
+
+    res = i2c_io(dev, I2C_SMBUS_READ, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
+    if(res >= 0) *val = 0x0FFFF & data.word;
+
+    return res;
 }
 
 static int stm_set_ow_ch(int dev, uint16_t val)
@@ -623,18 +822,45 @@ static int boiler_ch_read(uint8_t* addr, int16_t *value)
     return res;
 }
 
-/* p - pid*, set - target T, t - current T */
-static int32_t update_pid(pd_t* p, float set, float t)
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
+/* p - pid*, set - target T, curr - current T */
+static int32_t update_pid(pd_t* p, float set, float curr)
 {
-  float error = set - t;
-  float delta = p->t - t;
-  int32_t out = (int32_t)(p->p * error / 1024);
-  out += (int32_t)(p->d * delta / 1024);
-  p->integral += p->i * error / 1024;
-  p->t = t;
-  out += (int32_t)(p->integral);
-  p->val = out;
-  DBG("pid: Set=%.2f T=%.2f Out=%d Pint=%f", set, t, out, p->integral);
+  static int tm = 0;
+  static float avg;
+  static int n = 0;
+  int32_t out = p->val;
+  char status[20];
+  int dt;
+
+  if(n == 0) avg = curr;
+  else avg += curr;
+  ++n;
+
+  if(tm < time(0))
+  {
+    float t = avg/n;
+    float error = set - t;
+    float delta = p->t - t;
+
+    dt = (max(delta, -delta)*10 > 1) ? (int)(7200 / (max(delta, -delta)*10)) : 7200;
+    if(max(error, -error) > 0.4) dt = (int)(dt / (max(error, -error) * 5));
+    tm = time(0) + dt;
+    n = 0;
+
+    p->integral += p->i * error / 100;
+    if(p->integral > 1024) p->integral = 1024;
+    if(p->integral < -1023) p->integral = -1023;
+    out += (int32_t)(p->p * error / 100);
+    out += (int32_t)(p->d * delta / 100);
+    out += (int32_t)(p->integral);
+    p->t = t;
+    p->val = out;
+    DBG("pid: (%d,%d,%d) Set=%.2f T=%.2f Delta=%f Out=%d Pint=%f Dt=%d", p->p, p->i, p->d, set, t, delta, out, p->integral, dt);
+    snprintf(status, sizeof(status)-1, "%.2f", t);
+    mqtt_send_status(&en_t_floor_calc, status);
+  }
   return out;
 }
 
@@ -645,8 +871,10 @@ static void boiler_hot_water()
     uint16_t state = (control & ST_CTL_CH6);
     float t;
 
-    if(boiler.hwater1 != -200) t = boiler.hwater1;
-    if(boiler.hwater2 != -200) t = boiler.hwater2;
+    if(boiler.boiler1 != -200) t = boiler.boiler1;
+    if(boiler.boiler2 != -200) t = boiler.boiler2;
+
+    DBG("Hot Water: T = %.1f, state = %s", t, state ? "On" : "Off");
 
     if(t < cfg.boiler.hwater_min) state = 1;
     if(t > cfg.boiler.hwater_max) state = 0;
@@ -657,6 +885,7 @@ static void boiler_hot_water()
     {
         stm_set_control(boiler.dev, control);
         boiler.control = control;
+        mqtt_send_status(&en_water_heating, state ? "ON" : "OFF");
     }
 }
 
@@ -665,276 +894,288 @@ static void boiler_pid_floor()
     float t;
     int32_t out = 0;
     uint16_t pwm = 0;
+    char status[20];
+    // Check if heating floor pump is On?
+    uint16_t state = (boiler.control & ST_CTL_CH3);
 
-    if(boiler.ht_floor_out != -200 && boiler.ht_floor_ret != -200)
+    if(state && boiler.floor_out != -200 && boiler.floor_ret != -200)
     {
-        t = (boiler.ht_floor_out + boiler.ht_floor_ret)/2;
-        out = update_pid(&boiler.pid1, boiler.ht_floor_set, t);
+        t = (boiler.floor_out + boiler.floor_ret)/2;
+        if(boiler.pid1.t == -200) boiler.pid1.t = t;
+        out = update_pid(&boiler.pid1, boiler.floor_set, t);
         pwm = (out > cfg.boiler.pwm1_max) ? cfg.boiler.pwm1_max : (out < cfg.boiler.pwm1_min) ? cfg.boiler.pwm1_min : out;
         boiler_set_pwm1(boiler.dev, pwm);
+        
+        snprintf(status, sizeof(status)-1, "%.1f", pwm/10.0f);
+        mqtt_send_status(&en_pwm_1, status);
+    }
+}
+
+static void boiler_ch_setup(uint16_t ch, int *n, ow_t* ow)
+{
+    int i;
+    uint16_t val = 0;
+    char str[32];
+
+    boiler_ch_enum(ch, &val);
+    *n = val;
+    boiler_ch_measure();
+    for(i = 0; i < val; ++i)
+    {
+        int x;
+        uint8_t* addr = ow[i].addr;
+        ow[i].type = OW_UNKNOWN;
+        sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+        for(x = 0; x < OW_UNKNOWN; ++x)
+        {
+            if(memcmp(str, cfg.boiler.sensor[x], strlen(str)) == 0)
+            {
+                ow[i].type = x;
+                ow[i].k = cfg.boiler.sensor_k[x];
+                ow[i].c = cfg.boiler.sensor_c[x];
+                break;
+            }
+        }
+    }
+}
+
+static void boiler_ch_results(uint16_t ch, int n, ow_t* ow)
+{
+    int res, i;
+    int16_t value;
+    char str[64], status[20];
+
+    for(i = 0; i < n; ++i)
+    {
+        ow[i].t = -200;
+        res = boiler_ch_read(ow[i].addr, &value);
+        if(res == 0)
+        {
+            ow[i].t = (value/16.0f+ow[i].c)*ow[i].k;
+            // DBG("ch%d: %d = (%f + %f) * %f", ch, i, value/16.0f, ow[i].c, ow[i].k);
+            snprintf(status, sizeof(status)-1, "%.2f", ow[i].t);
+            switch(ow[i].type)
+            {
+                case OW_BOILER_TEMP1:
+                    if(boiler.boiler1 != ow[i].t)
+                    {
+                        boiler.boiler1 = ow[i].t;
+                        mqtt_send_status(&en_t_boiler1, status);
+                    }
+                    break;
+                case OW_BOILER_TEMP2:
+                    if(boiler.boiler2 != ow[i].t)
+                    {
+                        boiler.boiler2 = ow[i].t;
+                        mqtt_send_status(&en_t_boiler2, status);
+                    }
+                    break;
+                case OW_BOILER_IN:
+                    if(boiler.boiler_in != ow[i].t)
+                    {
+                        boiler.boiler_in = ow[i].t;
+                        mqtt_send_status(&en_t_boiler_in, status);
+                    }
+                    break;
+                case OW_BOILER_OUT:
+                    if(boiler.boiler_out != ow[i].t)
+                    {
+                        boiler.boiler_out = ow[i].t;
+                        mqtt_send_status(&en_t_boiler_out, status);
+                    }
+                    break;
+                case OW_BOILER_RET:
+                    if(boiler.boiler_ret != ow[i].t)
+                    {
+                        boiler.boiler_ret = ow[i].t;
+                        mqtt_send_status(&en_t_boiler_ret, status);
+                    }
+                    break;
+                case OW_FLOOR_IN:
+                    if(boiler.floor_in != ow[i].t)
+                    {
+                        boiler.floor_in = ow[i].t;
+                        mqtt_send_status(&en_t_floor_in, status);
+                    }
+                    break;
+                case OW_FLOOR_OUT:
+                    if(boiler.floor_out != ow[i].t)
+                    {
+                        boiler.floor_out = ow[i].t;
+                        mqtt_send_status(&en_t_floor_out, status);
+                    }
+                    break;
+                case OW_FLOOR_RET:
+                    if(boiler.floor_ret != ow[i].t)
+                    {
+                        boiler.floor_ret = ow[i].t;
+                        mqtt_send_status(&en_t_floor_ret, status);
+                    }
+                    break;
+                case OW_PIPE_OUT:
+                    if(boiler.heating_out != ow[i].t)
+                    {
+                        boiler.heating_out = ow[i].t;
+                        mqtt_send_status(&en_t_heating_out, status);
+                    }
+                    break;
+                case OW_PIPE_RET:
+                    if(boiler.heating_ret != ow[i].t)
+                    {
+                        boiler.heating_ret = ow[i].t;
+                        mqtt_send_status(&en_t_heating_ret, status);
+                    }
+                    break;
+                case OW_HEAT_IN:
+                    if(boiler.gas_heater_in != ow[i].t)
+                    {
+                        boiler.gas_heater_in = ow[i].t;
+                        mqtt_send_status(&en_t_gas_heater_in, status);
+                    }
+                    break;
+                case OW_HEAT_OUT:
+                    if(boiler.gas_heater_out != ow[i].t)
+                    {
+                        boiler.gas_heater_out = ow[i].t;
+                        mqtt_send_status(&en_t_gas_heater_out, status);
+                    }
+                    break;
+                case OW_HWATER_IN:
+                    if(boiler.gas_boiler_in != ow[i].t)
+                    {
+                        boiler.gas_boiler_in = ow[i].t;
+                        mqtt_send_status(&en_t_gas_boiler_in, status);
+                    }
+                    break;
+                case OW_HWATER_OUT:
+                    if(boiler.gas_boiler_out != ow[i].t)
+                    {
+                        boiler.gas_boiler_out = ow[i].t;
+                        mqtt_send_status(&en_t_gas_boiler_out, status);
+                    }
+                    break;
+                case OW_AMBIENT:
+                    if(boiler.ambient != ow[i].t)
+                    {
+                        boiler.ambient = ow[i].t;
+                        mqtt_send_status(&en_t_ambient, status);
+                    }
+                    break;
+                case OW_UNKNOWN:
+                    snprintf(str, sizeof(str)-1, "temperature.%02x%02x%02x%02x%02x%02x%02x%02x", ow[i].addr[0], ow[i].addr[1], ow[i].addr[2], ow[i].addr[3], ow[i].addr[4], ow[i].addr[5], ow[i].addr[6], ow[i].addr[7]);
+                    send_mqtt(str, status);
+                    break;
+            }
+        }
     }
 }
 
 static void tmrInterrupt0(void)
 {
-    static int s = -20;
+    static int s = ST_INIT;
     uint16_t val;
     int16_t value;
     const char* event;
-    char str[32], topic[32];
+    char str[32];
     int res, i, t = time(0);
+    float f;
 
    // DBG("boiler: Tmr INT: %d", s);
 
     switch(s)
     {
+        case ST_INIT:
+        {
+            snprintf(str, sizeof(str)-1, "%.1f", boiler.floor_set);
+            mqtt_send_status(&en_t_floor_set, str);
+            mqtt_pin_status(&en_sw_hfloor_pump, (boiler.control & ST_CTL_CH3) ? "ON" : "OFF");
+            mqtt_pin_status(&en_sw_ch_pump, (boiler.control & ST_CTL_CH4) ? "ON" : "OFF");
+            mqtt_pin_status(&en_sw_hw_pump, (boiler.control & ST_CTL_CH5) ? "ON" : "OFF");
+            mqtt_send_status(&en_water_heating, (boiler.control & ST_CTL_CH6) ? "ON" : "OFF");
+        }
         case ST_DC_12V:
         {
             event = STR_DC_12V;
             stm_get_dc(boiler.dev, STM_DC_12V, &val);
-            sprintf(str, "%d", val);
             break;
         }
         case ST_ADC_IN1:
         {
             event = STR_ADC_IN1;
             stm_get_dc(boiler.dev, STM_ADC_IN1, &val);
-            sprintf(str, "%d", val);
+            f = (val-1250)/790.0f;
+            if(boiler.pressure1 != f)
+            {
+                boiler.pressure1 = f;
+                sprintf(str, "%.1f", f);
+                mqtt_send_status(&en_pressure1, str);
+            }
             break;
         }
         case ST_ADC_IN2:
         {
             event = STR_ADC_IN2;
             stm_get_dc(boiler.dev, STM_ADC_IN2, &val);
-            sprintf(str, "%d", val);
+            f = (val-1250)/790.0f;
+            if(boiler.pressure2 != f)
+            {
+                boiler.pressure2 = f;
+                sprintf(str, "%.1f", f);
+                mqtt_send_status(&en_pressure2, str);
+            }
             break;
         }
         case ST_IN_VDD:
         {
             event = STR_VDD_OK;
             stm_get_vdd(boiler.dev, &val);
-            sprintf(str, "%s", val ? "ON" : "OFF");
             break;
         }
         case ST_OW_CH1_ENUM:
         {
             event = STR_OW_CH1_ENUM;
-            val = 0;
-            boiler_ch_enum(1, &val);
-            boiler.ch1_n = val;
-            boiler_ch_measure();
-            for(i = 0; i < boiler.ch1_n; ++i)
-            {
-                int x;
-                uint8_t* addr = boiler.ch1[i].addr;
-                boiler.ch1[i].type = -1;
-                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
-                for(x = 0; x < OW_RESERVED; ++x)
-                {
-                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
-                    {
-                        boiler.ch1[i].type = x;
-                        break;
-                    }
-                }
-            }
-            sprintf(str, "%d", val);
+            boiler_ch_setup(1, &boiler.ch1_n, boiler.ch1);
             break;
         }
         case ST_OW_CH1_READ:
         {
-            t = 0;
-            for(i = 0; i < boiler.ch1_n; ++i)
-            {
-                boiler.ch1[i].t = -200;
-                res = boiler_ch_read(boiler.ch1[i].addr, &value);
-                if(res < 0) continue;
-                boiler.ch1[i].t = value/16.0f;
-                DBG("ch1: %d = %fC", i, boiler.ch1[i].t);
-                switch(boiler.ch1[i].type)
-                {
-                    case OW_BOILER_TEMP1:
-                        boiler.hwater1 = value/16.0f;
-                        break;
-                    case OW_BOILER_TEMP2:
-                        boiler.hwater2 = value/16.0f;
-                        break;
-                    case OW_FLOOR_OUT:
-                        boiler.ht_floor_out = value/16.0f;
-                        break;
-                    case OW_FLOOR_RET:
-                        boiler.ht_floor_ret = value/16.0f;
-                        break;
-                }
-            }
+            boiler_ch_results(1, boiler.ch1_n, boiler.ch1);
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         case ST_OW_CH2_ENUM:
         {
             event = STR_OW_CH2_ENUM;
-            val = 0;
-            boiler_ch_enum(2, &val);
-            boiler.ch2_n = val;
-            boiler_ch_measure();
-            for(i = 0; i < boiler.ch2_n; ++i)
-            {
-                int x;
-                uint8_t* addr = boiler.ch2[i].addr;
-                boiler.ch2[i].type = -1;
-                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
-                for(x = 0; x < OW_RESERVED; ++x)
-                {
-                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
-                    {
-                        boiler.ch2[i].type = x;
-                        break;
-                    }
-                }
-            }
-            sprintf(str, "%d", val);
+            boiler_ch_setup(2, &boiler.ch2_n, boiler.ch2);
             break;
         }
         case ST_OW_CH2_READ:
         {
-            t = 0;
-            for(i = 0; i < boiler.ch2_n; ++i)
-            {
-                boiler.ch2[i].t = -200;
-                res = boiler_ch_read(boiler.ch2[i].addr, &value);
-                if(res < 0) continue;
-                boiler.ch2[i].t = value/16.0f;
-                DBG("ch2: %d = %fC", i, boiler.ch2[i].t);
-                switch(boiler.ch2[i].type)
-                {
-                    case OW_BOILER_TEMP1:
-                        boiler.hwater1 = value/16.0f;
-                        break;
-                    case OW_BOILER_TEMP2:
-                        boiler.hwater2 = value/16.0f;
-                        break;
-                    case OW_FLOOR_OUT:
-                        boiler.ht_floor_out = value/16.0f;
-                        break;
-                    case OW_FLOOR_RET:
-                        boiler.ht_floor_ret = value/16.0f;
-                        break;
-                }
-            }
+            boiler_ch_results(2, boiler.ch2_n, boiler.ch2);
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         case ST_OW_CH3_ENUM:
         {
             event = STR_OW_CH3_ENUM;
-            val = 0;
-            boiler_ch_enum(3, &val);
-            boiler.ch3_n = val;
-            boiler_ch_measure();
-            for(i = 0; i < boiler.ch3_n; ++i)
-            {
-                int x;
-                uint8_t* addr = boiler.ch3[i].addr;
-                boiler.ch3[i].type = -1;
-                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
-                for(x = 0; x < OW_RESERVED; ++x)
-                {
-                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
-                    {
-                        boiler.ch3[i].type = x;
-                        break;
-                    }
-                }
-            }
-            sprintf(str, "%d", val);
+            boiler_ch_setup(3, &boiler.ch3_n, boiler.ch3);
             break;
         }
         case ST_OW_CH3_READ:
         {
-            t = 0;
-            for(i = 0; i < boiler.ch3_n; ++i)
-            {
-                boiler.ch3[i].t = -200;
-                res = boiler_ch_read(boiler.ch3[i].addr, &value);
-                if(res < 0) continue;
-                boiler.ch3[i].t = value/16.0f;
-                DBG("ch3: %d = %fC", i, boiler.ch3[i].t);
-                switch(boiler.ch3[i].type)
-                {
-                    case OW_BOILER_TEMP1:
-                        boiler.hwater1 = value/16.0f;
-                        break;
-                    case OW_BOILER_TEMP2:
-                        boiler.hwater2 = value/16.0f;
-                        break;
-                    case OW_FLOOR_OUT:
-                        boiler.ht_floor_out = value/16.0f;
-                        break;
-                    case OW_FLOOR_RET:
-                        boiler.ht_floor_ret = value/16.0f;
-                        break;
-                }
-            }
+            boiler_ch_results(3, boiler.ch3_n, boiler.ch3);
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
         case ST_OW_CH4_ENUM:
         {
             event = STR_OW_CH4_ENUM;
-            val = 0;
-            boiler_ch_enum(4, &val);
-            boiler.ch4_n = val;
-            boiler_ch_measure();
-            for(i = 0; i < boiler.ch4_n; ++i)
-            {
-                int x;
-                uint8_t* addr = boiler.ch4[i].addr;
-                boiler.ch4[i].type = -1;
-                sprintf(str, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
-                for(x = 0; x < OW_RESERVED; ++x)
-                {
-                    if(strcmp(str, cfg.boiler.sensor[x]) == 0)
-                    {
-                        boiler.ch4[i].type = x;
-                        break;
-                    }
-                }
-            }
-            sprintf(str, "%d", val);
+            boiler_ch_setup(4, &boiler.ch4_n, boiler.ch4);
             break;
         }
         case ST_OW_CH4_READ:
         {
-            t = 0;
-            float temp;
-            for(i = 0; i < boiler.ch4_n; ++i)
-            {
-                uint8_t* addr = boiler.ch4[i].addr;
-                boiler.ch4[i].t = -200;
-                res = boiler_ch_read(boiler.ch4[i].addr, &value);
-                if(res < 0) continue;
-                temp = value/16.0f;
-                boiler.ch4[i].t = temp;
-                DBG("ch4: %d = %fC", i, boiler.ch4[i].t);
-                sprintf(topic, "0x%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
-                sprintf(str, "%.5f", temp);
-                send_mqtt(topic, str);
-                switch(boiler.ch4[i].type)
-                {
-                    case OW_BOILER_TEMP1:
-                        boiler.hwater1 = temp;
-                        break;
-                    case OW_BOILER_TEMP2:
-                        boiler.hwater2 = temp;
-                        break;
-                    case OW_FLOOR_OUT:
-                        boiler.ht_floor_out = temp;
-                        break;
-                    case OW_FLOOR_RET:
-                        boiler.ht_floor_ret = temp;
-                        break;
-                }
-            }
+            boiler_ch_results(4, boiler.ch4_n, boiler.ch4);
             res = stm_set_ow_ch(boiler.dev, 0);
             break;
         }
@@ -959,10 +1200,6 @@ static void tmrInterrupt0(void)
         }
     }
     ++s;
-    if(t)
-    {
-        send_mqtt(event, str);
-    }
 
     boiler.tmr_value.it_value.tv_sec = 1;
     timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
@@ -998,21 +1235,36 @@ void init_boiler()
 {
     int v, res;
     int dev;
+    uint16_t t;
     
     memset(&boiler, 0, sizeof(boiler));
     boiler.dev = -1;
     boiler.ds2482 = -1;
     boiler.tmr = -1;
 
-    boiler.hwater1 = -200;
-    boiler.hwater2 = -200;
-    boiler.ht_floor_out = -200;
-    boiler.ht_floor_ret = -200;
+    boiler.pressure1 = -1;
+    boiler.pressure2 = -1;
+    boiler.boiler1 = -200;
+    boiler.boiler2 = -200;
+    boiler.boiler_in = -200;
+    boiler.boiler_out = -200;
+    boiler.boiler_ret = -200;
+    boiler.floor_in = -200;
+    boiler.floor_out = -200;
+    boiler.floor_ret = -200;
+    boiler.heating_out = -200;
+    boiler.heating_ret = -200;
+    boiler.gas_heater_in = -200;
+    boiler.gas_heater_out = -200;
+    boiler.gas_boiler_in = -200;
+    boiler.gas_boiler_out = -200;
+    boiler.ambient = -200;
 
     boiler.pid1.p = cfg.boiler.pid1_p_gain;
     boiler.pid1.i = cfg.boiler.pid1_i_gain;
+    boiler.pid1.d = cfg.boiler.pid1_d_gain;
 
-    boiler.ht_floor_set = 28;
+    boiler.floor_set = 23;
 
     boiler.tmr_value.it_value.tv_sec = 5;
     boiler.tmr_value.it_value.tv_nsec = 0;
@@ -1028,8 +1280,24 @@ void init_boiler()
     }
     boiler.dev = dev;
 
-    res = stm_set_control(dev, boiler.control);
     res = stm_set_ow_ch(dev, boiler.ow_ch);
+
+    res = boiler_get_pwm1(boiler.dev, &t);
+    if(res >= 0)
+    {
+        boiler.pid1.val = t;
+        boiler.pid1.t = -200;
+    }
+
+    res = stm_get_control(boiler.dev, &t);
+    if(res >= 0)
+    {
+        boiler.control = t;
+    }
+
+    t = 23 * 16;
+    eeprom_read_word(EE_ADR_FLOOR_T, &t);
+    boiler.floor_set = t / 16.0f;
 
     dev = ds2482_open(0, 0x18 + cfg.boiler.id);
     if(dev < 0)
@@ -1042,23 +1310,36 @@ void init_boiler()
     boiler.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
     timerfd_settime(boiler.tmr, 0, &boiler.tmr_value, NULL);
 
-    ha_register(&device, &en_pressure1);
-    ha_register(&device, &en_pressure2);
-    ha_register(&device, &en_t_boiler1);
-    ha_register(&device, &en_t_boiler2);
-    ha_register(&device, &en_t_boiler_in);
-    ha_register(&device, &en_t_boiler_out);
-    ha_register(&device, &en_t_boiler_ret);
-    ha_register(&device, &en_t_floor_in);
-    ha_register(&device, &en_t_floor_out);
-    ha_register(&device, &en_t_floor_ret);
-    ha_register(&device, &en_t_heating_out);
-    ha_register(&device, &en_t_heating_ret);
-    ha_register(&device, &en_t_gas_heater_in);
-    ha_register(&device, &en_t_gas_heater_out);
-    ha_register(&device, &en_t_gas_boiler_in);
-    ha_register(&device, &en_t_gas_boiler_out);
-    ha_register(&device, &en_t_ambient);
+    ha_register_sensor(&device, &en_pressure1);
+    ha_register_sensor(&device, &en_pressure2);
+    ha_register_sensor(&device, &en_t_boiler1);
+    ha_register_sensor(&device, &en_t_boiler2);
+    ha_register_sensor(&device, &en_t_boiler_in);
+    ha_register_sensor(&device, &en_t_boiler_out);
+    ha_register_sensor(&device, &en_t_boiler_ret);
+    ha_register_sensor(&device, &en_t_floor_in);
+    ha_register_sensor(&device, &en_t_floor_out);
+    ha_register_sensor(&device, &en_t_floor_ret);
+    ha_register_sensor(&device, &en_t_floor_calc);
+    ha_register_sensor(&device, &en_t_heating_out);
+    ha_register_sensor(&device, &en_t_heating_ret);
+    ha_register_sensor(&device, &en_t_gas_heater_in);
+    ha_register_sensor(&device, &en_t_gas_heater_out);
+    ha_register_sensor(&device, &en_t_gas_boiler_in);
+    ha_register_sensor(&device, &en_t_gas_boiler_out);
+    ha_register_sensor(&device, &en_t_ambient);
+    ha_register_sensor(&device, &en_pwm_1);
+    ha_register_sensor(&device, &en_pwm_2);
+    ha_register_binary(&device, &en_water_heating);
+    ha_register_number(&device, &en_t_floor_set);
+    ha_register_switch(&device, &en_sw_hfloor_pump);
+    ha_register_switch(&device, &en_sw_ch_pump);
+    ha_register_switch(&device, &en_sw_hw_pump);
+    
+    set_uplink_filter(en_t_floor_set.unique_id, msg_boiler_t_hfloor, 0);
+    set_uplink_filter(en_sw_hfloor_pump.unique_id, msg_boiler_sw_hfloor, 0);
+    set_uplink_filter(en_sw_ch_pump.unique_id, msg_boiler_sw_ch_pump, 0);
+    set_uplink_filter(en_sw_hw_pump.unique_id, msg_boiler_sw_hw_pump, 0);
 }
 
 void close_boiler()
@@ -1073,7 +1354,87 @@ void close_boiler()
     boiler.tmr = -1;
 }
 
-void msg_boiler(int param, const char* message, size_t message_len)
+void msg_boiler_t_hfloor(int param, const char* message, size_t message_len)
 {
+    int n = 0;
+    float v;
     
+    n = sscanf(message, "%f", &v);
+    if(n == 1)
+    {
+        DBG("boiler.t_floor_set: %.1f", v);
+        if(boiler.floor_set != v)
+        {
+            boiler.floor_set = v;
+            uint16_t t = (uint16_t)(v * 16);
+            eeprom_write_word(EE_ADR_FLOOR_T, &t);
+        }
+        return;
+    }
+}
+
+void msg_boiler_sw_hfloor(int param, const char* message, size_t message_len)
+{
+    int n = 0;
+    uint16_t control = boiler.control;
+    uint16_t state = (control & ST_CTL_CH3);
+
+    if(message_len == 2 && memcmp(message, "ON", message_len) == 0)
+    {
+        state = 1;
+    }
+    else if(message_len == 3 && memcmp(message, "OFF", message_len) == 0)
+    {
+        state = 0;
+    }
+
+    control &= ~ST_CTL_CH3;
+    control |= state ? ST_CTL_CH3 : 0;
+    stm_set_control(boiler.dev, control);
+    boiler.control = control;
+    mqtt_pin_status(&en_sw_hfloor_pump, state ? "ON" : "OFF");
+}
+
+void msg_boiler_sw_ch_pump(int param, const char* message, size_t message_len)
+{
+    int n = 0;
+    uint16_t control = boiler.control;
+    uint16_t state = (control & ST_CTL_CH4);
+
+    if(message_len == 2 && memcmp(message, "ON", message_len) == 0)
+    {
+        state = 1;
+    }
+    else if(message_len == 3 && memcmp(message, "OFF", message_len) == 0)
+    {
+        state = 0;
+    }
+
+    control &= ~ST_CTL_CH4;
+    control |= state ? ST_CTL_CH4 : 0;
+    stm_set_control(boiler.dev, control);
+    boiler.control = control;
+    mqtt_pin_status(&en_sw_ch_pump, state ? "ON" : "OFF");
+}
+
+void msg_boiler_sw_hw_pump(int param, const char* message, size_t message_len)
+{
+    int n = 0;
+    uint16_t control = boiler.control;
+    uint16_t state = (control & ST_CTL_CH5);
+
+    if(message_len == 2 && memcmp(message, "ON", message_len) == 0)
+    {
+        state = 1;
+    }
+    else if(message_len == 3 && memcmp(message, "OFF", message_len) == 0)
+    {
+        state = 0;
+    }
+
+    control &= ~ST_CTL_CH5;
+    control |= state ? ST_CTL_CH5 : 0;
+    stm_set_control(boiler.dev, control);
+    boiler.control = control;
+    mqtt_pin_status(&en_sw_hw_pump, state ? "ON" : "OFF");
 }

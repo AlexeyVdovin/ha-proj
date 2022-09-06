@@ -35,7 +35,8 @@ typedef struct
 
 typedef struct
 {
-    int n;
+    int          n;
+    int          type[MAX_HA_ENTITIES];
     ha_device_t* dev[MAX_HA_ENTITIES];
     ha_entity_t* ent[MAX_HA_ENTITIES];
 } ha_registry_t;
@@ -55,8 +56,13 @@ void setup_uplink_poll();
 
 void handle_mqtt();
 void send_mqtt(const char* event, char* value);
+void mqtt_send_status(ha_entity_t* entity, char* status);
+void mqtt_pin_status(ha_entity_t* entity, char* status);
 
-void set_uplink_filter(char* filter, msgfn_t cb, int param);
-void ha_register(ha_device_t* device, ha_entity_t* entity);
+void set_uplink_filter(const char* filter, msgfn_t cb, int param);
+void ha_register_sensor(ha_device_t* device, ha_entity_t* entity);
+void ha_register_binary(ha_device_t* device, ha_entity_t* entity);
+void ha_register_switch(ha_device_t* device, ha_entity_t* entity);
+void ha_register_number(ha_device_t* device, ha_entity_t* entity);
 
 #endif

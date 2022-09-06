@@ -12,9 +12,18 @@
 #include "config.h"
 #include "uplink.h"
 
+enum
+{
+    HA_REG_SENSOR = 0,
+    HA_REG_BINARY,
+    HA_REG_SWITCH,
+    HA_REG_NUMBER,
+    HA_REG_UNKNOWN
+};
+
 typedef struct
 {
-    char*   str;
+    const char*   str;
     msgfn_t cb;
     int     param;
 } filter_t;
@@ -22,7 +31,7 @@ typedef struct
 typedef struct
 {
     struct mqtt_client client;
-    uint8_t sendbuf[8192];
+    uint8_t sendbuf[32768];
     uint8_t recvbuf[1024];
     struct sockaddr_in addr;
     socklen_t addr_len;
@@ -71,48 +80,122 @@ void send_registry()
     char topic[64];
     char config[2048];
 
-    //if(i >= registry.n) return;
     for(; i < registry.n; i++)
     {
+        ha_device_t* device = registry.dev[i];
+        ha_entity_t* entity = registry.ent[i];
 
-    ha_device_t* device = registry.dev[i];
-    ha_entity_t* entity = registry.ent[i];
+        snprintf(topic, sizeof(topic)-1, "homeassistant/%s/%s/config", entity->type, entity->unique_id);
 
-    snprintf(topic, sizeof(topic)-1, "homeassistant/%s/%s/config", entity->type, entity->unique_id);
-    snprintf(config, sizeof(config)-1, "{"
-        " \"name\": \"%s\","
-        " \"unique_id\": \"%s\","
-        " \"state_topic\": \"%s/%s/state\","
-        " \"device_class\": \"%s\","
-        " \"unit_of_measurement\": \"%s\","
-        " \"platform\": \"mqtt\","
-        " \"device\": {"
-            " \"identifiers\": [\"%s\"],"
-            " \"name\": \"%s\","
-            " \"manufacturer\": \"AtHome\","
-            " \"model\": \"%s\","
-            " \"sw_version\": \"%s\""
-            " }"
-        " }",
-        entity->name, 
-        entity->unique_id, 
-        cfg.mqtt_topic, entity->unique_id,
-        entity->cls,
-        entity->units,
-        device->name,
-        device->name,
-        device->model,
-        device->ver);
-    error = mqtt_publish(mq(&client), topic, config, strlen(config), MQTT_PUBLISH_QOS_0);
-    DBG("reg: %s: %s", topic, config);
-    if(error != MQTT_OK)
-    {
-        DBG("error: %s", mqtt_error_str(error));
-        break;
+        switch(registry.type[i])
+        {
+            case HA_REG_SENSOR:
+                snprintf(config, sizeof(config)-1, "{"
+                    " \"name\": \"%s\","
+                    " \"unique_id\": \"%s\","
+                    " \"state_topic\": \"%s/%s/state\","
+                    " \"device_class\": \"%s\","
+                    " \"unit_of_measurement\": \"%s\","
+                    " \"platform\": \"mqtt\","
+                    " \"device\": {"
+                        " \"identifiers\": [\"%s\"],"
+                        " \"name\": \"%s\","
+                        " \"manufacturer\": \"AtHome\","
+                        " \"model\": \"%s\","
+                        " \"sw_version\": \"%s\""
+                        " }"
+                    " }",
+                    entity->name, 
+                    entity->unique_id, 
+                    cfg.mqtt_topic, entity->unique_id,
+                    entity->cls,
+                    entity->units,
+                    device->name,
+                    device->name,
+                    device->model,
+                    device->ver);
+                break;
+            case HA_REG_BINARY:
+                snprintf(config, sizeof(config)-1, "{"
+                    " \"name\": \"%s\","
+                    " \"unique_id\": \"%s\","
+                    " \"state_topic\": \"%s/%s/state\","
+                    " \"device_class\": \"%s\","
+                    " \"platform\": \"mqtt\","
+                    " \"device\": {"
+                        " \"identifiers\": [\"%s\"],"
+                        " \"name\": \"%s\","
+                        " \"manufacturer\": \"AtHome\","
+                        " \"model\": \"%s\","
+                        " \"sw_version\": \"%s\""
+                        " }"
+                    " }",
+                    entity->name, 
+                    entity->unique_id, 
+                    cfg.mqtt_topic, entity->unique_id,
+                    entity->cls,
+                    device->name,
+                    device->name,
+                    device->model,
+                    device->ver);
+                break;
+            case HA_REG_SWITCH:
+                snprintf(config, sizeof(config)-1, "{"
+                    " \"name\": \"%s\","
+                    " \"unique_id\": \"%s\","
+                    " \"state_topic\": \"%s/%s/state\","
+                    " \"command_topic\": \"%s/%s/cmd\","
+                    " \"platform\": \"mqtt\","
+                    " \"device\": {"
+                        " \"identifiers\": [\"%s\"],"
+                        " \"name\": \"%s\","
+                        " \"manufacturer\": \"AtHome\","
+                        " \"model\": \"%s\","
+                        " \"sw_version\": \"%s\""
+                        " }"
+                    " }",
+                    entity->name, 
+                    entity->unique_id, 
+                    cfg.mqtt_topic, entity->unique_id,
+                    cfg.mqtt_topic, entity->unique_id,
+                    device->name,
+                    device->name,
+                    device->model,
+                    device->ver);
+                break;
+            case HA_REG_NUMBER:
+                snprintf(config, sizeof(config)-1, "{"
+                    " \"name\": \"%s\","
+                    " \"unique_id\": \"%s\","
+                    " \"state_topic\": \"%s/%s/state\","
+                    " \"command_topic\": \"%s/%s/cmd\","
+                    " \"platform\": \"mqtt\","
+                    " \"device\": {"
+                        " \"identifiers\": [\"%s\"],"
+                        " \"name\": \"%s\","
+                        " \"manufacturer\": \"AtHome\","
+                        " \"model\": \"%s\","
+                        " \"sw_version\": \"%s\""
+                        " }"
+                    " }",
+                    entity->name, 
+                    entity->unique_id, 
+                    cfg.mqtt_topic, entity->unique_id,
+                    cfg.mqtt_topic, entity->unique_id,
+                    device->name,
+                    device->name,
+                    device->model,
+                    device->ver);
+                break;
+        }
+        error = mqtt_publish(mq(&client), topic, config, strlen(config), MQTT_PUBLISH_QOS_0|MQTT_PUBLISH_RETAIN);
+        DBG("reg: %s: %s", topic, config);
+        if(error != MQTT_OK)
+        {
+            DBG("error: %s", mqtt_error_str(error));
+            break;
+        }
     }
-
-    }
-    //else ++i;
 }
 
 
@@ -360,7 +443,25 @@ void send_mqtt(const char* event, char* value)
     mqtt_publish(mq(&client), topic, value, strlen(value), MQTT_PUBLISH_QOS_0);
 }
 
-void set_uplink_filter(char* filter, msgfn_t cb, int param)
+void mqtt_send_status(ha_entity_t* entity, char* status)
+{
+    char topic[100];
+
+    snprintf(topic, sizeof(topic), "%s/%s/state", cfg.mqtt_topic, entity->unique_id);
+    DBG("pub: %s: %s", topic, status);
+    mqtt_publish(mq(&client), topic, status, strlen(status), MQTT_PUBLISH_QOS_0);
+}
+
+void mqtt_pin_status(ha_entity_t* entity, char* status)
+{
+    char topic[100];
+
+    snprintf(topic, sizeof(topic), "%s/%s/state", cfg.mqtt_topic, entity->unique_id);
+    DBG("pub: %s: %s", topic, status);
+    mqtt_publish(mq(&client), topic, status, strlen(status), MQTT_PUBLISH_QOS_0|MQTT_PUBLISH_RETAIN);
+}
+
+void set_uplink_filter(const char* filter, msgfn_t cb, int param)
 {
     int n = client.n_ft;
     
@@ -377,16 +478,58 @@ void set_uplink_filter(char* filter, msgfn_t cb, int param)
 }
 
 /* All component registration should be done on INIT stage */
-void ha_register(ha_device_t* device, ha_entity_t* entity)
+void ha_register_sensor(ha_device_t* device, ha_entity_t* entity)
 {
     int i = registry.n;
 
     // Check for overflow
     if(i < MAX_HA_ENTITIES)
     {
+        registry.type[i] = HA_REG_SENSOR;
         registry.dev[i] = device;
         registry.ent[i] = entity;
         registry.n++;
     }
 }
 
+void ha_register_binary(ha_device_t* device, ha_entity_t* entity)
+{
+    int i = registry.n;
+
+    // Check for overflow
+    if(i < MAX_HA_ENTITIES)
+    {
+        registry.type[i] = HA_REG_BINARY;
+        registry.dev[i] = device;
+        registry.ent[i] = entity;
+        registry.n++;
+    }
+}
+
+void ha_register_switch(ha_device_t* device, ha_entity_t* entity)
+{
+    int i = registry.n;
+
+    // Check for overflow
+    if(i < MAX_HA_ENTITIES)
+    {
+        registry.type[i] = HA_REG_SWITCH;
+        registry.dev[i] = device;
+        registry.ent[i] = entity;
+        registry.n++;
+    }
+}
+
+void ha_register_number(ha_device_t* device, ha_entity_t* entity)
+{
+    int i = registry.n;
+
+    // Check for overflow
+    if(i < MAX_HA_ENTITIES)
+    {
+        registry.type[i] = HA_REG_NUMBER;
+        registry.dev[i] = device;
+        registry.ent[i] = entity;
+        registry.n++;
+    }
+}
