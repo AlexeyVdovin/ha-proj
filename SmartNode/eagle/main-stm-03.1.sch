@@ -18789,30 +18789,30 @@ Source: www.kingbright.com</description>
 <part name="OK6" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
 <part name="OK7" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
 <part name="OK8" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
-<part name="R15" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R16" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R17" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R18" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R19" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R20" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R21" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R24" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R25" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R26" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R27" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R31" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R32" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R36" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R37" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R38" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R39" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R42" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R43" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R44" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R45" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R46" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R47" library="rcl" deviceset="R-EU_" device="R0603"/>
-<part name="R48" library="rcl" deviceset="R-EU_" device="R0603"/>
+<part name="R15" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R16" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R17" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R18" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R19" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R20" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R21" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R24" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R25" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R26" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R27" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R31" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R32" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R36" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R37" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R38" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R39" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R42" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R43" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R44" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R45" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
+<part name="R46" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R47" library="rcl" deviceset="R-EU_" device="R0603" value="220"/>
+<part name="R48" library="rcl" deviceset="R-EU_" device="R0603" value="100"/>
 <part name="R49" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="R50" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="R51" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
@@ -18830,7 +18830,7 @@ Source: www.kingbright.com</description>
 <part name="R63" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="R64" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="OK9" library="optocoupler" deviceset="MOCD20*M" device="" technology="7"/>
-<part name="R65" library="rcl" deviceset="R-EU_" device="R0603"/>
+<part name="R65" library="rcl" deviceset="R-EU_" device="R0603" value="560"/>
 <part name="R66" library="rcl" deviceset="R-EU_" device="R0603" value="10K"/>
 <part name="C16" library="rcl" deviceset="C-EU" device="C1206" value="1.0"/>
 <part name="IC5" library="Seeed-OPL-ic" deviceset="INTERFACE-MCP23017-E(SOIC28)" device="" value="MCP23017-E/SO-SOIC28"/>
@@ -19104,7 +19104,7 @@ Source: www.kingbright.com</description>
 <instance part="C16" gate="G$1" x="-203.2" y="-10.16" rot="R180"/>
 <instance part="IC5" gate="G$1" x="-64.77" y="-52.07" rot="MR0"/>
 <instance part="Q1" gate="G$1" x="-185.42" y="-7.62" rot="MR0"/>
-<instance part="R67" gate="G$1" x="-162.56" y="-10.16"/>
+<instance part="R67" gate="G$1" x="-170.18" y="-10.16"/>
 <instance part="R68" gate="G$1" x="-162.56" y="-15.24"/>
 <instance part="C18" gate="G$1" x="-175.26" y="5.08" rot="R180"/>
 <instance part="FB2" gate="G$1" x="-180.34" y="38.1" rot="R90"/>
@@ -19821,14 +19821,14 @@ Source: www.kingbright.com</description>
 <wire x1="-132.08" y1="66.04" x2="-132.08" y2="68.58" width="0.1524" layer="91"/>
 <junction x="-132.08" y="68.58"/>
 <wire x1="-17.78" y1="-2.54" x2="-17.78" y2="2.54" width="0.1524" layer="91"/>
-<wire x1="-17.78" y1="2.54" x2="50.8" y2="2.54" width="0.1524" layer="91"/>
-<wire x1="50.8" y1="2.54" x2="50.8" y2="-7.62" width="0.1524" layer="91"/>
+<wire x1="-17.78" y1="2.54" x2="38.1" y2="2.54" width="0.1524" layer="91"/>
+<wire x1="38.1" y1="2.54" x2="38.1" y2="-7.62" width="0.1524" layer="91"/>
 <pinref part="R73" gate="G$1" pin="1"/>
 <wire x1="63.5" y1="-5.08" x2="63.5" y2="-7.62" width="0.1524" layer="91"/>
 <pinref part="R74" gate="G$1" pin="1"/>
 <wire x1="63.5" y1="-7.62" x2="76.2" y2="-7.62" width="0.1524" layer="91"/>
 <wire x1="76.2" y1="-7.62" x2="76.2" y2="-5.08" width="0.1524" layer="91"/>
-<wire x1="50.8" y1="-7.62" x2="63.5" y2="-7.62" width="0.1524" layer="91"/>
+<wire x1="38.1" y1="-7.62" x2="63.5" y2="-7.62" width="0.1524" layer="91"/>
 <junction x="-17.78" y="-2.54"/>
 <junction x="63.5" y="-7.62"/>
 </segment>
@@ -20917,13 +20917,13 @@ Source: www.kingbright.com</description>
 <segment>
 <pinref part="Q1" gate="G$1" pin="G"/>
 <pinref part="R67" gate="G$1" pin="1"/>
-<wire x1="-180.34" y1="-10.16" x2="-167.64" y2="-10.16" width="0.1524" layer="91"/>
+<wire x1="-180.34" y1="-10.16" x2="-175.26" y2="-10.16" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="OPT-EN" class="0">
 <segment>
 <pinref part="R67" gate="G$1" pin="2"/>
-<wire x1="-157.48" y1="-10.16" x2="-154.94" y2="-10.16" width="0.1524" layer="91"/>
+<wire x1="-165.1" y1="-10.16" x2="-154.94" y2="-10.16" width="0.1524" layer="91"/>
 <wire x1="-154.94" y1="-10.16" x2="-154.94" y2="-15.24" width="0.1524" layer="91"/>
 <pinref part="R68" gate="G$1" pin="2"/>
 <wire x1="-154.94" y1="-15.24" x2="-157.48" y2="-15.24" width="0.1524" layer="91"/>
