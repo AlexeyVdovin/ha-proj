@@ -9,6 +9,7 @@
 #include "mcp23017.h"
 #include "pca9454.h"
 #include "stm.h"
+#include "boiler.h"
 
 #define array_sz(a)  (sizeof(a)/sizeof((a)[0]))
 const char* cfg_name = "wallsw.conf";
@@ -20,6 +21,8 @@ static void read_config(const char* name)
     int i, n;
     char str[100] = "";
     char section[100] = "";
+
+    memset(&cfg, 0, sizeof(cfg));
     
     n = ini_gets("general", "lights", "0", str, array_sz(str), name);
     DBG("lights: '%s'", str);
@@ -28,6 +31,10 @@ static void read_config(const char* name)
     n = ini_gets("general", "powersw", "0", str, array_sz(str), name);
     DBG("powersw: '%s'", str);
     cfg.n_pwr = atol(str);
+
+    n = ini_gets("general", "boiler", "0", str, array_sz(str), name);
+    DBG("boiler: '%s'", str);
+    cfg.n_bol = atol(str);
 
     n = ini_gets("mqtt", "client", "sgw2.2", str, array_sz(str), name);
     DBG("client_name: '%s'", str);
@@ -48,17 +55,68 @@ static void read_config(const char* name)
     for(i = 0; i < cfg.n_lts; ++i)
     {
         snprintf(section, sizeof(section), "lights-%d", i);
-        n = ini_gets(section, "id", "1", str, array_sz(str), name);
+        n = ini_gets(section, "id", "0", str, array_sz(str), name);
         DBG("%s.id: '%s'", section, str);
         cfg.lts[i].id = atol(str);
     }        
     for(i = 0; i < cfg.n_pwr; ++i)
     {
         snprintf(section, sizeof(section), "power-%d", i);
-        n = ini_gets(section, "id", "1", str, array_sz(str), name);
+        n = ini_gets(section, "id", "0", str, array_sz(str), name);
         DBG("%s.id: '%s'", section, str);
         cfg.lts[i].id = atol(str);
     }        
+    if(cfg.n_bol > 0)
+    {
+        n = ini_gets("boiler", "id", "0", str, array_sz(str), name);
+        DBG("boiler.id: '%s'", str);
+        cfg.boiler.id = atol(str);
+        // TODO: Add correction constants for every sensor
+        n = ini_gets("boiler", "boiler_temp_1", "", cfg.boiler.sensor[OW_BOILER_TEMP1], 32, name); sscanf(cfg.boiler.sensor[OW_BOILER_TEMP1]+16, "%f %f", &cfg.boiler.sensor_c[OW_BOILER_TEMP1], &cfg.boiler.sensor_k[OW_BOILER_TEMP1]);
+        n = ini_gets("boiler", "boiler_temp_2", "", cfg.boiler.sensor[OW_BOILER_TEMP2], 32, name); sscanf(cfg.boiler.sensor[OW_BOILER_TEMP2]+16, "%f %f", &cfg.boiler.sensor_c[OW_BOILER_TEMP2], &cfg.boiler.sensor_k[OW_BOILER_TEMP2]);
+        n = ini_gets("boiler", "boiler_in", "", cfg.boiler.sensor[OW_BOILER_IN], 32, name); sscanf(cfg.boiler.sensor[OW_BOILER_IN]+16, "%f %f", &cfg.boiler.sensor_c[OW_BOILER_IN], &cfg.boiler.sensor_k[OW_BOILER_IN]);
+        n = ini_gets("boiler", "boiler_out", "", cfg.boiler.sensor[OW_BOILER_OUT], 32, name); sscanf(cfg.boiler.sensor[OW_BOILER_OUT]+16, "%f %f", &cfg.boiler.sensor_c[OW_BOILER_OUT], &cfg.boiler.sensor_k[OW_BOILER_OUT]);
+        n = ini_gets("boiler", "boiler_ret", "", cfg.boiler.sensor[OW_BOILER_RET], 32, name); sscanf(cfg.boiler.sensor[OW_BOILER_RET]+16, "%f %f", &cfg.boiler.sensor_c[OW_BOILER_RET], &cfg.boiler.sensor_k[OW_BOILER_RET]);
+        n = ini_gets("boiler", "ht_floor_in", "", cfg.boiler.sensor[OW_FLOOR_IN], 32, name); sscanf(cfg.boiler.sensor[OW_FLOOR_IN]+16, "%f %f", &cfg.boiler.sensor_c[OW_FLOOR_IN], &cfg.boiler.sensor_k[OW_FLOOR_IN]);
+        n = ini_gets("boiler", "ht_floor_out", "", cfg.boiler.sensor[OW_FLOOR_OUT], 32, name); sscanf(cfg.boiler.sensor[OW_FLOOR_OUT]+16, "%f %f", &cfg.boiler.sensor_c[OW_FLOOR_OUT], &cfg.boiler.sensor_k[OW_FLOOR_OUT]);
+        n = ini_gets("boiler", "ht_floor_ret", "", cfg.boiler.sensor[OW_FLOOR_RET], 32, name); sscanf(cfg.boiler.sensor[OW_FLOOR_RET]+16, "%f %f", &cfg.boiler.sensor_c[OW_FLOOR_RET], &cfg.boiler.sensor_k[OW_FLOOR_RET]);
+        n = ini_gets("boiler", "ch_pipe_out", "", cfg.boiler.sensor[OW_PIPE_OUT], 32, name); sscanf(cfg.boiler.sensor[OW_PIPE_OUT]+16, "%f %f", &cfg.boiler.sensor_c[OW_PIPE_OUT], &cfg.boiler.sensor_k[OW_PIPE_OUT]);
+        n = ini_gets("boiler", "ch_pipe_ret", "", cfg.boiler.sensor[OW_PIPE_RET], 32, name); sscanf(cfg.boiler.sensor[OW_PIPE_RET]+16, "%f %f", &cfg.boiler.sensor_c[OW_PIPE_RET], &cfg.boiler.sensor_k[OW_PIPE_RET]);
+        n = ini_gets("boiler", "gas_heat_in", "", cfg.boiler.sensor[OW_HEAT_IN], 32, name); sscanf(cfg.boiler.sensor[OW_HEAT_IN]+16, "%f %f", &cfg.boiler.sensor_c[OW_HEAT_IN], &cfg.boiler.sensor_k[OW_HEAT_IN]);
+        n = ini_gets("boiler", "gas_heat_out", "", cfg.boiler.sensor[OW_HEAT_OUT], 32, name); sscanf(cfg.boiler.sensor[OW_HEAT_OUT]+16, "%f %f", &cfg.boiler.sensor_c[OW_HEAT_OUT], &cfg.boiler.sensor_k[OW_HEAT_OUT]);
+        n = ini_gets("boiler", "gas_hwater_in", "", cfg.boiler.sensor[OW_HWATER_IN], 32, name); sscanf(cfg.boiler.sensor[OW_HWATER_IN]+16, "%f %f", &cfg.boiler.sensor_c[OW_HWATER_IN], &cfg.boiler.sensor_k[OW_HWATER_IN]);
+        n = ini_gets("boiler", "gas_hwater_out", "", cfg.boiler.sensor[OW_HWATER_OUT], 32, name); sscanf(cfg.boiler.sensor[OW_HWATER_OUT]+16, "%f %f", &cfg.boiler.sensor_c[OW_HWATER_OUT], &cfg.boiler.sensor_k[OW_HWATER_OUT]);
+        n = ini_gets("boiler", "ambient", "", cfg.boiler.sensor[OW_AMBIENT], 32, name); sscanf(cfg.boiler.sensor[OW_AMBIENT]+16, "%f %f", &cfg.boiler.sensor_c[OW_AMBIENT], &cfg.boiler.sensor_k[OW_AMBIENT]);
+
+        n = ini_gets("boiler", "pid1_p_gain", "0", str, array_sz(str), name);
+        DBG("boiler.pid1_p_gain: '%s'", str);
+        cfg.boiler.pid1_p_gain = atol(str);
+
+        n = ini_gets("boiler", "pid1_i_gain", "0", str, array_sz(str), name);
+        DBG("boiler.pid1_i_gain: '%s'", str);
+        cfg.boiler.pid1_i_gain = atol(str);
+
+        n = ini_gets("boiler", "pid1_d_gain", "0", str, array_sz(str), name);
+        DBG("boiler.pid1_d_gain: '%s'", str);
+        cfg.boiler.pid1_d_gain = atol(str);
+
+        n = ini_gets("boiler", "pwm1_min", "0", str, array_sz(str), name);
+        DBG("boiler.pwm1_min: '%s'", str);
+        cfg.boiler.pwm1_min = atol(str);
+
+        n = ini_gets("boiler", "pwm1_max", "0", str, array_sz(str), name);
+        DBG("boiler.pwm1_max: '%s'", str);
+        cfg.boiler.pwm1_max = atol(str);
+
+        n = ini_gets("boiler", "hwater_min", "45", str, array_sz(str), name);
+        DBG("boiler.hwater_min: '%s'", str);
+        cfg.boiler.hwater_min = atol(str);
+
+        n = ini_gets("boiler", "hwater_max", "50", str, array_sz(str), name);
+        DBG("boiler.hwater_max: '%s'", str);
+        cfg.boiler.hwater_max = atol(str);
+
+    }
     
 }
 
@@ -85,6 +143,7 @@ int main(int argc, char* argv[])
     init_stm();
     init_mcp23017();
     set_uplink_filter("mcp", msg_mcp23017, 0);
+    init_boiler();
 
     for(i = 0; i < cfg.n_lts; ++i)
     {
@@ -95,6 +154,7 @@ int main(int argc, char* argv[])
     
     setup_mcp23017_poll();
     setup_stm_poll();
+    setup_boiler_poll();
     setup_uplink_poll();
     
     while(!do_exit)
@@ -102,6 +162,7 @@ int main(int argc, char* argv[])
         if(events_poll() > 0)
         {
             handle_mcp23017();
+            handle_boiler();
         }
         handle_stm();
         handle_mqtt();

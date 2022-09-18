@@ -4,6 +4,7 @@
 #define LIGHTS_MAX_DEV   2
 #define POWER_MAX_DEV  4
 
+
 #define MAX_POLL_FDS    32
 #define POLL_TIMEOUT    1000
 
@@ -27,8 +28,23 @@ typedef struct
 
 typedef struct
 {
-    int id;   
+    int id;
 } power_t;
+
+typedef struct
+{
+    int  id;
+    char sensor[20][32];
+    float sensor_c[20];
+    float sensor_k[20];
+    int  pid1_p_gain;
+    int  pid1_i_gain;
+    int  pid1_d_gain;
+    int  pwm1_min;
+    int  pwm1_max;
+    int  hwater_min;
+    int  hwater_max;
+} boiler_t;
 
 typedef struct
 {
@@ -40,7 +56,9 @@ typedef struct
     int       n_lts;
     lights_t  lts[LIGHTS_MAX_DEV];
     int       n_pwr;
-    power_t pwr[POWER_MAX_DEV];
+    power_t   pwr[POWER_MAX_DEV];
+    int       n_bol;
+    boiler_t  boiler;
 } config_t;
 
 extern config_t cfg;

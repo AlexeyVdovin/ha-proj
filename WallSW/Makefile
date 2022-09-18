@@ -1,6 +1,6 @@
 target := wallsw
 
-OBJS = minini/minIni.o wiringPi/wiringPi.o mqtt-c/src/mqtt.o mqtt-c/src/mqtt_pal.o uplink.o mcp23017.o pca9454.o stm.o main.o 
+OBJS = minini/minIni.o wiringPi/wiringPi.o mqtt-c/src/mqtt.o mqtt-c/src/mqtt_pal.o uplink.o mcp23017.o pca9454.o ds2482.o stm.o boiler.o main.o 
 
 CC := gcc
 OPT := -g -O0
