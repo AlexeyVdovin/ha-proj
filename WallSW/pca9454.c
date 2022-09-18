@@ -10,7 +10,72 @@
 #include <unistd.h>
 
 #include "config.h"
+#include "uplink.h"
 #include "pca9454.h"
+
+extern ha_device_t device;
+
+ha_entity_t en_switch[8] =
+{
+    {
+        "floor2_reserved_light2_0",
+        "switch",
+        "Reserved Light 0 (NA)",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_reserved_light2_1",
+        "switch",
+        "Reserved Light 1 (NA)",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_bed_right_light",
+        "switch",
+        "Bed Right Light",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_bed_left_light",
+        "switch",
+        "Bed Left Light",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_stairs_light",
+        "switch",
+        "Stairs light",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_reserved_light2_5",
+        "switch",
+        "Reserved Light 5 (NA)",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_corridor_night_light",
+        "switch",
+        "2: Corridor Night Light",
+        NULL,
+        NULL
+    },
+    {
+        "floor2_corridor_bright_light",
+        "switch",
+        "2: Corridor Bright Light",
+        NULL,
+        NULL
+    }
+};
+
+
 
 typedef struct
 {
@@ -98,7 +163,7 @@ int pca9454_get_pins(int dev, uint8_t* val)
 
 void init_pca9454(int id)
 {
-    int v;
+    int i, v;
     int dev;
     int res;
     uint16_t p;
@@ -126,6 +191,13 @@ void init_pca9454(int id)
 
     // All outputs
     res = pca9454_set_dir(dev, 0x00);
+
+    for(i = 0; i< 8; ++i)
+    {
+        ha_register_switch(&device, &en_switch[i]);
+        set_uplink_filter(en_switch[i].unique_id, msg_pca9454, id*16+i);
+    }
+
 }
 
 void close_pca9454(int id)
@@ -137,6 +209,20 @@ void close_pca9454(int id)
     }
     if(pca[id].dev > 0) close(pca[id].dev);
     pca[id].dev = -1;
+}
+
+int get_pca9454(int id, int n)
+{
+    int val;
+
+    if(id < 1 || id >= PCA9454_MAX_DEV || n < 0 || n > 7 || pca[id].dev < 0)
+    {
+        DBG("Error: Invalid parameter: %d, %d", id, n);
+        return -1;
+    }
+
+    val = (pca[id].out & (1 << n)) ? 1 : 0;
+    return val;
 }
 
 void set_pca9454(int id, int n, int val)
@@ -157,15 +243,21 @@ void set_pca9454(int id, int n, int val)
 
 void msg_pca9454(int param, const char* message, size_t message_len)
 {
-    int n = 0;
-    int i, v;
-    
-    n = sscanf(message, "set:%d:%d", &i, &v);
-    if(n == 2)
+    int i, id, state;
+
+    id = param / 16;
+    i = param & 0x07;
+    state = get_pca9454(id, i);
+
+    if(message_len == 2 && memcmp(message, "ON", message_len) == 0)
     {
-        DBG("pca[%d]: %d -> %d", param, i, v);
-        set_pca9454(param, i, v);
-        return;
+        state = 1;
     }
+    else if(message_len == 3 && memcmp(message, "OFF", message_len) == 0)
+    {
+        state = 0;
+    }
+    set_pca9454(id, i, state);
+    mqtt_pin_status(&en_switch[i], state ? "ON" : "OFF");
 }
 

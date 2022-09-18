@@ -2,9 +2,13 @@
 *.obj
 *.bin
 *.lst
+*.log
 *.map
 *.hex
 *.elf
 *.a
 *~
 
+/485io/485io
+/485io/slave
+/WallSW/wallsw

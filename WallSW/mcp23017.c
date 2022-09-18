@@ -16,6 +16,124 @@
 #include "mcp23017.h"
 #include "wiringPi/wiringPi.h"
 
+extern ha_device_t device;
+
+static ha_entity_t en_switch[16] =
+{
+    {
+        "floor2_bed_left_switch1",
+        "binary_sensor",
+        "Bed Left Switch 1 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_bed_left_switch2",
+        "binary_sensor",
+        "Bed Left Switch 2",
+        "power",
+        NULL
+    },
+    {
+        "floor2_bed_right_switch1",
+        "binary_sensor",
+        "Bed Right Switch 1",
+        "power",
+        NULL
+    },
+    {
+        "floor2_bed_right_switch2",
+        "binary_sensor",
+        "Bed Right Switch 2 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_4",
+        "binary_sensor",
+        "Reserved Switch 4 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_5",
+        "binary_sensor",
+        "Reserved Switch 5 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_6",
+        "binary_sensor",
+        "Reserved Switch 6 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_7",
+        "binary_sensor",
+        "Reserved Switch 7 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_8",
+        "binary_sensor",
+        "Reserved Switch 8 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_9",
+        "binary_sensor",
+        "Reserved Switch 9 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_10",
+        "binary_sensor",
+        "Reserved Switch 10 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_11",
+        "binary_sensor",
+        "Reserved Switch 11 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_corridor_night_switch",
+        "binary_sensor",
+        "2: Corridor Night Switch",
+        "power",
+        NULL
+    },
+    {
+        "floor2_corridor_bright_switch",
+        "binary_sensor",
+        "2: Corridor Bright Switch",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_14",
+        "binary_sensor",
+        "Reserved Switch 14 (NA)",
+        "power",
+        NULL
+    },
+    {
+        "floor2_reserved_switch2_15",
+        "binary_sensor",
+        "Reserved Switch 15 (NA)",
+        "power",
+        NULL
+    }
+};
+
 typedef struct
 {
     int      n_ints;
@@ -152,8 +270,10 @@ static void notify()
         mask = 1 << i;
         if((mcp.pub_pins&mask) != (val&mask))
         {
-            sprintf(event, "sw:%d", i);
-            send_mqtt(event, (val&mask) ? "1" : "0");
+            // sprintf(event, "sw:%d", i);
+            // send_mqtt(event, (val&mask) ? "1" : "0");
+            mqtt_send_status(&en_switch[i], (val&mask) ? "ON" : "OFF");
+
         }
     }
     mcp.pub_pins = val;
@@ -257,6 +377,23 @@ void init_mcp23017()
         return;
     }
     wiringPiISR(PIN_INT, INT_EDGE_FALLING, &gpioInterrupt0);
+
+    ha_register_binary(&device, &en_switch[0]);
+    ha_register_binary(&device, &en_switch[1]);
+    ha_register_binary(&device, &en_switch[2]);
+    ha_register_binary(&device, &en_switch[3]);
+    ha_register_binary(&device, &en_switch[4]);
+    ha_register_binary(&device, &en_switch[5]);
+    ha_register_binary(&device, &en_switch[6]);
+    ha_register_binary(&device, &en_switch[7]);
+    ha_register_binary(&device, &en_switch[8]);
+    ha_register_binary(&device, &en_switch[9]);
+    ha_register_binary(&device, &en_switch[10]);
+    ha_register_binary(&device, &en_switch[11]);
+    ha_register_binary(&device, &en_switch[12]);
+    ha_register_binary(&device, &en_switch[13]);
+    ha_register_binary(&device, &en_switch[14]);
+    ha_register_binary(&device, &en_switch[15]);
     
     mcp.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
     // Set timer to publish initial satus

@@ -16,7 +16,7 @@
 
 #include "ds2482.h"
 
-ha_device_t device =
+static ha_device_t device =
 {
     "Heating Controller",
     "Heating Controller",

@@ -16,6 +16,14 @@ const char* cfg_name = "wallsw.conf";
 config_t cfg;
 volatile int do_exit = 0;
 
+ha_device_t device =
+{
+    "Smart Controller 2.2",
+    "Smart Controller 2.2",
+    "WallSW 0.1.1"
+};
+
+
 static void read_config(const char* name)
 {
     int i, n;
@@ -143,18 +151,18 @@ int main(int argc, char* argv[])
     init_stm();
     init_mcp23017();
     set_uplink_filter("mcp", msg_mcp23017, 0);
-    init_boiler();
+    if(cfg.n_bol > 0) init_boiler();
 
     for(i = 0; i < cfg.n_lts; ++i)
     {
         init_pca9454(cfg.lts[i].id);
-        snprintf(str, sizeof(str)-1, "lts-%d", i);
-        set_uplink_filter(str, msg_pca9454, cfg.lts[i].id);
+        // snprintf(str, sizeof(str)-1, "lts-%d", i);
+        // set_uplink_filter(str, msg_pca9454, cfg.lts[i].id);
     }        
     
     setup_mcp23017_poll();
     setup_stm_poll();
-    setup_boiler_poll();
+    if(cfg.n_bol > 0) setup_boiler_poll();
     setup_uplink_poll();
     
     while(!do_exit)
@@ -162,7 +170,7 @@ int main(int argc, char* argv[])
         if(events_poll() > 0)
         {
             handle_mcp23017();
-            handle_boiler();
+            if(cfg.n_bol > 0) handle_boiler();
         }
         handle_stm();
         handle_mqtt();

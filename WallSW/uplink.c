@@ -77,7 +77,7 @@ void send_registry()
 {
     static int i = 0;
     int error = MQTT_OK;
-    char topic[64];
+    char topic[128];
     char config[2048];
 
     for(; i < registry.n; i++)
