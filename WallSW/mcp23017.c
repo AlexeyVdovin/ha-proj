@@ -18,7 +18,7 @@
 
 extern ha_device_t device;
 
-static ha_entity_t en_switch[16] =
+ha_entity_t en_sensor[16] =
 {
     {
         "floor2_bed_left_switch1",
@@ -272,7 +272,7 @@ static void notify()
         {
             // sprintf(event, "sw:%d", i);
             // send_mqtt(event, (val&mask) ? "1" : "0");
-            mqtt_send_status(&en_switch[i], (val&mask) ? "ON" : "OFF");
+            mqtt_send_status(&en_sensor[i], (val&mask) ? "ON" : "OFF");
 
         }
     }
@@ -378,22 +378,22 @@ void init_mcp23017()
     }
     wiringPiISR(PIN_INT, INT_EDGE_FALLING, &gpioInterrupt0);
 
-    ha_register_binary(&device, &en_switch[0]);
-    ha_register_binary(&device, &en_switch[1]);
-    ha_register_binary(&device, &en_switch[2]);
-    ha_register_binary(&device, &en_switch[3]);
-    ha_register_binary(&device, &en_switch[4]);
-    ha_register_binary(&device, &en_switch[5]);
-    ha_register_binary(&device, &en_switch[6]);
-    ha_register_binary(&device, &en_switch[7]);
-    ha_register_binary(&device, &en_switch[8]);
-    ha_register_binary(&device, &en_switch[9]);
-    ha_register_binary(&device, &en_switch[10]);
-    ha_register_binary(&device, &en_switch[11]);
-    ha_register_binary(&device, &en_switch[12]);
-    ha_register_binary(&device, &en_switch[13]);
-    ha_register_binary(&device, &en_switch[14]);
-    ha_register_binary(&device, &en_switch[15]);
+    ha_register_binary(&device, &en_sensor[0]);
+    ha_register_binary(&device, &en_sensor[1]);
+    ha_register_binary(&device, &en_sensor[2]);
+    ha_register_binary(&device, &en_sensor[3]);
+    ha_register_binary(&device, &en_sensor[4]);
+    ha_register_binary(&device, &en_sensor[5]);
+    ha_register_binary(&device, &en_sensor[6]);
+    ha_register_binary(&device, &en_sensor[7]);
+    ha_register_binary(&device, &en_sensor[8]);
+    ha_register_binary(&device, &en_sensor[9]);
+    ha_register_binary(&device, &en_sensor[10]);
+    ha_register_binary(&device, &en_sensor[11]);
+    ha_register_binary(&device, &en_sensor[12]);
+    ha_register_binary(&device, &en_sensor[13]);
+    ha_register_binary(&device, &en_sensor[14]);
+    ha_register_binary(&device, &en_sensor[15]);
     
     mcp.tmr = timerfd_create(CLOCK_MONOTONIC, 0);
     // Set timer to publish initial satus

@@ -16,6 +16,9 @@ const char* cfg_name = "wallsw.conf";
 config_t cfg;
 volatile int do_exit = 0;
 
+extern ha_entity_t en_switch[8];
+extern ha_entity_t en_sensor[16];
+
 ha_device_t device =
 {
     "Smart Controller 2.2",
@@ -26,12 +29,16 @@ ha_device_t device =
 
 static void read_config(const char* name)
 {
-    int i, n;
+    int i, l, n;
     char str[100] = "";
     char section[100] = "";
 
     memset(&cfg, 0, sizeof(cfg));
-    
+
+    n = ini_gets("general", "name", "Smart Controller", str, array_sz(str), name);
+    device.name = strdup(str);
+    device.model = device.name;
+
     n = ini_gets("general", "lights", "0", str, array_sz(str), name);
     DBG("lights: '%s'", str);
     cfg.n_lts = atol(str);
@@ -60,12 +67,41 @@ static void read_config(const char* name)
     DBG("port: '%s'", str);
     cfg.uplink_port = atol(str);
 
+    for(l = 0; l < 16; ++l)
+    {
+        char item[64], *uid, *desc;
+
+        snprintf(item, sizeof(item), "sw_%d", l);
+        n = ini_gets("wallsw", item, "", str, array_sz(str), name);
+        if(n > 0) 
+        {
+            sscanf(str, "%ms", &uid);
+            desc = strdup(str+strlen(uid)+1);
+            en_sensor[l].unique_id = uid;
+            en_sensor[l].name = desc;
+        }
+    }
+
     for(i = 0; i < cfg.n_lts; ++i)
     {
         snprintf(section, sizeof(section), "lights-%d", i);
         n = ini_gets(section, "id", "0", str, array_sz(str), name);
         DBG("%s.id: '%s'", section, str);
         cfg.lts[i].id = atol(str);
+        for(l = 0; l < 8; ++l)
+        {
+            char item[64], *uid, *desc;
+
+            snprintf(item, sizeof(item), "lt_%d", l);
+            n = ini_gets(section, item, "", str, array_sz(str), name);
+            if(n > 0) 
+            {
+                sscanf(str, "%ms", &uid);
+                desc = strdup(str+strlen(uid)+1);
+                en_switch[l].unique_id = uid;
+                en_switch[l].name = desc;
+            }
+        }
     }        
     for(i = 0; i < cfg.n_pwr; ++i)
     {

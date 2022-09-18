@@ -8,6 +8,8 @@
 *.elf
 *.a
 *~
+*.?#*
+*.gpi
 
 /485io/485io
 /485io/slave
