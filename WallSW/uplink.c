@@ -352,12 +352,6 @@ void handle_mqtt()
                 if(revents & POLLRDHUP)
                 {
                     client.status = SOC_DISCONNECTED;
-                    DBG("MQTT: Reconnecting...");
-                    close(client.sd);
-                    client.sd = -1;
-                    poll_fds.fds[n].fd = -1;
-                    poll_fds.fds[n].events = 0;
-                    open_uplink_socket();
                 }
                 break;
             }
@@ -387,6 +381,15 @@ void handle_mqtt()
             mqtt_disconnect(mq(&client));
             client.status = SOC_DISCONNECTED;
         }
+    }
+    if(client.status == SOC_DISCONNECTED)
+    {
+        DBG("MQTT: Reconnecting...");
+        close(client.sd);
+        client.sd = -1;
+        poll_fds.fds[n].fd = -1;
+        poll_fds.fds[n].events = 0;
+        open_uplink_socket();
     }
     if(client.status == SOC_NONE && client.sd == -1)
     {
