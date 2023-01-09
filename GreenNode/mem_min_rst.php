@@ -2,7 +2,7 @@
 $DEBUG = 1;
 
 $m = new Memcached();
-$m->addServer('localhost', 11211);
+$m->addServer('/run/memcached/memcached.socket', 0);
 
 // 1W seril # for temperature sensors
 $G1_ground['id'] = $m->get('G1_GROUND');

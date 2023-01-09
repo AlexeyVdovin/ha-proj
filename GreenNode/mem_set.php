@@ -1,6 +1,6 @@
 <?php
 $m = new Memcached();
-$m->addServer('localhost', 11211);
+$m->addServer('/run/memcached/memcached.socket', 0);
 
 $n = trim($argv[1]);
 $v = trim($argv[2]);

@@ -1,6 +1,6 @@
 <?php
 $m = new Memcached();
-$m->addServer('localhost', 11211);
+$m->addServer('/run/memcached/memcached.socket', 0);
 header('Cache-Control: no-cache');
 header('Cache-Control: max-age=0');
 header('Cache-Control: no-store');
@@ -59,7 +59,7 @@ if(isset($_GET['g']) && ($_GET['g'] == 1 || $_GET['g'] == 2))
         if(isset($_GET['vent'])) set_mem($m, 'G2_VENT', 'vent');
     }
 }
-$url = (isset($_SERVER['HTTP_REFERER'])) ? $_SERVER['HTTP_REFERER'] : 'http://alexv-gw.linkpc.net:29980/green/';
+$url = (isset($_SERVER['HTTP_REFERER'])) ? $_SERVER['HTTP_REFERER'] : 'http:/kan-gw.linkpc.net:41080/green/';
 header("Location: $url");
 //echo "URL: $url\n";
 //print_r($_GET);

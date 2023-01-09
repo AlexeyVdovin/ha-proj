@@ -1,8 +1,8 @@
 <?php
 $m = new Memcached();
-$m->addServer('localhost', 11211);
+$m->addServer('/run/memcached/memcached.socket', 0);
 
-function getMemcachedKeys($host = '127.0.0.1', $port = 11211)
+function getMemcachedKeys($host = '/run/memcached/memcached.socket', $port = 0)
 {
 
     $mem = @fsockopen($host, $port);
