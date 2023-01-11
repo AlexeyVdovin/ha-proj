@@ -20,7 +20,7 @@ typedef struct
     
 } pca9554_t;
 
-pca9554_t pca[PCA9554_MAX_DEV];
+pca9554_t pca;
 
 int pca9554_open(uint8_t bus, uint8_t adr)
 {
@@ -97,30 +97,24 @@ int pca9554_get_pins(int dev, uint8_t* val)
     return res;
 }
 
-void init_pca9554(int id)
+void init_pca9554()
 {
     int i, v;
     int dev;
     int res;
     uint16_t p;
     
-    if(id < 1 || id >= PCA9554_MAX_DEV)
-    {
-        DBG("Invalid PCA9554 ID:%d", id);
-        return;
-    }
+    pca.dev  = -1;
+    pca.out  = 0;
     
-    pca[id].dev  = -1;
-    pca[id].out  = 0;
-    
-    dev = pca9554_open(0, 0x20 + id);
+    dev = pca9554_open(0, PCA9554_SLAVE_ADDR);
 
     if(dev < 0)
     {
-        DBG("Error: pca9554_open(%d) failed %d!", id, errno);
+        DBG("Error: pca9554_open() failed %d!", errno);
         return;
     }
-    pca[id].dev = dev;
+    pca.dev = dev;
 
     res = pca9554_set_inv(dev, 0x00);
     res = pca9554_set_pins(dev, 0x00);
@@ -129,43 +123,39 @@ void init_pca9554(int id)
     res = pca9554_set_dir(dev, 0x00);
 }
 
-void close_pca9554(int id)
+void close_pca9554()
 {
-    if(id < 1 || id >= PCA9554_MAX_DEV)
-    {
-        DBG("Invalid PCA9554 ID:%d", id);
-        return;
-    }
-    if(pca[id].dev > 0) close(pca[id].dev);
-    pca[id].dev = -1;
+    if(pca.dev > 0) close(pca.dev);
+    pca.dev = -1;
 }
 
-int get_pca9554(int id, int n)
+int get_pca9554(int n)
 {
     int val;
 
-    if(id < 1 || id >= PCA9554_MAX_DEV || n < 0 || n > 7 || pca[id].dev < 0)
+    if(n < 0 || n > 7 || pca.dev < 0)
     {
-        DBG("Error: Invalid parameter: %d, %d", id, n);
+        DBG("Error: Invalid parameter: %d", n);
         return -1;
     }
 
-    val = (pca[id].out & (1 << n)) ? 1 : 0;
+    val = (pca.out & (1 << n)) ? 1 : 0;
     return val;
 }
 
-void set_pca9554(int id, int n, int val)
+void set_pca9554(int n, int val)
 {
     int res;
 
-    if(id < 1 || id >= PCA9554_MAX_DEV || n < 0 || n > 7 || pca[id].dev < 0)
+    if(n < 0 || n > 7 || pca.dev < 0)
     {
-        DBG("Error: Invalid parameter: %d, %d, %d", id, n, val);
+        DBG("Error: Invalid parameter: %d, %d", n, val);
         return;
     }
     
-    pca[id].out &= ~(1 << n);
-    pca[id].out |= val ? (1 << n) : 0;
+    pca.out &= ~(1 << n);
+    pca.out |= val ? (1 << n) : 0;
     
-    res = pca9554_set_pins(pca[id].dev, pca[id].out);
+    res = pca9554_set_pins(pca.dev, pca.out);
+    DBG("pca9554_set_pins(0x%02x)", pca.out);
 }

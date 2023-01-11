@@ -1,6 +1,10 @@
 #ifndef __DS2482_H__
 #define __DS2482_H__
 
+#include <inttypes.h>
+
+#define DS2482_SLAVE_ADDR  0x18
+
 #define DS2482_CMD_TRIPLET          0x78
 #define DS2482_CMD_SINGLEBIT        0x87
 #define DS2482_CMD_READBYTE         0x96
@@ -31,33 +35,37 @@ typedef struct
 int ds2482_open(uint8_t bus, uint8_t adr);
 
 /* I2C gateway LL operations */
-int ds2482_reset(int dev);
-int ds2482_set_conf(int dev, uint8_t conf);
-int ds2482_get_status(int dev, uint8_t* value);
-int ds2482_get_data(int dev, uint8_t* value);
-int ds2482_get_conf(int dev, uint8_t* conf);
-int ds2482_read(int dev, uint8_t* value);
-int ds2482_pool(int dev, uint8_t mask, uint8_t* value, int count);
+int ds2482_reset();
+int ds2482_set_conf(uint8_t conf);
+int ds2482_get_status(uint8_t* value);
+int ds2482_get_data(uint8_t* value);
+int ds2482_get_conf(uint8_t* conf);
+int ds2482_read(uint8_t* value);
+int ds2482_pool(uint8_t mask, uint8_t* value, int count);
 
 /* I2C gateway 1W operations */
-int ds2482_1w_reset(int dev);
-int ds2482_1w_1b(int dev, char bit);
-int ds2482_1w_wbyte(int dev, uint8_t value);
-int ds2482_1w_rbyte(int dev);
-int ds2482_1w_triplet(int dev, char bit);
+int ds2482_1w_reset();
+int ds2482_1w_1b(char bit);
+int ds2482_1w_wbyte(uint8_t value);
+int ds2482_1w_rbyte();
+int ds2482_1w_triplet(char bit);
 
 /* I2C gateway 1W high level operations */
-int ds2482_1w_search(int dev, ow_serch_t* search);
-int ds2482_1w_skip(int dev);
-int ds2482_1w_match(int dev, uint8_t addr[8]);
+int ds2482_1w_search(ow_serch_t* search);
+int ds2482_1w_skip();
+int ds2482_1w_match(uint8_t addr[8]);
 
 /* I2C gateway DS18B20 operations */
-int ds2482_ds18b20_convert(int dev);
-int ds2482_ds18b20_read_power(int dev, uint8_t* value);
-int ds2482_ds18b20_read_scratchpad(int dev, uint8_t* data);
-int ds2482_ds18b20_read_eeprom(int dev);
-int ds2482_ds18b20_write_configuration(int dev, uint8_t* conf);
-int ds2482_ds18b20_write_eeprom(int dev);
+int ds2482_ds18b20_convert();
+int ds2482_ds18b20_read_power(uint8_t* value);
+int ds2482_ds18b20_read_scratchpad(uint8_t* data);
+int ds2482_ds18b20_read_eeprom();
+int ds2482_ds18b20_write_configuration(uint8_t* conf);
+int ds2482_ds18b20_write_eeprom();
 
+int ds2482_ds18b20_scan_temp();
+
+void init_ds2482();
+void close_ds2482();
 
 #endif /* __DS2482_H__ */

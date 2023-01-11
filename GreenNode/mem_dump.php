@@ -1,8 +1,5 @@
 <?php
-$m = new Memcached();
-$m->addServer('/run/memcached/memcached.socket', 0);
-
-function getMemcachedKeys($host = '/run/memcached/memcached.socket', $port = 0)
+function getMemcachedKeys($host = 'unix:///run/memcached/memcached.socket', $port = -1)
 {
 
     $mem = @fsockopen($host, $port);
@@ -67,6 +64,8 @@ function getMemcachedKeys($host = '/run/memcached/memcached.socket', $port = 0)
 $keys = getMemcachedKeys();
 if($keys != -1)
 {
+    $m = new Memcached();
+    $m->addServer('/run/memcached/memcached.socket', 0);
     foreach($keys as $k)
     {
         $v = $m->get($k);
