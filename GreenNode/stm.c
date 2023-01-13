@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE
+
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -53,6 +55,20 @@ enum
     DS_G2_GROUND
 };
 
+enum
+{
+  STM_CTL_LOW_PWR   = 0x0001,
+  STM_CTL_DR1       = 0x0002,
+  STM_CTL_DR2       = 0x0004,
+  STM_CTL_ENABLE_PM = 0x8000
+};
+
+typedef struct
+{
+    int16_t t;
+    time_t  time;
+} min_t;
+
 typedef struct
 {
     int      n_ints;
@@ -64,8 +80,11 @@ typedef struct
     uint16_t adc_batt;
     uint16_t adc_z5v0;
     uint16_t adc_z3v3;
+    min_t    t_min[8];
+    min_t    t_max[8];
+    int16_t  t_avg[8];
     int16_t  temperature[8];
-    int32_t  arr_tmp[8][8];
+    int16_t  arr_tmp[8][8];
     uint8_t  arr_n[8];
     uint8_t  port[8];
     uint8_t  type[8];
@@ -79,6 +98,8 @@ typedef struct
     uint8_t  G2_heat;
     uint8_t  G2_circ;
     uint8_t  G2_water;
+    time_t G1_watering_last;
+    time_t G2_watering_last;
     memcached_st mc;
 } stm_t;
 
@@ -386,22 +407,70 @@ static int stm_ds2482_read(int port)
     return res;
 }
 
-static int stm_ds2482_pub(int port)
+static void stm_mc_sets(const char* key, const char* val)
 {
     memcached_return rc;
-    int res = - 1, i, n = stm.ds_n;
-    char val[16], id[32];
+
+    DBG("Memcached set: %s => %s", key, val);
+    rc = memcached_set(&stm.mc, key, strlen(key), val, strlen(val), 0, 0);
+    if(rc != MEMCACHED_SUCCESS)
+    {
+        DBG("Error: Set memcached value failed %s => %s", key, val);
+    }
+}
+
+static void stm_mc_setn(const char* key, int val)
+{
+    memcached_return rc;
+    char str[16];
+
+    sprintf(str, "%d", val);
+    DBG("Memcached set: %s => %s", key, str);
+    rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
+    if(rc != MEMCACHED_SUCCESS)
+    {
+        DBG("Error: Set memcached value failed %s => %s", key, str);
+    }
+}
+
+static void stm_mc_setf(const char* key, float val)
+{
+    memcached_return rc;
+    char str[16];
+
+    sprintf(str, "%.2f", val);
+    DBG("Memcached set: %s => %s", key, str);
+    rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
+    if(rc != MEMCACHED_SUCCESS)
+    {
+        DBG("Error: Set memcached value failed %s => %s", key, str);
+    }
+}
+
+static void stm_mc_setk(const char* pre, uint8_t* id, int val)
+{
+    memcached_return rc;
+    char str[16], key[64];
+
+    sprintf(str, "%d", val);
+    sprintf(key, "%s%02x%02x%02x%02x%02x%02x%02x%02x", pre, id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7]);
+    DBG("Memcached set: %s => %s", key, str);
+    rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
+    if(rc != MEMCACHED_SUCCESS)
+    {
+        DBG("Error: Set memcached value failed %s => %s", key, str);
+    }
+}
+
+static int stm_ds2482_pub(int port)
+{
+    int i, n = stm.ds_n;
+    char key[32];
 
     for(i = 0; i < n; ++i)
     {
         if(stm.port[i] != port) continue;
-        sprintf(val, "%d", stm.temperature[i]);
-        sprintf(id, "%02x%02x%02x%02x%02x%02x%02x%02x", stm.addr[i][0], stm.addr[i][1], stm.addr[i][2], stm.addr[i][3], stm.addr[i][4], stm.addr[i][5], stm.addr[i][6], stm.addr[i][7]);
-        rc = memcached_set(&stm.mc, id, 16, val, strlen(val), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", id, val);
-        }
+        stm_mc_setk("t_", stm.addr[i], stm.temperature[i]);
     }
     return 0;
 }
@@ -429,31 +498,37 @@ static void stm_ds_stat()
         // DBG("Stat: [%d] %d %d", i, c, stm.temperature[i]);
         stm.arr_n[i] = ++c;
 
+        sum = 0;
+        for(x = 0; x <= c; ++x)
+        {
+            sum += stm.arr_tmp[i][x];
+        }
+        stm.t_avg[i] = sum/c;
+        stm_mc_setk("", stm.addr[i], stm.t_avg[i]);
+
+        if(stm.t_min[i].t > stm.temperature[i]) { stm.t_min[i].t = stm.temperature[i]; stm.t_min[i].time = time(0); stm_mc_setk("min_", stm.addr[i], stm.t_min[i].t); }
+        if(stm.t_max[i].t < stm.temperature[i]) { stm.t_max[i].t = stm.temperature[i]; stm.t_max[i].time = time(0); stm_mc_setk("max_", stm.addr[i], stm.t_max[i].t); }
+
         s = stm_find_sensor(stm.addr[i]);
         if(s != -1)
         {
-            sum = 0;
-            for(x = 0; x <= c; ++x)
-            {
-                sum += stm.arr_tmp[i][x];
-            }
             // DBG("Sum [%d] %f", s, sum);
             switch(s)
             {
                 case DS_G1_AIR:
-                    g1a = sum/c/1000;
+                    g1a = stm.t_avg[i]/1000.0;
                     DBG("[%d] G1 Air: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g1a);
                     break;
                 case DS_G1_GROUND:
-                    g1g = sum/c/1000;
+                    g1g = stm.t_avg[i]/1000.0;
                     DBG("[%d] G1 Ground: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g1g);
                     break;
                 case DS_G2_AIR:
-                    g2a = sum/c/1000;
+                    g2a = stm.t_avg[i]/1000.0;
                     DBG("[%d] G2 Air: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g2a);
                     break;
                 case DS_G2_GROUND:
-                    g2g = sum/c/1000;
+                    g2g = stm.t_avg[i]/1000.0;
                     DBG("[%d] G2 Ground: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g2g);
                     break;
                 default:
@@ -462,26 +537,8 @@ static void stm_ds_stat()
         }
     }
 
-    const char g1a_avt[] = "G1_AIR_AVG";
-    const char g1g_avt[] = "G1_GROUND_AVG";
-    const char g1_circ[] = "G1_CIRC_REL";
-    const char g1_heat[] = "G1_HEAT_REL";
-    const char g1_vent[] = "G1_VENT_REL";
-    const char g2a_avt[] = "G2_AIR_AVG";
-    const char g2g_avt[] = "G2_GROUND_AVG";
-    const char g2_circ[] = "G2_CIRC_REL";
-    const char g2_heat[] = "G2_HEAT_REL";
-    const char g2_vent[] = "G2_VENT_REL";
-    char str[16];
-
     if(g1a != -55)
     {
-        sprintf(str, "%.2f", g1a);
-        rc = memcached_set(&stm.mc, g1a_avt, strlen(g1a_avt), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g1a_avt, str);
-        }
         if(cfg.G1_set.heat == 2)
         {
             if(stm.G1_heat == 0)
@@ -504,27 +561,11 @@ static void stm_ds_stat()
                 if(g1a < cfg.ventilation-3) stm.G1_vent = 0;
             }
         }
-        sprintf(str, "%s", stm.G1_heat ? "ON" : "OFF");
-        rc = memcached_set(&stm.mc, g1_heat, strlen(g1_heat), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g1_heat, str);
-        }
-        sprintf(str, "%s", stm.G1_vent ? "ON" : "OFF");
-        rc = memcached_set(&stm.mc, g1_vent, strlen(g1_vent), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g1_vent, str);
-        }
+        stm_mc_setn("G1_HEAT", stm.G1_heat);
+        stm_mc_setn("G1_VENT", stm.G1_vent);
     }
     if(g1a != -55 && g1g != -55)
     {
-        sprintf(str, "%.2f", g1g);
-        rc = memcached_set(&stm.mc, g1g_avt, strlen(g1g_avt), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g1g_avt, str);
-        }
         if(cfg.G1_set.circ == 2)
         {
             if(stm.G1_circ == 0)
@@ -536,21 +577,10 @@ static void stm_ds_stat()
                 if(g1a - g1g < 2 || g1g > 21) stm.G1_circ = 0;
             }
         }
-        sprintf(str, "%s", stm.G1_circ ? "ON" : "OFF");
-        rc = memcached_set(&stm.mc, g1_circ, strlen(g1_circ), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g1_circ, str);
-        }
+        stm_mc_setn("G1_CIRC", stm.G1_circ);
     }
     if(g2a != -55)
     {
-        sprintf(str, "%.2f", g2a);
-        rc = memcached_set(&stm.mc, g2a_avt, strlen(g2a_avt), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g2a_avt, str);
-        }
         if(cfg.G2_set.heat == 2)
         {
             if(stm.G2_heat == 0)
@@ -573,27 +603,11 @@ static void stm_ds_stat()
                 if(g2a < cfg.ventilation-3) stm.G2_vent = 0;
             }
         }        
-        sprintf(str, "%s", stm.G2_heat ? "ON" : "OFF");
-        rc = memcached_set(&stm.mc, g2_heat, strlen(g2_heat), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g2_heat, str);
-        }
-        sprintf(str, "%s", stm.G2_vent ? "ON" : "OFF");
-        rc = memcached_set(&stm.mc, g2_vent, strlen(g2_vent), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g2_vent, str);
-        }
+        stm_mc_setn("G2_HEAT", stm.G2_heat);
+        stm_mc_setn("G2_VENT", stm.G2_vent);
     }
     if(g2a != -55 && g2g != -55)
     {
-        sprintf(str, "%.2f", g2g);
-        rc = memcached_set(&stm.mc, g2g_avt, strlen(g2g_avt), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g2g_avt, str);
-        }
         if(cfg.G2_set.circ == 2)
         {
             if(stm.G2_circ == 0)
@@ -605,12 +619,7 @@ static void stm_ds_stat()
                 if(g2a - g2g < 2 || g2g > 21) stm.G2_circ = 0;
             }
         }
-        sprintf(str, "%s", stm.G2_circ ? "ON" : "OFF");
-        rc = memcached_set(&stm.mc, g2_circ, strlen(g2_circ), str, strlen(str), 0, 0);
-        if(rc != MEMCACHED_SUCCESS)
-        {
-            DBG("Error: Set memcached value failed! '%s' => '%s'", g2_circ, str);
-        }
+        stm_mc_setn("G2_CIRC", stm.G2_circ);
     }
     
     set_pca9554(PCA9554_OUT_X2, stm.G1_vent + stm.G2_vent);
@@ -635,19 +644,19 @@ static int read_settings()
     if(mtime != st.st_mtime)
     {
         mtime = st.st_mtime;
-        cfg.G1_set.vent     = ini_getl("general", "G1_VENT", 2, name); if(cfg.G1_set.vent < 0 || cfg.G1_set.vent > 2) cfg.G1_set.vent = 2;
-        cfg.G1_set.heat     = ini_getl("general", "G1_HEAT", 2, name); if(cfg.G1_set.heat < 0 || cfg.G1_set.heat > 2) cfg.G1_set.heat = 2;
-        cfg.G1_set.circ     = ini_getl("general", "G1_CIRC", 2, name); if(cfg.G1_set.circ < 0 || cfg.G1_set.circ > 2) cfg.G1_set.circ = 2;
-        cfg.G1_set.water    = ini_getl("general", "G1_WATER", 2, name); if(cfg.G1_set.water < 0 || cfg.G1_set.water > 2) cfg.G1_set.water = 2;
+        cfg.G1_set.vent     = ini_getl("general", "G1_VENT_C", 2, name); if(cfg.G1_set.vent < 0 || cfg.G1_set.vent > 2) cfg.G1_set.vent = 2;
+        cfg.G1_set.heat     = ini_getl("general", "G1_HEAT_C", 2, name); if(cfg.G1_set.heat < 0 || cfg.G1_set.heat > 2) cfg.G1_set.heat = 2;
+        cfg.G1_set.circ     = ini_getl("general", "G1_CIRC_C", 2, name); if(cfg.G1_set.circ < 0 || cfg.G1_set.circ > 2) cfg.G1_set.circ = 2;
+        cfg.G1_set.water    = ini_getl("general", "G1_WATER_C", 2, name); if(cfg.G1_set.water < 0 || cfg.G1_set.water > 2) cfg.G1_set.water = 2;
         cfg.G1_set.period   = ini_getl("general", "G1_PERIOD", 180, name); if(cfg.G1_set.period < 10 || cfg.G1_set.period > 1440) cfg.G1_set.period = 180;
         cfg.G1_set.duration = ini_getl("general", "G1_DURATION", 2, name); if(cfg.G1_set.duration < 0 || cfg.G1_set.duration > 60) cfg.G1_set.duration = 2;
 
-        cfg.G2_set.vent     = ini_getl("general", "G1_VENT", 2, name); if(cfg.G2_set.vent < 0 || cfg.G2_set.vent > 2) cfg.G2_set.vent = 2;
-        cfg.G2_set.heat     = ini_getl("general", "G1_HEAT", 2, name); if(cfg.G2_set.heat < 0 || cfg.G2_set.heat > 2) cfg.G2_set.heat = 2;
-        cfg.G2_set.circ     = ini_getl("general", "G1_CIRC", 2, name); if(cfg.G2_set.circ < 0 || cfg.G2_set.circ > 2) cfg.G2_set.circ = 2;
-        cfg.G2_set.water    = ini_getl("general", "G1_WATER", 2, name); if(cfg.G2_set.water < 0 || cfg.G2_set.water > 2) cfg.G2_set.water = 2;
-        cfg.G2_set.period   = ini_getl("general", "G1_PERIOD", 180, name); if(cfg.G2_set.period < 10 || cfg.G2_set.period > 1440) cfg.G2_set.period = 180;
-        cfg.G2_set.duration = ini_getl("general", "G1_DURATION", 2, name); if(cfg.G2_set.duration < 0 || cfg.G2_set.duration > 60) cfg.G2_set.duration = 2;
+        cfg.G2_set.vent     = ini_getl("general", "G2_VENT_C", 2, name); if(cfg.G2_set.vent < 0 || cfg.G2_set.vent > 2) cfg.G2_set.vent = 2;
+        cfg.G2_set.heat     = ini_getl("general", "G2_HEAT_C", 2, name); if(cfg.G2_set.heat < 0 || cfg.G2_set.heat > 2) cfg.G2_set.heat = 2;
+        cfg.G2_set.circ     = ini_getl("general", "G2_CIRC_C", 2, name); if(cfg.G2_set.circ < 0 || cfg.G2_set.circ > 2) cfg.G2_set.circ = 2;
+        cfg.G2_set.water    = ini_getl("general", "G2_WATER_C", 2, name); if(cfg.G2_set.water < 0 || cfg.G2_set.water > 2) cfg.G2_set.water = 2;
+        cfg.G2_set.period   = ini_getl("general", "G2_PERIOD", 180, name); if(cfg.G2_set.period < 10 || cfg.G2_set.period > 1440) cfg.G2_set.period = 180;
+        cfg.G2_set.duration = ini_getl("general", "G2_DURATION", 2, name); if(cfg.G2_set.duration < 0 || cfg.G2_set.duration > 60) cfg.G2_set.duration = 2;
         res = 1;
     }
     // <0 - error
@@ -656,10 +665,146 @@ static int read_settings()
     return res;
 }
 
+static void stm_save_time()
+{
+    FILE* fl = fopen(cfg.watering, "w");
+    struct tm tm;
+    char str[128];
+
+    if(fl != NULL)
+    {
+        localtime_r(&stm.G1_watering_last, &tm);
+        strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
+        fprintf(fl, "%s\n", str);
+        DBG("Save G1 last watering time: %s", str);
+
+        localtime_r(&stm.G2_watering_last, &tm);
+        strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
+        fprintf(fl, "%s\n", str);
+        DBG("Save G2 last watering time: %s", str);
+
+        fflush(fl);
+        fclose(fl);
+    }
+}
+
+static void stm_get_time()
+{
+    struct tm tm;
+    char str[128];
+    FILE* fl = fopen(cfg.watering, "r");
+
+    while(fl != NULL)
+    {
+        // strptime("2022-01-12 10:30", "%Y-%m-%d %H:%M", &tm);
+        if(fgets(str, sizeof(str), fl) == NULL)
+        {
+            DBG("Error: Reading last watering time %d", errno);
+            break;
+        }
+
+        memset(&tm, 0, sizeof(tm));
+        if(strptime(str, "%Y-%m-%d %H:%M", &tm) == NULL)
+        {
+            DBG("Error: Parcing last watering time!");
+            break;
+        }
+        stm.G1_watering_last = mktime(&tm);
+        strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
+        DBG("G1 last watering time: %s", str);
+
+        if(fgets(str, sizeof(str), fl) == NULL)
+        {
+            DBG("Error: Reading last watering time %d", errno);
+            break;
+        }
+
+        memset(&tm, 0, sizeof(tm));
+        if(strptime(str, "%Y-%m-%d %H:%M", &tm) == NULL)
+        {
+            DBG("Error: Parcing last watering time!");
+            break;
+        }
+        stm.G2_watering_last = mktime(&tm);
+        strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
+        DBG("G2 last watering time: %s", str);
+
+        break;
+    }
+    if(fl != 0) fclose(fl);
+}
+
+static void stm_G1_watering(int on)
+{
+    stm.control =  (stm.control & (~STM_CTL_DR1)) | (on ? STM_CTL_DR1 : 0);
+    stm_set_control(stm.dev, stm.control);
+}
+
+static void stm_G2_watering(int on)
+{
+    stm.control =  (stm.control & (~STM_CTL_DR2)) | (on ? STM_CTL_DR2 : 0);
+    stm_set_control(stm.dev, stm.control);
+}
+
 static void stm_watering()
 {
-  // strptime
-  // strftime
+    static int g1w = 0, g2w = 0;
+    time_t t = time(0);
+    int save = 0;
+
+    if(g1w == 0)
+    {
+        // DBG("DBG: Watering last: %d, period: %d, time: %d ? %d", (int)stm.G1_watering_last, (int)cfg.G1_set.period, (int)(stm.G1_watering_last + cfg.G1_set.period * 60), (int)t);
+        if((stm.G1_watering_last + cfg.G1_set.period * 60 < t  && stm.G1_water == 2) || stm.G1_water == 1)
+        {
+            g1w = 1;
+            stm_G1_watering(1);
+            stm_mc_setn("G1_WATER", 1);
+            if(stm.G1_water == 2)
+            {
+                stm.G1_watering_last = t;
+                save = 1;
+            }
+        }
+    }
+    else
+    {
+        if((stm.G1_watering_last + cfg.G1_set.duration * 60 < t && stm.G1_water == 2) || stm.G1_water == 0)
+        {
+            g1w = 0;
+            stm_G1_watering(0);
+            stm_mc_setn("G1_WATER", 0);
+        }
+    }
+
+    if(g2w == 0)
+    {
+        if((stm.G2_watering_last + cfg.G2_set.period * 60 < t && stm.G2_water == 2) || stm.G2_water == 1)
+        {
+            g2w = 1;
+            stm_G2_watering(1);
+            stm_mc_setn("G2_WATER", 1);
+            if(stm.G2_water == 2)
+            {
+                stm.G2_watering_last = t;
+                save = 1;
+            }
+        }
+    }
+    else
+    {
+        if((stm.G2_watering_last + cfg.G2_set.duration * 60 < t && stm.G2_water == 2) || stm.G2_water == 0)
+        {
+            g2w = 0;
+            stm_G2_watering(0);
+            stm_mc_setn("G2_WATER", 0);
+        }
+    }
+
+    if(save)
+    {
+        stm_save_time();
+    }
 }
 
 void handle_stm()
@@ -668,6 +813,7 @@ void handle_stm()
     int t, upd;
     uint8_t c;
     uint16_t val;
+    int save = 0;
     int revents = poll_fds.fds[stm.n_fd].revents;
     
     if(revents)
@@ -685,14 +831,69 @@ void handle_stm()
         upd = read_settings();
         if(upd > 0)
         {
+            if(cfg.G1_set.water == 2 && stm.G1_water == 0)
+            {
+                stm.G1_watering_last = t;
+                save = 1;
+            }
+            else if(cfg.G1_set.water == 2 && stm.G1_water == 1)
+            {
+                stm_G1_watering(0);
+                stm_mc_setn("G1_WATER", 0);
+            }
+            else if(cfg.G1_set.water != stm.G1_water)
+            {
+                // Manual On/Off
+                stm_G1_watering(cfg.G1_set.water);
+                stm_mc_setn("G1_WATER", cfg.G1_set.water);
+            }
+
+            if(cfg.G2_set.water == 2 && stm.G2_water == 0)
+            {
+                stm.G2_watering_last = t;
+                save = 1;
+            }
+            else if(cfg.G2_set.water == 2 && stm.G2_water == 1)
+            {
+                stm_G2_watering(0);
+                stm_mc_setn("G2_WATER", 0);
+            }
+            else if(cfg.G2_set.water != stm.G2_water)
+            {
+                // Manual On/Off
+                stm_G2_watering(cfg.G2_set.water);
+                stm_mc_setn("G2_WATER", cfg.G2_set.water);
+            }
+
             if(cfg.G1_set.vent != 2) stm.G1_vent = cfg.G1_set.vent;
             if(cfg.G2_set.vent != 2) stm.G2_vent = cfg.G2_set.vent;
             if(cfg.G1_set.heat != 2) stm.G1_heat = cfg.G1_set.heat;
             if(cfg.G2_set.heat != 2) stm.G2_heat = cfg.G2_set.heat;
             if(cfg.G1_set.circ != 2) stm.G1_circ = cfg.G1_set.circ;
             if(cfg.G2_set.circ != 2) stm.G2_circ = cfg.G2_set.circ;
-            if(cfg.G1_set.water != 2) stm.G1_water = cfg.G1_set.water;
-            if(cfg.G2_set.water != 2) stm.G2_water = cfg.G2_set.water;
+            stm.G1_water = cfg.G1_set.water;
+            stm.G2_water = cfg.G2_set.water;
+            if(save)
+            {
+                stm_save_time();
+            }
+            
+            stm_mc_setn("G1_VENT_C", cfg.G1_set.vent);
+            stm_mc_setn("G1_HEAT_C", cfg.G1_set.heat);
+            stm_mc_setn("G1_CIRC_C", cfg.G1_set.circ);
+            stm_mc_setn("G1_WATER_C", cfg.G1_set.water);
+
+            stm_mc_setn("G1_PERIOD", cfg.G1_set.period);
+            stm_mc_setn("G1_DURATION", cfg.G1_set.duration);
+
+            stm_mc_setn("G2_VENT_C", cfg.G1_set.vent);
+            stm_mc_setn("G2_HEAT_C", cfg.G1_set.heat);
+            stm_mc_setn("G2_CIRC_C", cfg.G1_set.circ);
+            stm_mc_setn("G2_WATER_C", cfg.G1_set.water);
+
+            stm_mc_setn("G2_PERIOD", cfg.G2_set.period);
+            stm_mc_setn("G2_DURATION", cfg.G2_set.duration);
+
         }
         switch(m)
         {
@@ -786,20 +987,12 @@ void init_stm()
     memcached_return rc;
     int v, res;
     int dev;
-    
+
+    memset(&stm, 0, sizeof(stm));
     stm.dev = -1;
     stm.n_fd = -1;
-    stm.control = 0;
-    stm.state = 0;
-    stm.ds_n = 0;
-
-    stm.G1_vent = 0;
-    stm.G1_heat = 0;
-    stm.G1_circ = 0;
-    stm.G2_vent = 0;
-    stm.G2_heat = 0;
-    stm.G2_circ = 0;
-
+    stm.G1_water = 2;
+    stm.G2_water = 2;
     
     digitalWrite(PIN_RST, 0);
     pinMode(PIN_RST, OUTPUT);
@@ -814,13 +1007,15 @@ void init_stm()
     }
     
     dev = stm_open(0, STM_SLAVE_ADDR);
-
     if(dev < 0)
     {
         DBG("Error: stm_open() failed %d!", errno);
         return;
     }
     stm.dev = dev;
+
+    stm_G1_watering(0);
+    stm_G2_watering(0);
 
     pinMode (PIN_PA7, INPUT);
     // Read interrupt lane and check it has correct logic level
@@ -830,30 +1025,16 @@ void init_stm()
         DBG("Error: PA7 lane has incorrect logic level: 0");
         return;
     }
+
+    // TODO: Enable interrupt
     // wiringPiISR(PIN_PA7, INT_EDGE_FALLING, &gpioInterrupt1);
     
     // Turn OFF 1W ports
     set_pca9554(PCA9554_DIS_1W1, 1);
     set_pca9554(PCA9554_DIS_1W2, 1);
 
-    // stm.control = STM_DCDC_EN;
-    // res = stm_set_control(dev, stm.control);
-    /*
-    rc = memcached_set(&stm.mc, "mc_key", 6, "mc_value", 8, 0, 0);
-    if(rc != MEMCACHED_SUCCESS)
-    {
-        DBG("Error: Set memcached value failed");
-        return;
-    }
-    size_t len = 0;
-    char* str = memcached_get(&stm.mc, "mc_key", 6, &len, NULL, &rc);
-    if(rc != MEMCACHED_SUCCESS)
-    {
-        DBG("Error: Set memcached value failed");
-        return;
-    }
-    DBG("Memc: %s", str);
-    */
+    stm_get_time();
+
 }
 
 void close_stm()

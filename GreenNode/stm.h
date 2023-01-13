@@ -3,11 +3,6 @@
 
 #define STM_SLAVE_ADDR  0x30
 
-#define STM_ENABLE_PM 0x8000
-#define STM_LOW_PWR   0x0001
-#define STM_CTL_DR1   0x0002
-#define STM_CTL_DR2  	0x0004
-
 #define STM_HEARTBEAT 0x00
 #define STM_STATUS    0x08
 #define STM_CONTROL   0x0A

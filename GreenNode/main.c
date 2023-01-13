@@ -28,6 +28,7 @@ static void read_config(const char* name)
 
     n = ini_gets("general", "memcached", "", cfg.memcached, sizeof(cfg.memcached)-1, name);
     n = ini_gets("general", "settings", "", cfg.settings, sizeof(cfg.settings)-1, name);
+    n = ini_gets("general", "watering", "", cfg.watering, sizeof(cfg.watering)-1, name);
 
     cfg.n_avg = ini_getl("general", "n_avg", 3, name);
     cfg.circ_delta = ini_getl("general", "circ_delta", 3, name);

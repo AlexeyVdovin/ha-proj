@@ -1,6 +1,24 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+/*
+    Gx_VENT     - Ventilation status
+    Gx_HEAT     - Heating status
+    Gx_CIRC     - Circulation status
+    Gx_WATER    - Watering status
+
+    Gx_VENT_C   - Ventilation control
+    Gx_HEAT_C   - Heating control
+    Gx_CIRC_C   - Circulation control
+    Gx_WATER_C  - Watering control
+
+    Gx_PERIOD   - Watering period
+    Gx_DURATION - Watering duration
+
+
+*/
+
+
 #define MAX_POLL_FDS    32
 #define POLL_TIMEOUT    1000
 
@@ -27,6 +45,7 @@ typedef struct
     char  client_name[32];
     char  memcached[64];
     char  settings[64];
+    char  watering[64];
     char  G1_air[32];
     float G1_air_k;
     float G1_air_c;

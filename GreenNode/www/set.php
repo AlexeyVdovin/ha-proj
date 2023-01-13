@@ -32,6 +32,7 @@ function set_mem($m, $n, $g)
         foreach($line as $k=>$l) if(startsWith(trim($l), $n.'_C'))
         {
             $line[$k] = $n."_C=$t";
+            $found = TRUE;
             break;
         }
         if(!$found) array_push($line, ($n."_C=$t"));
