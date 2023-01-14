@@ -109,12 +109,12 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
     <h2>G1</h2><a href="https://thingspeak.com/apps/matlab_visualizations/328861?width=1100&height=300">График температуры</a>
 <table border="1">
 <tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
-<?php echo '<tr><td><a href="https://thingspeak.com/channels/981221/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Воздух</a></td>'
+<?php echo '<tr><td>Воздух</td>'
     .'<td><b> '.temp_c($G1_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G1_air['min']).' C </font></b><br> '.time_l($G1_air['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G1_air['max']).' C </font></b><br> '.time_l($G1_air['maxT']).' </td>'
     .'</tr>'; ?>
-<?php echo '<tr><td><a href="https://thingspeak.com/channels/981221/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Земля</a> </td>'
+<?php echo '<tr><td>Земля</td>'
     .'<td><b> '.temp_c($G1_ground['T']).' C </b></td>'
     .'<td><b><font color="blue"> '.temp_c($G1_ground['min']).' C </font></b><br> '.time_l($G1_ground['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G1_ground['max']).' C </font></b><br> '.time_l($G1_ground['maxT']).' </td>'
@@ -160,12 +160,12 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
     <h2>G2</h2><a href="https://thingspeak.com/apps/matlab_visualizations/350886?width=1100&height=300">График температуры</a>
 <table border="1">
 <tr><th width="25%"> <?php echo time_l(time()); ?> </th><th width="25%">Сейчас</th><th width="25%">Min</th><th width="25%">Max</th></tr>
-<?php echo '<tr><td><a href="https://thingspeak.com/channels/981229/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Воздух</a></td>'
+<?php echo '<tr><td>Воздух</td>'
     .'<td><b> '.temp_c($G2_air['T']).' C </b><br> </td>'
     .'<td><b><font color="blue"> '.temp_c($G2_air['min']).' C </font></b><br> '.time_l($G2_air['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G2_air['max']).' C </font></b><br> '.time_l($G2_air['maxT']).' </td>'
     .'</tr>'; ?>
-<?php echo '<tr><td><a href="https://thingspeak.com/channels/981229/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=2000&type=line&update=15">Земля</a> </td>'
+<?php echo '<tr><td>Земля</td>'
     .'<td><b> '.temp_c($G2_ground['T']).' C </b></td>'
     .'<td><b><font color="blue"> '.temp_c($G2_ground['min']).' C </font></b><br> '.time_l($G2_ground['minT']).' </td>'
     .'<td><b><font color="red"> '.temp_c($G2_ground['max']).' C </font></b><br> '.time_l($G2_ground['maxT']).' </td>'

@@ -493,20 +493,7 @@ static void stm_mc_setk(const char* pre, uint8_t* id, int val)
         DBG("Error: Set memcached value failed %s => %s", key, str);
     }
 }
-/*
-static int stm_ds2482_pub(int port)
-{
-    int i, n = stm.ds_n;
-    char key[32];
 
-    for(i = 0; i < n; ++i)
-    {
-        if(stm.port[i] != port) continue;
-        stm_mc_setk("t_", stm.addr[i], stm.temperature[i]);
-    }
-    return 0;
-}
-*/
 static void stm_ds_stat()
 {
     memcached_return rc;
@@ -901,15 +888,23 @@ void handle_stm()
             }
             else if(cfg.G1_set.water == 2 && stm.G1_water == 1)
             {
+                stm.G1_watering_last = t;
+                save = 1;
                 stm_G1_watering(0);
                 stm_mc_setn("G1_WATER", 0);
             }
             else if(cfg.G1_set.water != stm.G1_water)
             {
+                if(cfg.G1_set.water == 1)
+                {
+                    stm.G1_watering_last = t;
+                    save = 1;
+                }
                 // Manual On/Off
                 stm_G1_watering(cfg.G1_set.water);
                 stm_mc_setn("G1_WATER", cfg.G1_set.water);
             }
+            stm.G1_water = cfg.G1_set.water;
 
             if(cfg.G2_set.water == 2 && stm.G2_water == 0)
             {
@@ -918,15 +913,29 @@ void handle_stm()
             }
             else if(cfg.G2_set.water == 2 && stm.G2_water == 1)
             {
+                stm.G2_watering_last = t;
+                save = 1;
                 stm_G2_watering(0);
                 stm_mc_setn("G2_WATER", 0);
             }
             else if(cfg.G2_set.water != stm.G2_water)
             {
+                if(cfg.G2_set.water == 1)
+                {
+                    stm.G2_watering_last = t;
+                    save = 1;
+                }
                 // Manual On/Off
                 stm_G2_watering(cfg.G2_set.water);
                 stm_mc_setn("G2_WATER", cfg.G2_set.water);
             }
+            stm.G2_water = cfg.G2_set.water;
+
+            if(save)
+            {
+                stm_save_time();
+            }
+
             v = 0; h = 0;
             if(cfg.G1_set.vent != 2 && stm.G1_vent != cfg.G1_set.vent)
             {
@@ -975,15 +984,8 @@ void handle_stm()
                 stm_mc_setn("G2_CIRC", stm.G2_circ);
                 set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
             }
-
-            stm.G1_water = cfg.G1_set.water;
-            stm.G2_water = cfg.G2_set.water;
-
-            if(save)
-            {
-                stm_save_time();
-            }
             
+            // Copy all settings to Memcached
             stm_mc_setn("G1_VENT_C", cfg.G1_set.vent);
             stm_mc_setn("G1_HEAT_C", cfg.G1_set.heat);
             stm_mc_setn("G1_CIRC_C", cfg.G1_set.circ);
@@ -999,7 +1001,6 @@ void handle_stm()
 
             stm_mc_setn("G2_PERIOD", cfg.G2_set.period);
             stm_mc_setn("G2_DURATION", cfg.G2_set.duration);
-
         }
         switch(m)
         {

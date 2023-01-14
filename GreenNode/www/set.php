@@ -39,9 +39,9 @@ function set_mem($m, $k1, $k2, $t)
       // echo "Update: '".$k1." <- '$t'.\n";
         $m->set($k1, $t);
         if($k2 != FALSE && $t != 2) $m->set($k2, $t);
-        if($t == 2 && ($k2 == 'G1_WATER' || $k2 == 'G2_WATER'))
+        if(($t == 2 || $t == 1) && ($k2 == 'G1_WATER' || $k2 == 'G2_WATER'))
         {
-            $m->set($k2, 0);
+            $m->set($k2, $t == 1 ? 1 : 0);
             $m->set($k2.'_T', time());
         }
 
