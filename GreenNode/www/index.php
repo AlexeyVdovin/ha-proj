@@ -11,6 +11,11 @@ $G1_air['id']    = $m->get('G1_AIR');
 $G2_ground['id'] = $m->get('G2_GROUND');
 $G2_air['id']    = $m->get('G2_AIR');
 
+// print_r($G1_ground);
+// print_r($G1_air);
+// print_r($G2_ground);
+// print_r($G2_air);
+
 if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
     echo "Error: Temperature sensors are not defined.\n";
@@ -19,21 +24,13 @@ if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) ||
 
 function get_sensor($m, $id)
 {
-    $s['id'] = $id;
-    $s['T'] = $m->get($id);
-    $s['TT'] = $m->get('t_'.$id);
-    $s['max'] = $m->get('max_'.$id);
-    $s['maxT'] = $m->get('maxt_'.$id);
-    $s['min'] = $m->get('min_'.$id);
-    $s['minT'] = $m->get('mint_'.$id);
-    $avg = $s['T'];
-    $v = $m->get('avg_'.$id);
-    if($v != FALSE)
-    {
-        $a = explode(',', $v);
-        if(count($a) > 0) $avg = (int)(array_sum($a)/count($a));
-    }
-    $s['avg'] = $avg;
+    $a = explode(' ', $id);
+    $s['id'] = $a[0];
+    $s['T'] = $m->get($a[0]);
+    $s['max'] = $m->get('max_'.$a[0]);
+    $s['maxT'] = $m->get('maxt_'.$a[0]);
+    $s['min'] = $m->get('min_'.$a[0]);
+    $s['minT'] = $m->get('mint_'.$a[0]);
     return $s;
 }
 
@@ -42,24 +39,41 @@ $G2_ground = get_sensor($m, $G2_ground['id']);
 $G1_air = get_sensor($m, $G1_air['id']);
 $G2_air = get_sensor($m, $G2_air['id']);
 
-$G1_FREEZ = $m->get('G1_FREEZ');   // 1, 0
 $G1_VENT_C = $m->get('G1_VENT_C'); // ON, OFF, AUTO
 $G1_HEAT_C = $m->get('G1_HEAT_C'); // ON, OFF, AUTO
 $G1_CIRC_C = $m->get('G1_CIRC_C'); // ON, OFF, AUTO
+$G1_WATER_C = $m->get('G1_WATER_C'); // ON, OFF, AUTO
+$G1_W_PERIOD = $m->get('G1_PERIOD'); // 10 < X < 1440
+$G1_W_DURATION = $m->get('G1_DURATION'); // 0 < X < 60
 
-$G2_FREEZ = $m->get('G2_FREEZ');   // 1, 0
 $G2_VENT_C = $m->get('G2_VENT_C'); // ON, OFF, AUTO
 $G2_HEAT_C = $m->get('G2_HEAT_C'); // ON, OFF, AUTO
 $G2_CIRC_C = $m->get('G2_CIRC_C'); // ON, OFF, AUTO
+$G2_WATER_C = $m->get('G2_WATER_C'); // ON, OFF, AUTO
+$G2_W_PERIOD = $m->get('G2_PERIOD'); // 10 < X < 1440
+$G2_W_DURATION = $m->get('G2_DURATION'); // 0 < X < 60
 
-if($G1_FREEZ === FALSE) $G1_FREEZ = 0;
-if($G1_VENT_C === FALSE) $G1_VENT_C = 'AUTO';
-if($G1_HEAT_C === FALSE) $G1_HEAT_C = 'AUTO';
-if($G1_CIRC_C === FALSE) $G1_CIRC_C = 'AUTO';
-if($G2_FREEZ === FALSE) $G2_FREEZ = 0;
-if($G2_VENT_C === FALSE) $G2_VENT_C = 'AUTO';
-if($G2_HEAT_C === FALSE) $G2_HEAT_C = 'AUTO';
-if($G2_CIRC_C === FALSE) $G2_CIRC_C = 'AUTO';
+if($G1_VENT_C === FALSE) $G1_VENT_C = 2;
+if($G1_HEAT_C === FALSE) $G1_HEAT_C = 2;
+if($G1_CIRC_C === FALSE) $G1_CIRC_C = 2;
+if($G1_WATER_C === FALSE) $G1_WATER_C = 2;
+if($G1_W_PERIOD === FALSE) $G1_W_PERIOD = 180;
+else if($G1_W_PERIOD < 10) $G1_W_PERIOD = 10;
+else if($G1_W_PERIOD > 1440) $G1_W_PERIOD = 1440;
+if($G1_W_DURATION === FALSE) $G1_W_DURATION = 180;
+else if($G1_W_DURATION < 0) $G1_W_DURATION = 0;
+else if($G1_W_DURATION > 60) $G1_W_DURATION = 60;
+
+if($G2_VENT_C === FALSE) $G2_VENT_C = 2;
+if($G2_HEAT_C === FALSE) $G2_HEAT_C = 2;
+if($G2_CIRC_C === FALSE) $G2_CIRC_C = 2;
+if($G2_WATER_C === FALSE) $G2_WATER_C = 2;
+if($G2_W_PERIOD === FALSE) $G2_W_PERIOD = 180;
+else if($G2_W_PERIOD < 10) $G2_W_PERIOD = 10;
+else if($G2_W_PERIOD > 1440) $G2_W_PERIOD = 1440;
+if($G2_W_DURATION === FALSE) $G2_W_DURATION = 180;
+else if($G2_W_DURATION < 0) $G2_W_DURATION = 0;
+else if($G2_W_DURATION > 60) $G2_W_DURATION = 60;
 
 $G1_heat = $m->get('G1_HEAT');
 $G2_heat = $m->get('G2_HEAT');
@@ -67,6 +81,10 @@ $G1_circ = $m->get('G1_CIRC');
 $G2_circ = $m->get('G2_CIRC');
 $G1_vent = $m->get('G1_VENT');
 $G2_vent = $m->get('G2_VENT');
+$G1_water = $m->get('G1_WATER');
+$G1_water_T = $m->get('G1_WATER_T');
+$G2_water = $m->get('G2_WATER');
+$G2_water_T = $m->get('G2_WATER_T');
 
 function temp_c($t)
 {
@@ -75,7 +93,12 @@ function temp_c($t)
 
 function time_l($t)
 {
-    return strftime('%R', $t + 3 * 3600);
+    return date('H:i', $t + 3 * 3600);
+}
+
+function time_f($t)
+{
+    return date('H:i', $t);
 }
 
 $UPTIME = file_get_contents('/tmp/uptime.txt');
@@ -102,15 +125,35 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
     <table>
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G1_circ ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="circ" value="'.(!$G1_circ ? 'ON' : 'OFF').'"</td>'
-    .($G1_CIRC_C != 'AUTO' ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .($G1_CIRC_C != 2 ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G1_vent ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="vent" value="'.(!$G1_vent ? 'ON' : 'OFF').'"</td>'
-    .($G1_VENT_C != 'AUTO' ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .($G1_VENT_C != 2 ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
   <tr><th>Подогрев:</th><?php echo '<td><b>'.($G1_heat ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="heat" value="'.(!$G1_heat ? 'ON' : 'OFF').'"</td>'
-    .($G1_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .($G1_HEAT_C != 2 ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+  <tr><th>Полив:</th><?php echo '<td><b>'.($G1_water ? 'ON' : 'OFF').'</b></td>'
+    .'<td><input type="submit" name="water" value="'.(!$G1_water ? 'ON' : 'OFF').'"</td>'
+    .($G1_WATER_C != 2 ? '<td><input type="submit" name="water" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    </table>
+</form>
+<form method="get" action="set.php">
+    <input name="g" type="hidden" value="1">
+    <table>
+  <tr><th>Полив был:</th><?php echo '<td><b>'.time_f($G1_water_T).'</b></td>'
+    .'<td> </td>'
+    .'<td> </td>'; ?> </tr>
+  <tr><th>Периодичность:</th><?php echo '<td><input type="text" name="period" size="4" minlength="1" maxlength="5" value="'.($G1_W_PERIOD).'"></td>'
+    .'<td>мин</td>'
+    .'<td> </td>'; ?> </tr>
+  <tr><th>Длительность:</th><?php echo '<td><input type="text" name="duration" size="4" minlength="1" maxlength="5" value="'.($G1_W_DURATION).'"></td>'
+    .'<td>мин</td>'
+    .'<td> </td>'; ?> </tr>
+  <tr><th><input type="submit" name="save" value="Запомнить"></th><?php echo '<td> </td>'
+    .'<td> </td>'
+    .'<td> </td>'; ?> </tr>
     </table>
 </form>
 
@@ -133,15 +176,35 @@ $UPTIME = file_get_contents('/tmp/uptime.txt');
     <table>
   <tr><th>Циркуляция:</th><?php echo '<td><b>'.($G2_circ ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="circ" value="'.(!$G2_circ ? 'ON' : 'OFF').'"</td>'
-    .($G2_CIRC_C != 'AUTO' ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .($G2_CIRC_C != 2 ? '<td><input type="submit" name="circ" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
   <tr><th>Вентиляция:</th><?php echo '<td><b>'.($G2_vent ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="vent" value="'.(!$G2_vent ? 'ON' : 'OFF').'"</td>'
-    .($G2_VENT_C != 'AUTO' ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .($G2_VENT_C != 2 ? '<td><input type="submit" name="vent" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
   <tr></tr>
   <tr><th>Подогрев:</th><?php echo '<td><b>'.($G2_heat ? 'ON' : 'OFF').'</b></td>'
     .'<td><input type="submit" name="heat" value="'.(!$G2_heat ? 'ON' : 'OFF').'"</td>'
-    .($G2_HEAT_C != 'AUTO' ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    .($G2_HEAT_C != 2 ? '<td><input type="submit" name="heat" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+  <tr><th>Полив:</th><?php echo '<td><b>'.($G2_water ? 'ON' : 'OFF').'</b></td>'
+    .'<td><input type="submit" name="water" value="'.(!$G2_water ? 'ON' : 'OFF').'"</td>'
+    .($G2_WATER_C != 2 ? '<td><input type="submit" name="water" value="AUTO"</td>' : '<td><b><font color="green">AUTO</font></b></td>'); ?> </tr>
+    </table>
+</form>
+<form method="get" action="set.php">
+    <input name="g" type="hidden" value="2">
+    <table>
+  <tr><th>Полив был:</th><?php echo '<td><b>'.time_f($G2_water_T).'</b></td>'
+    .'<td> </td>'
+    .'<td> </td>'; ?> </tr>
+  <tr><th>Периодичность:</th><?php echo '<td><input type="text" name="period" size="4" minlength="1" maxlength="5" value="'.($G2_W_PERIOD).'"></td>'
+    .'<td>мин</td>'
+    .'<td> </td>'; ?> </tr>
+  <tr><th>Длительность:</th><?php echo '<td><input type="text" name="duration" size="4" minlength="1" maxlength="5" value="'.($G2_W_DURATION).'"></td>'
+    .'<td>мин</td>'
+    .'<td> </td>'; ?> </tr>
+  <tr><th><input type="submit" name="save" value="Запомнить"></th><?php echo '<td> </td>'
+    .'<td> </td>'
+    .'<td> </td>'; ?> </tr>
     </table>
 </form>
 <p><?php echo $UPTIME; ?></p>

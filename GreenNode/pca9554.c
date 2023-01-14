@@ -157,5 +157,5 @@ void set_pca9554(int n, int val)
     pca.out |= val ? (1 << n) : 0;
     
     res = pca9554_set_pins(pca.dev, pca.out);
-    DBG("pca9554_set_pins(0x%02x)", pca.out);
+    // DBG("pca9554_set_pins(0x%02x)", pca.out);
 }

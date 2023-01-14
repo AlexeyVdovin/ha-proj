@@ -6,6 +6,7 @@
     Gx_HEAT     - Heating status
     Gx_CIRC     - Circulation status
     Gx_WATER    - Watering status
+    Gx_WATER_T  - Last watering time
 
     Gx_VENT_C   - Ventilation control
     Gx_HEAT_C   - Heating control

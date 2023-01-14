@@ -65,7 +65,7 @@ enum
 
 typedef struct
 {
-    int16_t t;
+    int32_t t;
     time_t  time;
 } min_t;
 
@@ -82,9 +82,9 @@ typedef struct
     uint16_t adc_z3v3;
     min_t    t_min[8];
     min_t    t_max[8];
-    int16_t  t_avg[8];
-    int16_t  temperature[8];
-    int16_t  arr_tmp[8][8];
+    int32_t  t_avg[8];
+    int32_t  temperature[8];
+    int32_t  arr_tmp[8][8];
     uint8_t  arr_n[8];
     uint8_t  port[8];
     uint8_t  type[8];
@@ -401,10 +401,42 @@ static int stm_ds2482_read(int port)
 
         int16_t t = (data[1] << 8) | data[0];
         // DBG("Read temperature: 0x%02x 0x%02x, %.4f", data[0], data[1], t/16.0);
-        DBG("0x%02x%02x%02x%02x%02x%02x%02x%02x %d", stm.addr[i][0], stm.addr[i][1], stm.addr[i][2], stm.addr[i][3], stm.addr[i][4], stm.addr[i][5], stm.addr[i][6], stm.addr[i][7], (int)(t*125/2));
+        // DBG("0x%02x%02x%02x%02x%02x%02x%02x%02x %d", stm.addr[i][0], stm.addr[i][1], stm.addr[i][2], stm.addr[i][3], stm.addr[i][4], stm.addr[i][5], stm.addr[i][6], stm.addr[i][7], (int)(t*125/2));
         stm.temperature[i] = t*125/2;
     }
     return res;
+}
+
+static int stm_mc_gets(const char* key, char* val, size_t len)
+{
+    memcached_return rc;
+    char* v;
+    size_t l;
+
+    v = memcached_get(&stm.mc, key, strlen(key), &l, 0, &rc);
+    if(v == NULL) return rc != MEMCACHED_SUCCESS ? rc : -1;
+    if(rc != MEMCACHED_SUCCESS) { free(v); return (int)rc; }
+    if(l > len-1) rc = -1;
+    else
+    {
+        memcpy(val, v, l);
+        val[l] = 0;
+    }
+    free(v);
+    return rc;
+}
+
+static int stm_mc_getn(const char* key, int* val)
+{
+    int rc;
+    char str[32];
+
+    rc = stm_mc_gets(key, str, sizeof(str));
+    if(rc == 0)
+    {
+        *val = atoi(str);
+    }
+    return rc;
 }
 
 static void stm_mc_sets(const char* key, const char* val)
@@ -461,7 +493,7 @@ static void stm_mc_setk(const char* pre, uint8_t* id, int val)
         DBG("Error: Set memcached value failed %s => %s", key, str);
     }
 }
-
+/*
 static int stm_ds2482_pub(int port)
 {
     int i, n = stm.ds_n;
@@ -474,7 +506,7 @@ static int stm_ds2482_pub(int port)
     }
     return 0;
 }
-
+*/
 static void stm_ds_stat()
 {
     memcached_return rc;
@@ -489,13 +521,13 @@ static void stm_ds_stat()
         else
         {
             c = cfg.n_avg-1;
-            for(x = 1; x < c; ++x)
+            for(x = 1; x <= c; ++x)
             {
                 stm.arr_tmp[i][x-1] = stm.arr_tmp[i][x];
             }
             stm.arr_tmp[i][c] = stm.temperature[i];
         }
-        // DBG("Stat: [%d] %d %d", i, c, stm.temperature[i]);
+        // DBG("Stat: [%d] %d %d : %d, %d, %d, %d, %d, %d", i, c, stm.temperature[i], stm.arr_tmp[i][0], stm.arr_tmp[i][1], stm.arr_tmp[i][2], stm.arr_tmp[i][3], stm.arr_tmp[i][4], stm.arr_tmp[i][5]);
         stm.arr_n[i] = ++c;
 
         sum = 0;
@@ -506,8 +538,20 @@ static void stm_ds_stat()
         stm.t_avg[i] = sum/c;
         stm_mc_setk("", stm.addr[i], stm.t_avg[i]);
 
-        if(stm.t_min[i].t > stm.temperature[i]) { stm.t_min[i].t = stm.temperature[i]; stm.t_min[i].time = time(0); stm_mc_setk("min_", stm.addr[i], stm.t_min[i].t); }
-        if(stm.t_max[i].t < stm.temperature[i]) { stm.t_max[i].t = stm.temperature[i]; stm.t_max[i].time = time(0); stm_mc_setk("max_", stm.addr[i], stm.t_max[i].t); }
+        if(stm.t_min[i].t > stm.temperature[i])
+        {
+            stm.t_min[i].t = stm.temperature[i];
+            stm.t_min[i].time = time(0);
+            stm_mc_setk("min_", stm.addr[i], stm.t_min[i].t);
+            stm_mc_setk("mint_", stm.addr[i], (int)stm.t_min[i].time);
+        }
+        if(stm.t_max[i].t < stm.temperature[i]) 
+        {
+            stm.t_max[i].t = stm.temperature[i];
+            stm.t_max[i].time = time(0);
+            stm_mc_setk("max_", stm.addr[i], stm.t_max[i].t);
+            stm_mc_setk("maxt_", stm.addr[i], (int)stm.t_max[i].time);
+        }
 
         s = stm_find_sensor(stm.addr[i]);
         if(s != -1)
@@ -539,93 +583,108 @@ static void stm_ds_stat()
 
     if(g1a != -55)
     {
+        s = 0;
         if(cfg.G1_set.heat == 2)
         {
             if(stm.G1_heat == 0)
             {
-                if(g1a < cfg.heating) stm.G1_heat = 1;
+                if(g1a < cfg.heating) { s = 1; stm.G1_heat = 1; }
             }
             else
             {
-                if(g1a > cfg.heating+1) stm.G1_heat = 0;
+                if(g1a > cfg.heating+1) { s = 1; stm.G1_heat = 0; }
             }
         }
         if(cfg.G1_set.vent == 2)
         {
             if(stm.G1_vent == 0)
             {
-                if(g1a > cfg.ventilation) stm.G1_vent = 1;
+                if(g1a > cfg.ventilation) { s = 1; stm.G1_vent = 1; }
             }
             else
             {
-                if(g1a < cfg.ventilation-3) stm.G1_vent = 0;
+                if(g1a < cfg.ventilation-3) { s = 1; stm.G1_vent = 0; }
             }
         }
-        stm_mc_setn("G1_HEAT", stm.G1_heat);
-        stm_mc_setn("G1_VENT", stm.G1_vent);
+        if(s)
+        {
+            stm_mc_setn("G1_HEAT", stm.G1_heat);
+            stm_mc_setn("G1_VENT", stm.G1_vent);
+        }
     }
     if(g1a != -55 && g1g != -55)
     {
+        s = 0;
         if(cfg.G1_set.circ == 2)
         {
             if(stm.G1_circ == 0)
             {
-                if(g1a - g1g > cfg.circ_delta+2 && g1g < 18) stm.G1_circ = 1;
+                if(g1a - g1g > cfg.circ_delta+2 && g1g < 18) { s = 1; stm.G1_circ = 1; }
             }
             else
             {
-                if(g1a - g1g < 2 || g1g > 21) stm.G1_circ = 0;
+                if(g1a - g1g < 2 || g1g > 21) { s = 1; stm.G1_circ = 0; }
             }
         }
-        stm_mc_setn("G1_CIRC", stm.G1_circ);
+        if(s)
+        {
+            stm_mc_setn("G1_CIRC", stm.G1_circ);
+            set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
+        }
     }
     if(g2a != -55)
     {
+        s = 0;
         if(cfg.G2_set.heat == 2)
         {
             if(stm.G2_heat == 0)
             {
-                if(g2a < cfg.heating) stm.G2_heat = 1;
+                if(g2a < cfg.heating) { s = 1; stm.G2_heat = 1; }
             }
             else
             {
-                if(g2a > cfg.heating+1) stm.G2_heat = 0;
+                if(g2a > cfg.heating+1) { s = 1; stm.G2_heat = 0; }
             }
         }
         if(cfg.G2_set.vent == 2)
         {
             if(stm.G2_vent == 0)
             {
-                if(g2a > cfg.ventilation) stm.G2_vent = 1;
+                if(g2a > cfg.ventilation) { s = 1; stm.G2_vent = 1; }
             }
             else
             {
-                if(g2a < cfg.ventilation-3) stm.G2_vent = 0;
+                if(g2a < cfg.ventilation-3) { s = 1; stm.G2_vent = 0; }
             }
-        }        
-        stm_mc_setn("G2_HEAT", stm.G2_heat);
-        stm_mc_setn("G2_VENT", stm.G2_vent);
+        }
+        if(s)
+        {
+            stm_mc_setn("G2_HEAT", stm.G2_heat);
+            stm_mc_setn("G2_VENT", stm.G2_vent);
+        }
     }
     if(g2a != -55 && g2g != -55)
     {
+        s = 0;
         if(cfg.G2_set.circ == 2)
         {
             if(stm.G2_circ == 0)
             {
-                if(g2a - g2g > cfg.circ_delta+2 && g2g < 18) stm.G2_circ = 1;
+                if(g2a - g2g > cfg.circ_delta+2 && g2g < 18) { s = 1; stm.G2_circ = 1; }
             }
             else
             {
-                if(g2a - g2g < 2 || g2g > 21) stm.G2_circ = 0;
+                if(g2a - g2g < 2 || g2g > 21) { s = 1; stm.G2_circ = 0; }
             }
         }
-        stm_mc_setn("G2_CIRC", stm.G2_circ);
+        if(s)
+        {
+            stm_mc_setn("G2_CIRC", stm.G2_circ);
+            set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
+        }
     }
-    
     set_pca9554(PCA9554_OUT_X2, stm.G1_vent + stm.G2_vent);
     set_pca9554(PCA9554_OUT_X11, stm.G1_heat + stm.G2_heat);
-    set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
-    set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
 }
 
 static int read_settings()
@@ -677,11 +736,13 @@ static void stm_save_time()
         strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
         fprintf(fl, "%s\n", str);
         DBG("Save G1 last watering time: %s", str);
+        stm_mc_setn("G1_WATER_T", stm.G1_watering_last);
 
         localtime_r(&stm.G2_watering_last, &tm);
         strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
         fprintf(fl, "%s\n", str);
         DBG("Save G2 last watering time: %s", str);
+        stm_mc_setn("G2_WATER_T", stm.G2_watering_last);
 
         fflush(fl);
         fclose(fl);
@@ -712,6 +773,7 @@ static void stm_get_time()
         stm.G1_watering_last = mktime(&tm);
         strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
         DBG("G1 last watering time: %s", str);
+        stm_mc_setn("G1_WATER_T", stm.G1_watering_last);
 
         if(fgets(str, sizeof(str), fl) == NULL)
         {
@@ -728,6 +790,7 @@ static void stm_get_time()
         stm.G2_watering_last = mktime(&tm);
         strftime(str, sizeof(str), "%Y-%m-%d %H:%M", &tm);
         DBG("G2 last watering time: %s", str);
+        stm_mc_setn("G2_WATER_T", stm.G2_watering_last);
 
         break;
     }
@@ -811,7 +874,7 @@ void handle_stm()
 {
     static int m = 0, s = -20;
     int t, upd;
-    uint8_t c;
+    uint8_t v, h, c;
     uint16_t val;
     int save = 0;
     int revents = poll_fds.fds[stm.n_fd].revents;
@@ -827,7 +890,7 @@ void handle_stm()
     if(t != s)
     {
         s = t;
-        DBG("stm: %d", m);
+        // DBG("stm: %d", m);
         upd = read_settings();
         if(upd > 0)
         {
@@ -864,15 +927,58 @@ void handle_stm()
                 stm_G2_watering(cfg.G2_set.water);
                 stm_mc_setn("G2_WATER", cfg.G2_set.water);
             }
+            v = 0; h = 0;
+            if(cfg.G1_set.vent != 2 && stm.G1_vent != cfg.G1_set.vent)
+            {
+                stm.G1_vent = cfg.G1_set.vent;
+                stm_mc_setn("G1_VENT", stm.G1_vent);
+                v = 1;
+            }
+            if(cfg.G2_set.vent != 2 && stm.G2_vent != cfg.G2_set.vent)
+            {
+                stm.G2_vent = cfg.G2_set.vent;
+                stm_mc_setn("G2_VENT", stm.G2_vent);
+                v = 1;
+            }
+            if(v)
+            {
+                set_pca9554(PCA9554_OUT_X2, stm.G1_vent + stm.G2_vent);
+            }
 
-            if(cfg.G1_set.vent != 2) stm.G1_vent = cfg.G1_set.vent;
-            if(cfg.G2_set.vent != 2) stm.G2_vent = cfg.G2_set.vent;
-            if(cfg.G1_set.heat != 2) stm.G1_heat = cfg.G1_set.heat;
-            if(cfg.G2_set.heat != 2) stm.G2_heat = cfg.G2_set.heat;
-            if(cfg.G1_set.circ != 2) stm.G1_circ = cfg.G1_set.circ;
-            if(cfg.G2_set.circ != 2) stm.G2_circ = cfg.G2_set.circ;
+            if(cfg.G1_set.heat != 2 && stm.G1_heat != cfg.G1_set.heat)
+            {
+                stm.G1_heat = cfg.G1_set.heat;
+                stm_mc_setn("G1_HEAT", stm.G1_heat);
+                h = 1;
+            }
+            if(cfg.G2_set.heat != 2 && stm.G2_heat != cfg.G2_set.heat)
+            {
+                stm.G2_heat = cfg.G2_set.heat;
+                stm_mc_setn("G2_HEAT", stm.G2_heat);
+                h = 1;
+            }
+            if(h)
+            {
+                set_pca9554(PCA9554_OUT_X11, stm.G1_heat + stm.G2_heat);
+            }
+
+            if(cfg.G1_set.circ != 2 && stm.G1_circ != cfg.G1_set.circ)
+            {
+                stm.G1_circ = cfg.G1_set.circ;
+                stm_mc_setn("G1_CIRC", stm.G1_circ);
+                set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
+            }
+
+            if(cfg.G2_set.circ != 2 && stm.G2_circ != cfg.G2_set.circ)
+            {
+                stm.G2_circ = cfg.G2_set.circ;
+                stm_mc_setn("G2_CIRC", stm.G2_circ);
+                set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
+            }
+
             stm.G1_water = cfg.G1_set.water;
             stm.G2_water = cfg.G2_set.water;
+
             if(save)
             {
                 stm_save_time();
@@ -886,10 +992,10 @@ void handle_stm()
             stm_mc_setn("G1_PERIOD", cfg.G1_set.period);
             stm_mc_setn("G1_DURATION", cfg.G1_set.duration);
 
-            stm_mc_setn("G2_VENT_C", cfg.G1_set.vent);
-            stm_mc_setn("G2_HEAT_C", cfg.G1_set.heat);
-            stm_mc_setn("G2_CIRC_C", cfg.G1_set.circ);
-            stm_mc_setn("G2_WATER_C", cfg.G1_set.water);
+            stm_mc_setn("G2_VENT_C", cfg.G2_set.vent);
+            stm_mc_setn("G2_HEAT_C", cfg.G2_set.heat);
+            stm_mc_setn("G2_CIRC_C", cfg.G2_set.circ);
+            stm_mc_setn("G2_WATER_C", cfg.G2_set.water);
 
             stm_mc_setn("G2_PERIOD", cfg.G2_set.period);
             stm_mc_setn("G2_DURATION", cfg.G2_set.duration);
@@ -936,7 +1042,7 @@ void handle_stm()
             {
                 stm_ds2482_read(1);
                 set_pca9554(PCA9554_DIS_1W1, 1);
-                stm_ds2482_pub(1);
+                // stm_ds2482_pub(1);
                 break;
             }
             case ST_DS_ENUM2:
@@ -949,7 +1055,7 @@ void handle_stm()
             {
                 stm_ds2482_read(2);
                 set_pca9554(PCA9554_DIS_1W2, 1);
-                stm_ds2482_pub(2);
+                // stm_ds2482_pub(2);
                 break;
             }
             case ST_DS_STAT:
@@ -993,6 +1099,14 @@ void init_stm()
     stm.n_fd = -1;
     stm.G1_water = 2;
     stm.G2_water = 2;
+    stm.t_min[0].t = 200000;
+    stm.t_min[1].t = 200000;
+    stm.t_min[2].t = 200000;
+    stm.t_min[3].t = 200000;
+    stm.t_min[4].t = 200000;
+    stm.t_min[5].t = 200000;
+    stm.t_min[6].t = 200000;
+    stm.t_min[7].t = 200000;
     
     digitalWrite(PIN_RST, 0);
     pinMode(PIN_RST, OUTPUT);
@@ -1015,7 +1129,9 @@ void init_stm()
     stm.dev = dev;
 
     stm_G1_watering(0);
+    stm_mc_setn("G1_WATER", 0);
     stm_G2_watering(0);
+    stm_mc_setn("G2_WATER", 0);
 
     pinMode (PIN_PA7, INPUT);
     // Read interrupt lane and check it has correct logic level
@@ -1033,8 +1149,56 @@ void init_stm()
     set_pca9554(PCA9554_DIS_1W1, 1);
     set_pca9554(PCA9554_DIS_1W2, 1);
 
+    stm_mc_sets("G1_AIR", cfg.G1_air);
+    stm_mc_sets("G1_GROUND", cfg.G1_ground);
+    stm_mc_sets("G2_AIR", cfg.G2_air);
+    stm_mc_sets("G2_GROUND", cfg.G2_ground);
+
     stm_get_time();
 
+    if(stm_mc_getn("G1_VENT", &v) == 0) stm.G1_vent = v;
+    else
+    {
+        stm.G1_vent = 0;
+        stm_mc_setn("G1_VENT", stm.G1_vent);
+    }
+    if(stm_mc_getn("G2_VENT", &v) == 0) stm.G2_vent = v;
+    else
+    {
+        stm.G2_vent = 0;
+        stm_mc_setn("G2_VENT", stm.G1_vent);
+    }
+    set_pca9554(PCA9554_OUT_X2, stm.G1_vent + stm.G2_vent);
+
+    if(stm_mc_getn("G1_HEAT", &v) == 0) stm.G1_heat = v;
+    else
+    {
+        stm.G1_heat = 0;
+        stm_mc_setn("G1_HEAT", stm.G1_heat);
+    }
+    if(stm_mc_getn("G2_HEAT", &v) == 0) stm.G2_heat = v;
+    else
+    {
+        stm.G2_heat = 0;
+        stm_mc_setn("G2_HEAT", stm.G2_heat);
+    }
+    set_pca9554(PCA9554_OUT_X11, stm.G1_heat + stm.G2_heat);
+
+    if(stm_mc_getn("G1_CIRC", &v) == 0) stm.G1_circ = v;
+    else
+    {
+        stm.G1_circ = 0;
+        stm_mc_setn("G1_CIRC", stm.G1_circ);
+    }
+    set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
+
+    if(stm_mc_getn("G2_CIRC", &v) == 0) stm.G2_circ = v;
+    else
+    {
+        stm.G2_circ = 0;
+        stm_mc_setn("G2_CIRC", stm.G2_circ);
+    }
+    set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
 }
 
 void close_stm()
