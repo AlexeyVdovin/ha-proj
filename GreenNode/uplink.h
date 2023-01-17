@@ -17,4 +17,8 @@ extern poll_t poll_fds;
 void init_uplink();
 void setup_uplink_poll();
 
+int uplink_events_poll();
+
+void uplink_send_stats(int n, int gr, int ar, int ht, int vt, int cr, int wt);
+
 #endif

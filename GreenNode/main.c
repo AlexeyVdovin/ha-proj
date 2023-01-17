@@ -26,6 +26,7 @@ static void read_config(const char* name)
 
     memset(&cfg, 0, sizeof(cfg));
 
+    n = ini_gets("general", "url", "", cfg.url, sizeof(cfg.url)-1, name);
     n = ini_gets("general", "memcached", "", cfg.memcached, sizeof(cfg.memcached)-1, name);
     n = ini_gets("general", "settings", "", cfg.settings, sizeof(cfg.settings)-1, name);
     n = ini_gets("general", "watering", "", cfg.watering, sizeof(cfg.watering)-1, name);
@@ -40,12 +41,6 @@ static void read_config(const char* name)
     n = ini_gets("general", "G2_air", "", cfg.G2_air, sizeof(cfg.G2_air)-1, name); sscanf(cfg.G2_air+16, "%f %f", &cfg.G2_air_c, &cfg.G2_air_k);
     n = ini_gets("general", "G2_ground", "", cfg.G2_ground, sizeof(cfg.G2_ground)-1, name); sscanf(cfg.G2_ground+16, "%f %f", &cfg.G2_ground_c, &cfg.G2_ground_k);
 }
-
-static inline int events_poll()
-{
-    return poll(poll_fds.fds, poll_fds.n, POLL_TIMEOUT);
-}
-
 
 int main(int argc, char* argv[])
 {
@@ -70,7 +65,7 @@ int main(int argc, char* argv[])
 
     while(!do_exit)
     {
-        if(events_poll() > 0)
+        if(uplink_events_poll() > 0)
         {
 //            handle_ds2482();
         }

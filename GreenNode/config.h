@@ -44,6 +44,7 @@ typedef struct
 typedef struct
 {
     char  client_name[32];
+    char  url[64];
     char  memcached[64];
     char  settings[64];
     char  watering[64];

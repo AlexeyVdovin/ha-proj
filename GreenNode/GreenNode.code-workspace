@@ -7,7 +7,8 @@
 	"settings": {
 		"files.associations": {
 			"wiringpi.h": "c",
-			"config.h": "c"
+			"config.h": "c",
+			"curl.h": "c"
 		}
 	}
 }

@@ -10,7 +10,7 @@ CFLAGS := $(OPT) $(INCLUDE)
 all: $(target)
 
 $(target): $(OBJS)
-	gcc $(OPT) -o $(target) $(OBJS) -lmemcached
+	gcc $(OPT) -o $(target) $(OBJS) -lmemcached -lcurl
 
 clean:
 	rm -f $(target) $(OBJS)

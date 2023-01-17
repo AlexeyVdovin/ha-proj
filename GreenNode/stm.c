@@ -36,7 +36,8 @@ enum
     ST_DS_ENUM2,
     ST_DS_READ2,
     ST_DS_STAT,
-    ST_WATERING
+    ST_WATERING,
+    ST_UPLINK
 };
 
 static const char STR_DC_12V[]      = "dc:12V";
@@ -82,7 +83,7 @@ typedef struct
     uint16_t adc_z3v3;
     min_t    t_min[8];
     min_t    t_max[8];
-    int32_t  t_avg[8];
+    min_t    t_avg[8];
     int32_t  temperature[8];
     int32_t  arr_tmp[8][8];
     uint8_t  arr_n[8];
@@ -93,11 +94,13 @@ typedef struct
     uint8_t  G1_vent;
     uint8_t  G1_heat;
     uint8_t  G1_circ;
-    uint8_t  G1_water;
+    uint8_t  G1_wter;
     uint8_t  G2_vent;
     uint8_t  G2_heat;
     uint8_t  G2_circ;
-    uint8_t  G2_water;
+    uint8_t  G2_wter;
+    uint8_t  G1_watering_set;
+    uint8_t  G2_watering_set;
     time_t G1_watering_last;
     time_t G2_watering_last;
     memcached_st mc;
@@ -197,6 +200,20 @@ static int stm_find_sensor(uint8_t addr[8])
     else if(memcmp(id, cfg.G2_air, 16) == 0) res = DS_G2_AIR;
     else if(memcmp(id, cfg.G2_ground, 16) == 0) res = DS_G2_GROUND;
 
+    return res;
+}
+
+static int stm_ds_find(char* sensor)
+{
+    char id[32];
+    int i, res = -1;
+    
+    for(i = 0; i < stm.ds_n; ++i)
+    {
+        uint8_t *addr = stm.addr[i];
+        sprintf(id, "%02x%02x%02x%02x%02x%02x%02x%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], addr[6], addr[7]);
+        if(memcmp(id, sensor, 16) == 0) { res = i; break; }
+    }
     return res;
 }
 
@@ -522,20 +539,21 @@ static void stm_ds_stat()
         {
             sum += stm.arr_tmp[i][x];
         }
-        stm.t_avg[i] = sum/c;
-        stm_mc_setk("", stm.addr[i], stm.t_avg[i]);
+        stm.t_avg[i].t = sum/c;
+        stm.t_avg[i].time = time(0);
+        stm_mc_setk("", stm.addr[i], stm.t_avg[i].t);
 
         if(stm.t_min[i].t > stm.temperature[i])
         {
             stm.t_min[i].t = stm.temperature[i];
-            stm.t_min[i].time = time(0);
+            stm.t_min[i].time = stm.t_avg[i].time;
             stm_mc_setk("min_", stm.addr[i], stm.t_min[i].t);
             stm_mc_setk("mint_", stm.addr[i], (int)stm.t_min[i].time);
         }
         if(stm.t_max[i].t < stm.temperature[i]) 
         {
             stm.t_max[i].t = stm.temperature[i];
-            stm.t_max[i].time = time(0);
+            stm.t_max[i].time = stm.t_avg[i].time;
             stm_mc_setk("max_", stm.addr[i], stm.t_max[i].t);
             stm_mc_setk("maxt_", stm.addr[i], (int)stm.t_max[i].time);
         }
@@ -547,19 +565,19 @@ static void stm_ds_stat()
             switch(s)
             {
                 case DS_G1_AIR:
-                    g1a = stm.t_avg[i]/1000.0;
+                    g1a = stm.t_avg[i].t/1000.0;
                     DBG("[%d] G1 Air: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g1a);
                     break;
                 case DS_G1_GROUND:
-                    g1g = stm.t_avg[i]/1000.0;
+                    g1g = stm.t_avg[i].t/1000.0;
                     DBG("[%d] G1 Ground: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g1g);
                     break;
                 case DS_G2_AIR:
-                    g2a = stm.t_avg[i]/1000.0;
+                    g2a = stm.t_avg[i].t/1000.0;
                     DBG("[%d] G2 Air: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g2a);
                     break;
                 case DS_G2_GROUND:
-                    g2g = stm.t_avg[i]/1000.0;
+                    g2g = stm.t_avg[i].t/1000.0;
                     DBG("[%d] G2 Ground: %.2f (%.2f)", i, stm.temperature[i]/1000.0, g2g);
                     break;
                 default:
@@ -798,19 +816,19 @@ static void stm_G2_watering(int on)
 
 static void stm_watering()
 {
-    static int g1w = 0, g2w = 0;
+    // static int g1w = 0, g2w = 0;
     time_t t = time(0);
     int save = 0;
 
-    if(g1w == 0)
+    if(stm.G1_wter == 0)
     {
         // DBG("DBG: Watering last: %d, period: %d, time: %d ? %d", (int)stm.G1_watering_last, (int)cfg.G1_set.period, (int)(stm.G1_watering_last + cfg.G1_set.period * 60), (int)t);
-        if((stm.G1_watering_last + cfg.G1_set.period * 60 < t  && stm.G1_water == 2) || stm.G1_water == 1)
+        if((stm.G1_watering_last + cfg.G1_set.period * 60 < t  && stm.G1_watering_set == 2) || stm.G1_watering_set == 1)
         {
-            g1w = 1;
+            stm.G1_wter = 1;
             stm_G1_watering(1);
             stm_mc_setn("G1_WATER", 1);
-            if(stm.G1_water == 2)
+            if(stm.G1_watering_set == 2)
             {
                 stm.G1_watering_last = t;
                 save = 1;
@@ -819,22 +837,22 @@ static void stm_watering()
     }
     else
     {
-        if((stm.G1_watering_last + cfg.G1_set.duration * 60 < t && stm.G1_water == 2) || stm.G1_water == 0)
+        if((stm.G1_watering_last + cfg.G1_set.duration * 60 < t && stm.G1_watering_set == 2) || stm.G1_watering_set == 0)
         {
-            g1w = 0;
+            stm.G1_wter = 0;
             stm_G1_watering(0);
             stm_mc_setn("G1_WATER", 0);
         }
     }
 
-    if(g2w == 0)
+    if(stm.G2_wter == 0)
     {
-        if((stm.G2_watering_last + cfg.G2_set.period * 60 < t && stm.G2_water == 2) || stm.G2_water == 1)
+        if((stm.G2_watering_last + cfg.G2_set.period * 60 < t && stm.G2_watering_set == 2) || stm.G2_watering_set == 1)
         {
-            g2w = 1;
+            stm.G2_wter = 1;
             stm_G2_watering(1);
             stm_mc_setn("G2_WATER", 1);
-            if(stm.G2_water == 2)
+            if(stm.G2_watering_set == 2)
             {
                 stm.G2_watering_last = t;
                 save = 1;
@@ -843,9 +861,9 @@ static void stm_watering()
     }
     else
     {
-        if((stm.G2_watering_last + cfg.G2_set.duration * 60 < t && stm.G2_water == 2) || stm.G2_water == 0)
+        if((stm.G2_watering_last + cfg.G2_set.duration * 60 < t && stm.G2_watering_set == 2) || stm.G2_watering_set == 0)
         {
-            g2w = 0;
+            stm.G2_wter = 0;
             stm_G2_watering(0);
             stm_mc_setn("G2_WATER", 0);
         }
@@ -855,6 +873,60 @@ static void stm_watering()
     {
         stm_save_time();
     }
+}
+/*
+void uplink_send_stats(int n, int gr, int tg, int ar, int ta, int ht, int vt, int cr, int wt);
+    if(memcmp(id, cfg.G1_air, 16) == 0) res = DS_G1_AIR;
+    else if(memcmp(id, cfg.G1_ground, 16) == 0) res = DS_G1_GROUND;
+    else if(memcmp(id, cfg.G2_air, 16) == 0) res = DS_G2_AIR;
+    else if(memcmp(id, cfg.G2_ground, 16) == 0) res = DS_G2_GROUND;
+
+*/
+static void stm_send_stats()
+{
+    int i, gr, ar;
+
+    do
+    {
+        i = stm_ds_find(cfg.G1_ground);
+        if(i < 0)
+        {
+            DBG("Error: Sensor %s not found!", cfg.G1_ground);
+            break;
+        }
+        gr = stm.t_avg[i].t;
+
+        i = stm_ds_find(cfg.G1_air);
+        if(i < 0)
+        {
+            DBG("Error: Sensor %s not found!", cfg.G1_air);
+            break;
+        }
+        ar = stm.t_avg[i].t;
+
+        uplink_send_stats(1, gr, ar, stm.G1_heat, stm.G1_vent, stm.G1_circ, stm.G1_wter);
+    } while(0);
+
+    do
+    {
+        i = stm_ds_find(cfg.G2_ground);
+        if(i < 0)
+        {
+            DBG("Error: Sensor %s not found!", cfg.G2_ground);
+            break;
+        }
+        gr = stm.t_avg[i].t;
+
+        i = stm_ds_find(cfg.G2_air);
+        if(i < 0)
+        {
+            DBG("Error: Sensor %s not found!", cfg.G2_air);
+            break;
+        }
+        ar = stm.t_avg[i].t;
+
+        uplink_send_stats(2, gr, ar, stm.G2_heat, stm.G2_vent, stm.G2_circ, stm.G2_wter);
+    } while(0);
 }
 
 void handle_stm()
@@ -881,19 +953,19 @@ void handle_stm()
         upd = read_settings();
         if(upd > 0)
         {
-            if(cfg.G1_set.water == 2 && stm.G1_water == 0)
+            if(cfg.G1_set.water == 2 && stm.G1_watering_set == 0)
             {
                 stm.G1_watering_last = t;
                 save = 1;
             }
-            else if(cfg.G1_set.water == 2 && stm.G1_water == 1)
+            else if(cfg.G1_set.water == 2 && stm.G1_watering_set == 1)
             {
                 stm.G1_watering_last = t;
                 save = 1;
                 stm_G1_watering(0);
                 stm_mc_setn("G1_WATER", 0);
             }
-            else if(cfg.G1_set.water != stm.G1_water)
+            else if(cfg.G1_set.water != stm.G1_watering_set)
             {
                 if(cfg.G1_set.water == 1)
                 {
@@ -904,21 +976,21 @@ void handle_stm()
                 stm_G1_watering(cfg.G1_set.water);
                 stm_mc_setn("G1_WATER", cfg.G1_set.water);
             }
-            stm.G1_water = cfg.G1_set.water;
+            stm.G1_watering_set = cfg.G1_set.water;
 
-            if(cfg.G2_set.water == 2 && stm.G2_water == 0)
+            if(cfg.G2_set.water == 2 && stm.G2_watering_set == 0)
             {
                 stm.G2_watering_last = t;
                 save = 1;
             }
-            else if(cfg.G2_set.water == 2 && stm.G2_water == 1)
+            else if(cfg.G2_set.water == 2 && stm.G2_watering_set == 1)
             {
                 stm.G2_watering_last = t;
                 save = 1;
                 stm_G2_watering(0);
                 stm_mc_setn("G2_WATER", 0);
             }
-            else if(cfg.G2_set.water != stm.G2_water)
+            else if(cfg.G2_set.water != stm.G2_watering_set)
             {
                 if(cfg.G2_set.water == 1)
                 {
@@ -929,7 +1001,7 @@ void handle_stm()
                 stm_G2_watering(cfg.G2_set.water);
                 stm_mc_setn("G2_WATER", cfg.G2_set.water);
             }
-            stm.G2_water = cfg.G2_set.water;
+            stm.G2_watering_set = cfg.G2_set.water;
 
             if(save)
             {
@@ -1069,13 +1141,18 @@ void handle_stm()
                 stm_watering();
                 break;
             }
+            case ST_UPLINK:
+            {
+                stm_send_stats();
+                break;
+            }
             default:
             {
                 t = 0;
                 break;
             }
         }
-        if(++m > 10) m = 0;
+        if(++m > 14) m = 0;
     }
 }
 
@@ -1098,8 +1175,8 @@ void init_stm()
     memset(&stm, 0, sizeof(stm));
     stm.dev = -1;
     stm.n_fd = -1;
-    stm.G1_water = 2;
-    stm.G2_water = 2;
+    stm.G1_watering_set = 2;
+    stm.G2_watering_set = 2;
     stm.t_min[0].t = 200000;
     stm.t_min[1].t = 200000;
     stm.t_min[2].t = 200000;
