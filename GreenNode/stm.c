@@ -27,17 +27,15 @@
 enum
 {
     ST_IDLE = 0,
-    ST_DC_12V,
-    ST_DC_BATT,
-    ST_DC_5V0,
-    ST_DC_3V3,
+    ST_DC_ADC,
     ST_DS_ENUM1,
     ST_DS_READ1,
     ST_DS_ENUM2,
     ST_DS_READ2,
     ST_DS_STAT,
-    ST_WATERING,
-    ST_UPLINK
+
+    ST_UPLINK = 57,
+    ST_LAST   = 59
 };
 
 static const char STR_DC_12V[]      = "dc:12V";
@@ -58,10 +56,11 @@ enum
 
 enum
 {
-  STM_CTL_LOW_PWR   = 0x0001,
+  STM_CTL_LOW_PWR   = 0x0001, // Low battery detected
   STM_CTL_DR1       = 0x0002,
   STM_CTL_DR2       = 0x0004,
-  STM_CTL_ENABLE_PM = 0x8000
+  STM_CTL_SHDN      = 0x0008,
+  STM_CTL_ENABLE_PM = 0x8000 // Enable OPiZ power management
 };
 
 typedef struct
@@ -460,7 +459,7 @@ static void stm_mc_sets(const char* key, const char* val)
 {
     memcached_return rc;
 
-    DBG("Memcached set: %s => %s", key, val);
+    // DBG("Memcached set: %s => %s", key, val);
     rc = memcached_set(&stm.mc, key, strlen(key), val, strlen(val), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
@@ -474,7 +473,7 @@ static void stm_mc_setn(const char* key, int val)
     char str[16];
 
     sprintf(str, "%d", val);
-    DBG("Memcached set: %s => %s", key, str);
+    // DBG("Memcached set: %s => %s", key, str);
     rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
@@ -488,7 +487,7 @@ static void stm_mc_setf(const char* key, float val)
     char str[16];
 
     sprintf(str, "%.2f", val);
-    DBG("Memcached set: %s => %s", key, str);
+    // DBG("Memcached set: %s => %s", key, str);
     rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
@@ -503,7 +502,7 @@ static void stm_mc_setk(const char* pre, uint8_t* id, int val)
 
     sprintf(str, "%d", val);
     sprintf(key, "%s%02x%02x%02x%02x%02x%02x%02x%02x", pre, id[0], id[1], id[2], id[3], id[4], id[5], id[6], id[7]);
-    DBG("Memcached set: %s => %s", key, str);
+    // DBG("Memcached set: %s => %s", key, str);
     rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
@@ -814,6 +813,12 @@ static void stm_G2_watering(int on)
     stm_set_control(stm.dev, stm.control);
 }
 
+static void stm_enable_pm(int on)
+{
+    stm.control =  (stm.control & (~STM_CTL_ENABLE_PM)) | (on ? STM_CTL_ENABLE_PM : 0);
+    stm_set_control(stm.dev, stm.control);
+}
+
 static void stm_watering()
 {
     // static int g1w = 0, g2w = 0;
@@ -830,7 +835,7 @@ static void stm_watering()
             stm_mc_setn("G1_WATER", 1);
             if(stm.G1_watering_set == 2)
             {
-                stm.G1_watering_last = t;
+                stm.G1_watering_last += cfg.G1_set.period * 60;
                 save = 1;
             }
         }
@@ -854,7 +859,7 @@ static void stm_watering()
             stm_mc_setn("G2_WATER", 1);
             if(stm.G2_watering_set == 2)
             {
-                stm.G2_watering_last = t;
+                stm.G2_watering_last += cfg.G2_set.period * 60;
                 save = 1;
             }
         }
@@ -874,18 +879,10 @@ static void stm_watering()
         stm_save_time();
     }
 }
-/*
-void uplink_send_stats(int n, int gr, int tg, int ar, int ta, int ht, int vt, int cr, int wt);
-    if(memcmp(id, cfg.G1_air, 16) == 0) res = DS_G1_AIR;
-    else if(memcmp(id, cfg.G1_ground, 16) == 0) res = DS_G1_GROUND;
-    else if(memcmp(id, cfg.G2_air, 16) == 0) res = DS_G2_AIR;
-    else if(memcmp(id, cfg.G2_ground, 16) == 0) res = DS_G2_GROUND;
 
-*/
-static void stm_send_stats()
+static void stm_send_stats_g1()
 {
     int i, gr, ar;
-
     do
     {
         i = stm_ds_find(cfg.G1_ground);
@@ -906,7 +903,11 @@ static void stm_send_stats()
 
         uplink_send_stats(1, gr, ar, stm.G1_heat, stm.G1_vent, stm.G1_circ, stm.G1_wter);
     } while(0);
+}
 
+static void stm_send_stats_g2()
+{
+    int i, gr, ar;
     do
     {
         i = stm_ds_find(cfg.G2_ground);
@@ -929,9 +930,14 @@ static void stm_send_stats()
     } while(0);
 }
 
+static void stm_send_bmc()
+{
+    uplink_send_stats(0, stm.adc_12v, stm.adc_batt, stm.adc_z5v0, stm.adc_z3v3, 0, 0);
+}
+
 void handle_stm()
 {
-    static int m = 0, s = -20;
+    static int m = -2, s = -20;
     int t, upd;
     uint8_t v, h, c;
     uint16_t val;
@@ -950,6 +956,8 @@ void handle_stm()
     {
         s = t;
         // DBG("stm: %d", m);
+        // stm_enable_pm(1);
+
         upd = read_settings();
         if(upd > 0)
         {
@@ -1080,28 +1088,17 @@ void handle_stm()
             {
                 break;
             }
-            case ST_DC_12V:
+            case ST_DC_ADC:
             {
                 stm_get_dc(stm.dev, STM_DC_12V, &val);
                 stm.adc_12v = val;
-                break;
-            }
-            case ST_DC_BATT:
-            {
                 stm_get_dc(stm.dev, STM_DC_BATT, &val);
                 stm.adc_batt = val;
-                break;
-            }
-            case ST_DC_5V0:
-            {
                 stm_get_dc(stm.dev, STM_DC_5V0, &val);
                 stm.adc_z5v0 = val;
-                break;
-            }
-            case ST_DC_3V3:
-            {
                 stm_get_dc(stm.dev, STM_DC_3V3, &val);
                 stm.adc_z3v3 = val;
+                // stm_send_bmc();
                 break;
             }
             case ST_DS_ENUM1:
@@ -1115,7 +1112,6 @@ void handle_stm()
             {
                 stm_ds2482_read(1);
                 set_pca9554(PCA9554_DIS_1W1, 1);
-                // stm_ds2482_pub(1);
                 break;
             }
             case ST_DS_ENUM2:
@@ -1128,31 +1124,184 @@ void handle_stm()
             {
                 stm_ds2482_read(2);
                 set_pca9554(PCA9554_DIS_1W2, 1);
-                // stm_ds2482_pub(2);
                 break;
             }
             case ST_DS_STAT:
             {
                 stm_ds_stat();
-                break;
-            }
-            case ST_WATERING:
-            {
                 stm_watering();
                 break;
             }
-            case ST_UPLINK:
+
+            case ST_DS_ENUM1+10:
             {
-                stm_send_stats();
+                stm.ds_n = 0;
+                set_pca9554(PCA9554_DIS_1W1, 0);
+                stm_ds2482_enum(1);
                 break;
             }
+            case ST_DS_READ1+10:
+            {
+                stm_ds2482_read(1);
+                set_pca9554(PCA9554_DIS_1W1, 1);
+                break;
+            }
+            case ST_DS_ENUM2+10:
+            {
+                set_pca9554(PCA9554_DIS_1W2, 0);
+                stm_ds2482_enum(2);
+                break;
+            }
+            case ST_DS_READ2+10:
+            {
+                stm_ds2482_read(2);
+                set_pca9554(PCA9554_DIS_1W2, 1);
+                break;
+            }
+            case ST_DS_STAT+10:
+            {
+                stm_ds_stat();
+                stm_watering();
+                break;
+            }
+
+            case ST_DS_ENUM1+20:
+            {
+                stm.ds_n = 0;
+                set_pca9554(PCA9554_DIS_1W1, 0);
+                stm_ds2482_enum(1);
+                break;
+            }
+            case ST_DS_READ1+20:
+            {
+                stm_ds2482_read(1);
+                set_pca9554(PCA9554_DIS_1W1, 1);
+                break;
+            }
+            case ST_DS_ENUM2+20:
+            {
+                set_pca9554(PCA9554_DIS_1W2, 0);
+                stm_ds2482_enum(2);
+                break;
+            }
+            case ST_DS_READ2+20:
+            {
+                stm_ds2482_read(2);
+                set_pca9554(PCA9554_DIS_1W2, 1);
+                break;
+            }
+            case ST_DS_STAT+20:
+            {
+                stm_ds_stat();
+                stm_watering();
+                break;
+            }
+
+            case ST_DS_ENUM1+30:
+            {
+                stm.ds_n = 0;
+                set_pca9554(PCA9554_DIS_1W1, 0);
+                stm_ds2482_enum(1);
+                break;
+            }
+            case ST_DS_READ1+30:
+            {
+                stm_ds2482_read(1);
+                set_pca9554(PCA9554_DIS_1W1, 1);
+                break;
+            }
+            case ST_DS_ENUM2+30:
+            {
+                set_pca9554(PCA9554_DIS_1W2, 0);
+                stm_ds2482_enum(2);
+                break;
+            }
+            case ST_DS_READ2+30:
+            {
+                stm_ds2482_read(2);
+                set_pca9554(PCA9554_DIS_1W2, 1);
+                break;
+            }
+            case ST_DS_STAT+30:
+            {
+                stm_ds_stat();
+                stm_watering();
+                stm_send_stats_g1();
+                break;
+            }
+
+            case ST_DS_ENUM1+40:
+            {
+                stm.ds_n = 0;
+                set_pca9554(PCA9554_DIS_1W1, 0);
+                stm_ds2482_enum(1);
+                break;
+            }
+            case ST_DS_READ1+40:
+            {
+                stm_ds2482_read(1);
+                set_pca9554(PCA9554_DIS_1W1, 1);
+                break;
+            }
+            case ST_DS_ENUM2+40:
+            {
+                set_pca9554(PCA9554_DIS_1W2, 0);
+                stm_ds2482_enum(2);
+                break;
+            }
+            case ST_DS_READ2+40:
+            {
+                stm_ds2482_read(2);
+                set_pca9554(PCA9554_DIS_1W2, 1);
+                break;
+            }
+            case ST_DS_STAT+40:
+            {
+                stm_ds_stat();
+                stm_watering();
+                break;
+            }
+
+            case ST_DS_ENUM1+50:
+            {
+                stm.ds_n = 0;
+                set_pca9554(PCA9554_DIS_1W1, 0);
+                stm_ds2482_enum(1);
+                break;
+            }
+            case ST_DS_READ1+50:
+            {
+                stm_ds2482_read(1);
+                set_pca9554(PCA9554_DIS_1W1, 1);
+                break;
+            }
+            case ST_DS_ENUM2+50:
+            {
+                set_pca9554(PCA9554_DIS_1W2, 0);
+                stm_ds2482_enum(2);
+                break;
+            }
+            case ST_DS_READ2+50:
+            {
+                stm_ds2482_read(2);
+                set_pca9554(PCA9554_DIS_1W2, 1);
+                break;
+            }
+            case ST_DS_STAT+50:
+            {
+                stm_ds_stat();
+                stm_watering();
+                stm_send_stats_g2();
+                break;
+            }
+
             default:
             {
                 t = 0;
                 break;
             }
         }
-        if(++m > 14) m = 0;
+        if(++m > ST_LAST) m = 0;
     }
 }
 
@@ -1211,6 +1360,12 @@ void init_stm()
     stm_G2_watering(0);
     stm_mc_setn("G2_WATER", 0);
 
+    // stm_enable_pm(1);
+
+    pinMode (PIN_PA7, OUTPUT);
+    digitalWrite(PIN_PA7, 1);
+
+    /*
     pinMode (PIN_PA7, INPUT);
     // Read interrupt lane and check it has correct logic level
     v = digitalRead(PIN_PA7);
@@ -1219,7 +1374,7 @@ void init_stm()
         DBG("Error: PA7 lane has incorrect logic level: 0");
         return;
     }
-
+    */
     // TODO: Enable interrupt
     // wiringPiISR(PIN_PA7, INT_EDGE_FALLING, &gpioInterrupt1);
     
@@ -1281,6 +1436,6 @@ void init_stm()
 
 void close_stm()
 {
-    if(stm.dev > 0) close(stm.dev);   
+    if(stm.dev > 0) close(stm.dev);
     stm.dev = -1;
 }

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+case $1 in
+  poweroff)
+    /usr/bin/echo 7 > /sys/class/gpio/export
+    /usr/bin/echo 0 > /sys/class/gpio/gpio7/value
+    /usr/bin/echo out > /sys/class/gpio/gpio7/direction
+    /usr/bin/echo 0 >  /sys/class/gpio/gpio7/value
+    ;;
+esac

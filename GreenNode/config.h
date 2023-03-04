@@ -21,7 +21,7 @@
 
 
 #define MAX_POLL_FDS    32
-#define POLL_TIMEOUT    1000
+#define POLL_TIMEOUT    100
 
 
 #define PIN_INT     11

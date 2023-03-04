@@ -22,7 +22,7 @@ static int poll_fdn = -1;
 
 static inline int events_poll()
 {
-    return poll(poll_fds.fds, poll_fds.n, POLL_TIMEOUT);
+    return poll(poll_fds.fds, poll_fds.n, 1);
 }
 
 int uplink_events_poll()
@@ -31,7 +31,7 @@ int uplink_events_poll()
     CURLMsg *m;
     CURLMcode mc = curl_multi_perform(multi_handle, &still_running);
 
-    mc = curl_multi_poll(multi_handle, NULL, 0, 1000, &rc);
+    mc = curl_multi_poll(multi_handle, NULL, 0, POLL_TIMEOUT, &rc);
 
     do 
     {
@@ -46,7 +46,7 @@ int uplink_events_poll()
             CURL *e = m->easy_handle;
             curl_easy_getinfo(e, CURLINFO_EFFECTIVE_URL, &url);
             curl_easy_getinfo(e, CURLINFO_PRIVATE, &status);
-            DBG("Transfer completed '%s' => %d", url ? url : "NULL", m->data.result);
+            if(m->data.result != 0) DBG("Transfer completed '%s' => %d", url ? url : "NULL", m->data.result);
             if(status) *status = m->data.result; 
             curl_multi_remove_handle(multi_handle, e);
             curl_easy_cleanup(e);
@@ -75,23 +75,45 @@ void setup_uplink_poll()
 void uplink_send_stats(int n, int gr, int ar, int ht, int vt, int cr, int wt)
 {
     static int status[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    static int errors[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     char  url[1024];
     CURL* hd;
 
+    if(n < 0 || n > sizeof(status)/sizeof(status[0]))
+    {
+        DBG("Error: Incorrect %d request!", n);
+        return;
+    }
     if(status[n] < 0)
     {
         DBG("Error: Stats %d busy!", n);
         return;
     }
-
     if(status[n] > 0)
     {
-        DBG("Error: Request %d error: %d", n, status[n]);
-// TODO: Count errors !!!        
+        errors[n]++;
+        DBG("Error: Request %d error: %d:%d", n, status[n], errors[n]);
+    }
+    else
+    {
+        errors[n] = 0;
     }
 
-    status[n] = -1;
-    sprintf(url, "%s/stats.php??n=%d&gr=%d&ar=%d&ht=%d&vt=%d&cr=%d&wt=%d", cfg.url, n, gr, ar, ht, vt, cr, wt);
+    if(n == 1 || n == 2)
+    { // Green stats
+        status[n] = -1;
+        sprintf(url, "%s/stats.php?n=%d&gr=%d&ar=%d&ht=%d&vt=%d&cr=%d&wt=%d", cfg.url, n, gr, ar, ht, vt, cr, wt);
+    }
+    else if(n == 0)
+    { // BMC telemetry
+        status[n] = -1;
+        sprintf(url, "%s/bmc.php?ad12v=%d&batt=%d&z5v0=%d&z3v3=%d", cfg.url, gr, ar, ht, vt);
+    }
+    else
+    {
+        DBG("Error: Not implemented %d request!", n);
+        return;
+    }
     DBG("Send: %s", url);
 
     hd = curl_easy_init();

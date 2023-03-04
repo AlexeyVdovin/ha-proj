@@ -1,0 +1,11 @@
+[Unit]
+Description=Turn off wlan AP on shutdown
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ifconfig wlan0 down
+
+[Install]
+WantedBy=shutdown.target
