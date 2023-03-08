@@ -1,5 +1,5 @@
-#define _XOPEN_SOURCE
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
 
 #include <libmemcached/memcached.h>
 
@@ -73,6 +72,7 @@ typedef struct
 {
     int      n_ints;
     int      dev;
+    int      dev_err;
     int      n_fd;
     int      state;
     uint16_t control;
@@ -153,10 +153,26 @@ static inline int i2c_io(int dev, char read_write, uint8_t command, int size, un
 
 static int stm_set_control(int dev, uint16_t val)
 {
+    int res;
     union i2c_smbus_data data;
     data.word = val;
-    return i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
+    res = i2c_io(dev, I2C_SMBUS_WRITE, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
+    if(res < 0) stm.dev_err++;
+    return res;
 }
+
+static int stm_get_control(int dev, uint16_t *val)
+{
+    int res;
+    union i2c_smbus_data data;
+    
+    res = i2c_io(dev, I2C_SMBUS_READ, STM_CONTROL, I2C_SMBUS_WORD_DATA, &data);
+    if(res >= 0) *val |= data.word;
+    else stm.dev_err++;
+
+    return res;
+}
+
 
 static int stm_get_status(int dev, uint16_t *val)
 {
@@ -165,6 +181,7 @@ static int stm_get_status(int dev, uint16_t *val)
     
     res = i2c_io(dev, I2C_SMBUS_READ, STM_STATUS, I2C_SMBUS_WORD_DATA, &data);
     if(res >= 0) *val |= data.word;
+    else stm.dev_err++;
 
     return res;
 }
@@ -176,6 +193,7 @@ static int stm_get_dc(int dev, uint8_t in, uint16_t *val)
 
     res = i2c_io(dev, I2C_SMBUS_READ, in, I2C_SMBUS_WORD_DATA, &data);
     if(res >= 0) *val = 0x0FFFF & data.word;
+    else stm.dev_err++;
     
     return res;
 }
@@ -813,11 +831,13 @@ static void stm_G2_watering(int on)
     stm_set_control(stm.dev, stm.control);
 }
 
+/*
 static void stm_enable_pm(int on)
 {
     stm.control =  (stm.control & (~STM_CTL_ENABLE_PM)) | (on ? STM_CTL_ENABLE_PM : 0);
     stm_set_control(stm.dev, stm.control);
 }
+*/
 
 static void stm_watering()
 {
@@ -951,12 +971,20 @@ void handle_stm()
         read(getInterruptFS(PIN_PA7), &c, 1);
     }
 
+    if(stm.dev_err > 10)
+    {
+        stm.dev_err = 0;
+        digitalWrite(PIN_RST, 1);
+        usleep(10000);
+        digitalWrite(PIN_RST, 0);
+        DBG("Reset STM !");
+    }
+
     t = time(0);
     if(t != s)
     {
         s = t;
         // DBG("stm: %d", m);
-        // stm_enable_pm(1);
 
         upd = read_settings();
         if(upd > 0)
@@ -1089,6 +1117,7 @@ void handle_stm()
                 break;
             }
             case ST_DC_ADC:
+            case ST_DC_ADC+30:
             {
                 stm_get_dc(stm.dev, STM_DC_12V, &val);
                 stm.adc_12v = val;
@@ -1099,169 +1128,14 @@ void handle_stm()
                 stm_get_dc(stm.dev, STM_DC_3V3, &val);
                 stm.adc_z3v3 = val;
                 // stm_send_bmc();
+                DBG("ADC: 12V=%d, BATT=%d, z5V=%d, z3V3=%d", stm.adc_12v, stm.adc_batt, stm.adc_z5v0, stm.adc_z3v3);
                 break;
             }
             case ST_DS_ENUM1:
-            {
-                stm.ds_n = 0;
-                set_pca9554(PCA9554_DIS_1W1, 0);
-                stm_ds2482_enum(1);
-                break;
-            }
-            case ST_DS_READ1:
-            {
-                stm_ds2482_read(1);
-                set_pca9554(PCA9554_DIS_1W1, 1);
-                break;
-            }
-            case ST_DS_ENUM2:
-            {
-                set_pca9554(PCA9554_DIS_1W2, 0);
-                stm_ds2482_enum(2);
-                break;
-            }
-            case ST_DS_READ2:
-            {
-                stm_ds2482_read(2);
-                set_pca9554(PCA9554_DIS_1W2, 1);
-                break;
-            }
-            case ST_DS_STAT:
-            {
-                stm_ds_stat();
-                stm_watering();
-                break;
-            }
-
             case ST_DS_ENUM1+10:
-            {
-                stm.ds_n = 0;
-                set_pca9554(PCA9554_DIS_1W1, 0);
-                stm_ds2482_enum(1);
-                break;
-            }
-            case ST_DS_READ1+10:
-            {
-                stm_ds2482_read(1);
-                set_pca9554(PCA9554_DIS_1W1, 1);
-                break;
-            }
-            case ST_DS_ENUM2+10:
-            {
-                set_pca9554(PCA9554_DIS_1W2, 0);
-                stm_ds2482_enum(2);
-                break;
-            }
-            case ST_DS_READ2+10:
-            {
-                stm_ds2482_read(2);
-                set_pca9554(PCA9554_DIS_1W2, 1);
-                break;
-            }
-            case ST_DS_STAT+10:
-            {
-                stm_ds_stat();
-                stm_watering();
-                break;
-            }
-
             case ST_DS_ENUM1+20:
-            {
-                stm.ds_n = 0;
-                set_pca9554(PCA9554_DIS_1W1, 0);
-                stm_ds2482_enum(1);
-                break;
-            }
-            case ST_DS_READ1+20:
-            {
-                stm_ds2482_read(1);
-                set_pca9554(PCA9554_DIS_1W1, 1);
-                break;
-            }
-            case ST_DS_ENUM2+20:
-            {
-                set_pca9554(PCA9554_DIS_1W2, 0);
-                stm_ds2482_enum(2);
-                break;
-            }
-            case ST_DS_READ2+20:
-            {
-                stm_ds2482_read(2);
-                set_pca9554(PCA9554_DIS_1W2, 1);
-                break;
-            }
-            case ST_DS_STAT+20:
-            {
-                stm_ds_stat();
-                stm_watering();
-                break;
-            }
-
             case ST_DS_ENUM1+30:
-            {
-                stm.ds_n = 0;
-                set_pca9554(PCA9554_DIS_1W1, 0);
-                stm_ds2482_enum(1);
-                break;
-            }
-            case ST_DS_READ1+30:
-            {
-                stm_ds2482_read(1);
-                set_pca9554(PCA9554_DIS_1W1, 1);
-                break;
-            }
-            case ST_DS_ENUM2+30:
-            {
-                set_pca9554(PCA9554_DIS_1W2, 0);
-                stm_ds2482_enum(2);
-                break;
-            }
-            case ST_DS_READ2+30:
-            {
-                stm_ds2482_read(2);
-                set_pca9554(PCA9554_DIS_1W2, 1);
-                break;
-            }
-            case ST_DS_STAT+30:
-            {
-                stm_ds_stat();
-                stm_watering();
-                stm_send_stats_g1();
-                break;
-            }
-
             case ST_DS_ENUM1+40:
-            {
-                stm.ds_n = 0;
-                set_pca9554(PCA9554_DIS_1W1, 0);
-                stm_ds2482_enum(1);
-                break;
-            }
-            case ST_DS_READ1+40:
-            {
-                stm_ds2482_read(1);
-                set_pca9554(PCA9554_DIS_1W1, 1);
-                break;
-            }
-            case ST_DS_ENUM2+40:
-            {
-                set_pca9554(PCA9554_DIS_1W2, 0);
-                stm_ds2482_enum(2);
-                break;
-            }
-            case ST_DS_READ2+40:
-            {
-                stm_ds2482_read(2);
-                set_pca9554(PCA9554_DIS_1W2, 1);
-                break;
-            }
-            case ST_DS_STAT+40:
-            {
-                stm_ds_stat();
-                stm_watering();
-                break;
-            }
-
             case ST_DS_ENUM1+50:
             {
                 stm.ds_n = 0;
@@ -1269,28 +1143,54 @@ void handle_stm()
                 stm_ds2482_enum(1);
                 break;
             }
+            case ST_DS_READ1:
+            case ST_DS_READ1+10:
+            case ST_DS_READ1+20:
+            case ST_DS_READ1+30:
+            case ST_DS_READ1+40:
             case ST_DS_READ1+50:
             {
                 stm_ds2482_read(1);
                 set_pca9554(PCA9554_DIS_1W1, 1);
                 break;
             }
+            case ST_DS_ENUM2:
+            case ST_DS_ENUM2+10:
+            case ST_DS_ENUM2+20:
+            case ST_DS_ENUM2+30:
+            case ST_DS_ENUM2+40:
             case ST_DS_ENUM2+50:
             {
                 set_pca9554(PCA9554_DIS_1W2, 0);
                 stm_ds2482_enum(2);
                 break;
             }
+            case ST_DS_READ2:
+            case ST_DS_READ2+10:
+            case ST_DS_READ2+20:
+            case ST_DS_READ2+30:
+            case ST_DS_READ2+40:
             case ST_DS_READ2+50:
             {
                 stm_ds2482_read(2);
                 set_pca9554(PCA9554_DIS_1W2, 1);
                 break;
             }
+            case ST_DS_STAT:
+            case ST_DS_STAT+10:
+            case ST_DS_STAT+20:
+            case ST_DS_STAT+30:
+            case ST_DS_STAT+40:
+            {
+                stm_ds_stat();
+                stm_watering();
+                break;
+            }
             case ST_DS_STAT+50:
             {
                 stm_ds_stat();
                 stm_watering();
+                stm_send_stats_g1();
                 stm_send_stats_g2();
                 break;
             }
@@ -1355,16 +1255,18 @@ void init_stm()
     }
     stm.dev = dev;
 
+    stm_get_control(dev, &stm.control);
+
     stm_G1_watering(0);
     stm_mc_setn("G1_WATER", 0);
     stm_G2_watering(0);
     stm_mc_setn("G2_WATER", 0);
 
-    // stm_enable_pm(1);
-
-    pinMode (PIN_PA7, OUTPUT);
-    digitalWrite(PIN_PA7, 1);
-
+    // STM reset pin
+    digitalWrite(PIN_RST, 0);
+    pinMode (PIN_RST, OUTPUT);
+    digitalWrite(PIN_RST, 0);
+    
     /*
     pinMode (PIN_PA7, INPUT);
     // Read interrupt lane and check it has correct logic level

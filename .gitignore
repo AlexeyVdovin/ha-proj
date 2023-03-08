@@ -7,5 +7,5 @@
 *.elf
 *.a
 *~
+*.log
 green
-green.log
