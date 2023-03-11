@@ -481,7 +481,8 @@ static void stm_mc_sets(const char* key, const char* val)
     rc = memcached_set(&stm.mc, key, strlen(key), val, strlen(val), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
-        DBG("Error: Set memcached value failed %s => %s", key, val);
+        const char* err = memcached_last_error_message(&stm.mc);
+        DBG("Error: Set memcached value failed %s => %s: %s", key, val, err);
     }
 }
 
@@ -495,7 +496,8 @@ static void stm_mc_setn(const char* key, int val)
     rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
-        DBG("Error: Set memcached value failed %s => %s", key, str);
+        const char* err = memcached_last_error_message(&stm.mc);
+        DBG("Error: Set memcached value failed %s => %s: %s", key, str, err);
     }
 }
 
@@ -509,7 +511,8 @@ static void stm_mc_setf(const char* key, float val)
     rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
-        DBG("Error: Set memcached value failed %s => %s", key, str);
+        const char* err = memcached_last_error_message(&stm.mc);
+        DBG("Error: Set memcached value failed %s => %s: %s", key, str, err);
     }
 }
 
@@ -524,7 +527,8 @@ static void stm_mc_setk(const char* pre, uint8_t* id, int val)
     rc = memcached_set(&stm.mc, key, strlen(key), str, strlen(str), 0, 0);
     if(rc != MEMCACHED_SUCCESS)
     {
-        DBG("Error: Set memcached value failed %s => %s", key, str);
+        const char* err = memcached_last_error_message(&stm.mc);
+        DBG("Error: Set memcached value failed %s => %s: %s", key, str, err);
     }
 }
 
@@ -855,7 +859,9 @@ static void stm_watering()
             stm_mc_setn("G1_WATER", 1);
             if(stm.G1_watering_set == 2)
             {
-                stm.G1_watering_last += cfg.G1_set.period * 60;
+                // TODO: Use current time + Watering Period
+                // stm.G1_watering_last += cfg.G1_set.period * 60;
+                stm.G1_watering_last = (t/60) * 60;
                 save = 1;
             }
         }
@@ -879,7 +885,8 @@ static void stm_watering()
             stm_mc_setn("G2_WATER", 1);
             if(stm.G2_watering_set == 2)
             {
-                stm.G2_watering_last += cfg.G2_set.period * 60;
+                // stm.G2_watering_last += cfg.G2_set.period * 60;
+                stm.G2_watering_last = (t/60) * 60;
                 save = 1;
             }
         }

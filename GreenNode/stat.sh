@@ -16,7 +16,7 @@ ping -c 3 -n ya.ru
 rc=$?
 
 # Simulate failed PING
-rc=1
+#rc=1
 
 COUNT=0
 if [ $rc != 0 ]; then

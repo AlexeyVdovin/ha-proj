@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <poll.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "minini/minIni.h"
@@ -52,6 +53,8 @@ int main(int argc, char* argv[])
         cfg_name = argv[1];
     }
     read_config(cfg_name);
+
+    sleep(3);
     
     wiringPiSetup();
 

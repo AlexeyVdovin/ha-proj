@@ -19,6 +19,10 @@ $G2_air['id']    = $m->get('G2_AIR');
 if(empty($G1_ground['id']) || empty($G1_air['id']) || empty($G2_ground['id']) || empty($G2_air['id']))
 {
     echo "Error: Temperature sensors are not defined.\n";
+    echo "G1 Ground: ".$G1_ground['id']."\n";
+    echo "G1 Air:".$G1_air['id']."\n";
+    echo "G2 Ground: ".$G2_ground['id']."\n";
+    echo "G2 Air: ".$G2_air['id']."\n";
     die;
 }
 
