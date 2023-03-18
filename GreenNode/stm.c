@@ -1,5 +1,5 @@
-
 #define _GNU_SOURCE
+
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -60,6 +60,12 @@ enum
   STM_CTL_DR2       = 0x0004,
   STM_CTL_SHDN      = 0x0008,
   STM_CTL_ENABLE_PM = 0x8000 // Enable OPiZ power management
+};
+
+enum
+{
+    REL_G1_CIRC = PCA9554_OUT_X8,
+    REL_G2_CIRC = PCA9554_OUT_X6
 };
 
 typedef struct
@@ -655,7 +661,7 @@ static void stm_ds_stat()
         if(s)
         {
             stm_mc_setn("G1_CIRC", stm.G1_circ);
-            set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
+            set_pca9554(REL_G1_CIRC, stm.G1_circ);
         }
     }
     if(g2a != -55)
@@ -706,7 +712,7 @@ static void stm_ds_stat()
         if(s)
         {
             stm_mc_setn("G2_CIRC", stm.G2_circ);
-            set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
+            set_pca9554(REL_G2_CIRC, stm.G2_circ);
         }
     }
     set_pca9554(PCA9554_OUT_X2, stm.G1_vent + stm.G2_vent);
@@ -1090,14 +1096,14 @@ void handle_stm()
             {
                 stm.G1_circ = cfg.G1_set.circ;
                 stm_mc_setn("G1_CIRC", stm.G1_circ);
-                set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
+                set_pca9554(REL_G1_CIRC, stm.G1_circ);
             }
 
             if(cfg.G2_set.circ != 2 && stm.G2_circ != cfg.G2_set.circ)
             {
                 stm.G2_circ = cfg.G2_set.circ;
                 stm_mc_setn("G2_CIRC", stm.G2_circ);
-                set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
+                set_pca9554(REL_G2_CIRC, stm.G2_circ);
             }
             
             // Copy all settings to Memcached
@@ -1332,7 +1338,7 @@ void init_stm()
         stm.G1_circ = 0;
         stm_mc_setn("G1_CIRC", stm.G1_circ);
     }
-    set_pca9554(PCA9554_OUT_X6, stm.G1_circ);
+    set_pca9554(REL_G1_CIRC, stm.G1_circ);
 
     if(stm_mc_getn("G2_CIRC", &v) == 0) stm.G2_circ = v;
     else
@@ -1340,7 +1346,7 @@ void init_stm()
         stm.G2_circ = 0;
         stm_mc_setn("G2_CIRC", stm.G2_circ);
     }
-    set_pca9554(PCA9554_OUT_X8, stm.G2_circ);
+    set_pca9554(REL_G2_CIRC, stm.G2_circ);
 }
 
 void close_stm()
