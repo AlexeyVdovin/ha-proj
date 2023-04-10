@@ -541,9 +541,24 @@ static void stm_mc_setk(const char* pre, uint8_t* id, int val)
 static void stm_ds_stat()
 {
     memcached_return rc;
+    int min_r = 0, max_r = 0;
     int x, c, s, i, n = stm.ds_n;
     float g1a = -55, g1g = -55, g2a = -55, g2g = -55;
     float sum;
+
+    // Check if min/max reset by cron
+    x = stm_mc_getn("min_reset", &c);
+    if(x == 0 && c > 0)
+    {
+        min_r = 1;
+        stm_mc_setn("min_reset", 0);
+    }
+    x = stm_mc_getn("max_reset", &c);
+    if(x == 0 && c > 0)
+    {
+        max_r = 1;
+        stm_mc_setn("max_reset", 0);
+    }
 
     for(i = 0; i < n; ++i)
     {
@@ -570,14 +585,14 @@ static void stm_ds_stat()
         stm.t_avg[i].time = time(0);
         stm_mc_setk("", stm.addr[i], stm.t_avg[i].t);
 
-        if(stm.t_min[i].t > stm.temperature[i])
+        if(stm.t_min[i].t > stm.temperature[i] || min_r)
         {
             stm.t_min[i].t = stm.temperature[i];
             stm.t_min[i].time = stm.t_avg[i].time;
             stm_mc_setk("min_", stm.addr[i], stm.t_min[i].t);
             stm_mc_setk("mint_", stm.addr[i], (int)stm.t_min[i].time);
         }
-        if(stm.t_max[i].t < stm.temperature[i]) 
+        if(stm.t_max[i].t < stm.temperature[i] || max_r) 
         {
             stm.t_max[i].t = stm.temperature[i];
             stm.t_max[i].time = stm.t_avg[i].time;
