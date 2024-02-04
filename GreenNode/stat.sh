@@ -25,7 +25,7 @@ if [ $rc != 0 ]; then
 fi
 ${PHP} ${MEM_SET} PING_COUNT ${COUNT}
 
-if [ ${COUNT} -gt 30 ]; then
+if [ ${COUNT} -gt 5 ]; then
   echo "Do cold restart."
   /sbin/shutdown -P now
 fi

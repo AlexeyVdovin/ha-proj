@@ -587,14 +587,14 @@ static void stm_ds_stat()
 
         if(stm.t_min[i].t > stm.temperature[i] || min_r)
         {
-            stm.t_min[i].t = stm.temperature[i];
+            stm.t_min[i].t = stm.t_avg[i].t;
             stm.t_min[i].time = stm.t_avg[i].time;
             stm_mc_setk("min_", stm.addr[i], stm.t_min[i].t);
             stm_mc_setk("mint_", stm.addr[i], (int)stm.t_min[i].time);
         }
         if(stm.t_max[i].t < stm.temperature[i] || max_r) 
         {
-            stm.t_max[i].t = stm.temperature[i];
+            stm.t_max[i].t = stm.t_avg[i].t;
             stm.t_max[i].time = stm.t_avg[i].time;
             stm_mc_setk("max_", stm.addr[i], stm.t_max[i].t);
             stm_mc_setk("maxt_", stm.addr[i], (int)stm.t_max[i].time);
@@ -764,6 +764,7 @@ static int read_settings()
         cfg.G2_set.period   = ini_getl("general", "G2_PERIOD", 180, name); if(cfg.G2_set.period < 10 || cfg.G2_set.period > 1440) cfg.G2_set.period = 180;
         cfg.G2_set.duration = ini_getl("general", "G2_DURATION", 2, name); if(cfg.G2_set.duration < 0 || cfg.G2_set.duration > 60) cfg.G2_set.duration = 2;
         res = 1;
+        // DBG("conf: G1_PERIOD = %d", cfg.G1_set.period);
     }
     // <0 - error
     //  0 - no changes

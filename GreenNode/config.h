@@ -37,7 +37,7 @@ typedef struct
     char  heat;     // 0 - OFF, 1 - ON, 2 - AUTO
     char  circ;     // 0 - OFF, 1 - ON, 2 - AUTO
     char  water;    // 0 - OFF, 1 - ON, 2 - AUTO
-    char  period;   // in minutes
+    int   period;   // in minutes
     char  duration; // in minutes
 } settings_t;
 

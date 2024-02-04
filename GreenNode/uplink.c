@@ -76,6 +76,8 @@ void uplink_send_stats(int n, int gr, int ar, int ht, int vt, int cr, int wt)
 {
     static int status[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     static int errors[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    static int timeout[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    static CURL* hds[8] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
     char  url[1024];
     CURL* hd;
 
@@ -86,8 +88,18 @@ void uplink_send_stats(int n, int gr, int ar, int ht, int vt, int cr, int wt)
     }
     if(status[n] < 0)
     {
-        DBG("Error: Stats %d busy!", n);
-        return;
+        if(timeout[n] > time(0))
+        {
+            DBG("Error: Stats %d busy!", n);
+            return;
+        }
+        hd = hds[n];
+        if(hd)
+        {
+            curl_multi_remove_handle(multi_handle, hd);
+            curl_easy_cleanup(hd);
+            hds[n] = NULL;
+        }
     }
     if(status[n] > 0)
     {
@@ -121,5 +133,7 @@ void uplink_send_stats(int n, int gr, int ar, int ht, int vt, int cr, int wt)
     curl_easy_setopt(hd, CURLOPT_PRIVATE, &status[n]);
 
     curl_multi_add_handle(multi_handle, hd);
+    hds[n] = hd;
+    timeout[n] = time(0) + 300; // 5 min
 }
 
