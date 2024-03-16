@@ -1020,13 +1020,13 @@ void handle_stm()
         {
             if(cfg.G1_set.water == 2 && stm.G1_watering_set == 0)
             {
-                stm.G1_watering_last = t;
-                save = 1;
+                // stm.G1_watering_last = t;
+                // save = 1;
             }
             else if(cfg.G1_set.water == 2 && stm.G1_watering_set == 1)
             {
-                stm.G1_watering_last = t;
-                save = 1;
+                // stm.G1_watering_last = t;
+                // save = 1;
                 stm_G1_watering(0);
                 stm_mc_setn("G1_WATER", 0);
             }
@@ -1034,8 +1034,8 @@ void handle_stm()
             {
                 if(cfg.G1_set.water == 1)
                 {
-                    stm.G1_watering_last = t;
-                    save = 1;
+                   // stm.G1_watering_last = t;
+                   // save = 1;
                 }
                 // Manual On/Off
                 stm_G1_watering(cfg.G1_set.water);
@@ -1045,13 +1045,13 @@ void handle_stm()
 
             if(cfg.G2_set.water == 2 && stm.G2_watering_set == 0)
             {
-                stm.G2_watering_last = t;
-                save = 1;
+                // stm.G2_watering_last = t;
+                // save = 1;
             }
             else if(cfg.G2_set.water == 2 && stm.G2_watering_set == 1)
             {
-                stm.G2_watering_last = t;
-                save = 1;
+                // stm.G2_watering_last = t;
+                // save = 1;
                 stm_G2_watering(0);
                 stm_mc_setn("G2_WATER", 0);
             }
@@ -1059,8 +1059,8 @@ void handle_stm()
             {
                 if(cfg.G2_set.water == 1)
                 {
-                    stm.G2_watering_last = t;
-                    save = 1;
+                    // stm.G2_watering_last = t;
+                    // save = 1;
                 }
                 // Manual On/Off
                 stm_G2_watering(cfg.G2_set.water);

@@ -42,7 +42,7 @@ function set_mem($m, $k1, $k2, $t)
         if(($t == 2 || $t == 1) && ($k2 == 'G1_WATER' || $k2 == 'G2_WATER'))
         {
             $m->set($k2, $t == 1 ? 1 : 0);
-            $m->set($k2.'_T', time());
+            // $m->set($k2.'_T', time()); // Do not update last watering time!
         }
 
         // Update settings in config file.
