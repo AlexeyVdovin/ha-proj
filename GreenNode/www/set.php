@@ -44,11 +44,11 @@ function set_mem($m, $k1, $k2, $t)
             $m->set($k2, $t == 1 ? 1 : 0);
             // $m->set($k2.'_T', time()); // Do not update last watering time!
         }
-        if($k == "G1_PERIOD" || $k == "G1_DURATION")
+        if($k1 == "G1_PERIOD" || $k1 == "G1_DURATION")
         {
             $m->set('G1_WATER_T', time());
         }
-        if($k == "G2_PERIOD" || $k == "G2_DURATION")
+        if($k1 == "G2_PERIOD" || $k1 == "G2_DURATION")
         {
             $m->set('G2_WATER_T', time());
         }
